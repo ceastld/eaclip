@@ -1,42 +1,37 @@
 # 安装与配置
 
-适用版本：eaclip / Rust ClipHost 0.31.12 及以后（GPUI 原生界面），按 0.31.26 编写。当前最新公开版本见 [eaclip Releases](https://github.com/ceastld/eaclip/releases/latest)。
+适用版本：eaclip / Rust ClipHost 0.31.12 及以后（GPUI 原生界面），按 0.31.28 编写。当前最新公开版本见 [eaclip Releases](https://github.com/ceastld/eaclip/releases/latest)。
 
 GPUI 版本**不需要 WebView2**，也不需要 .NET 运行时。**不安装 Quicker 也能使用**剪贴板历史与收藏（便携包直接运行）；Quicker 动作只是安装和唤起入口之一。
 
-## 选哪种架构
+## 下载架构
 
-| Windows | 选择 |
-| --- | --- |
-| 普通 Intel / AMD 64 位电脑 | x64 |
-| Windows on ARM（如骁龙笔记本） | ARM64 |
+0.31.28 起常规发布仅提供 Windows x64 包，适用于普通 Intel / AMD 64 位电脑。Quicker 安装入口统一选择 x64，暂时关闭 ARM64 自动判断和下载。
 
-在 ARM64 Windows 上，即使 Quicker 以 x64 模拟方式运行，Quicker 安装入口也会按系统原生架构选择 ARM64 宿主。
-
-ARM64 的已知边界见 [已知问题](known-issues.md#arm64)。
+历史 ARM64 包仍可从旧版 Release 获取，本次不继续更新；Windows on ARM 的兼容运行未纳入验收，见 [已知问题](known-issues.md#arm64)。
 
 ## 方式一：通过 Quicker 动作「剪贴板 n10」
 
 1. 在 Quicker 中安装分享动作 [剪贴板 n10](https://getquicker.net/Sharedaction?code=df6cc8fc-1a67-4576-fcb0-08deace01986)。
-2. 运行该动作。动作先从 Quicker 官方依赖库下载入口 DLL，再由入口 DLL 按系统架构下载并安装宿主（来源为 Quicker 官方依赖库，Bitiful 为备用源）。
+2. 运行该动作。动作先从 Quicker 官方依赖库下载入口 DLL，再由入口 DLL 下载并安装 x64 宿主（来源为 Quicker 官方依赖库，Bitiful 为备用源）。
 3. 宿主安装在 `%LOCALAPPDATA%\Programs\ClipHostRust`（程序为其中的 `cliphost-app.exe`）。
 4. 之后再运行该动作，会唤起已在运行的程序（显示 / 隐藏剪贴板窗口）。
 
-版本要求（0.31.26）：
+版本要求（0.31.28）：
 
 | 项目 | 要求 |
 | --- | --- |
-| 宿主版本 | 剪贴板 n10 与超级菜单 n10 使用宿主 `0.31.26.0` |
-| Quicker V1 / V2 入口 | 0.31.24 起更新为 `0.31.24.1`（用于新的动作查询与搜索聚焦能力） |
-| 基本兼容下限 | x64 入口最低 `0.31.7.0`，ARM64 入口最低 `0.31.14.1`（保持不变） |
+| 宿主版本 | 剪贴板 n10 与超级菜单 n10 使用宿主 `0.31.28.0` |
+| Quicker V1 / V2 入口 | `0.31.27.1`，统一选择 x64 宿主 |
+| 基本兼容下限 | x64 宿主 ABI 的入口下限保持 `0.31.7.0`；本版动作实际要求上述新版入口 |
 
-公开分享动作从 0.31.14 起已改用"按系统架构下载宿主"的新版安装入口（0.31.13 说明里"尚未切换"的状态已过时）。
+公开分享动作使用入口 DLL 完成宿主下载与升级；0.31.28 起该入口统一选择 x64。
 
 > 待确认：「剪贴板 n10」分享页当前标注的最低 Quicker 版本（仓库内没有记录，请以分享页为准）。
 
 ## 方式二：便携包
 
-1. 打开 [eaclip Releases](https://github.com/ceastld/eaclip/releases/latest)，按架构下载 `eaclip-<版本>-windows-x64.zip` 或 `eaclip-<版本>-windows-arm64.zip`。
+1. 打开 [eaclip Releases](https://github.com/ceastld/eaclip/releases/latest)，下载 `eaclip-<版本>-windows-x64.zip`。
 2. 可选：用同名的 `.SHA256SUMS.txt` 核对 ZIP 的 SHA-256。
 3. **完整解压整个目录**，运行 `cliphost-app.exe`，不要单独拿出 EXE（同目录 DLL 需要保留）。
 

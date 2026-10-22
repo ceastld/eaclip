@@ -4,7 +4,7 @@ eaclip 是 Windows 剪贴板管理工具（程序名 ClipHost，Rust + GPUI 原�
 
 | 文档 | 内容 |
 | --- | --- |
-| [安装与配置](install.md) | Quicker「剪贴板 n10」安装、便携包（x64 / ARM64）、与安装版共存、数据位置、开机自启、卸载 |
+| [安装与配置](install.md) | Quicker「剪贴板 n10」安装、x64 便携包、与安装版共存、数据位置、开机自启、卸载 |
 | [使用说明](usage.md) | 打开窗口、托盘、粘贴、便捷粘贴、收藏、聚合搜索、超级菜单、局域网配对 / 互传与设备同步 |
 | [功能清单](features.md) | 按设置页列出当前版本的功能，以及尚未开放的功能 |
 | [快捷键](hotkeys.md) | 全局快捷键默认值、窗口内按键、CapsLock 引导键、鼠标操作 |
@@ -17,7 +17,7 @@ eaclip 是 Windows 剪贴板管理工具（程序名 ClipHost，Rust + GPUI 原�
 
 | 名称 | 说明 |
 | --- | --- |
-| eaclip | 剪贴板产品的公开发布名。下载包名为 `eaclip-<版本>-windows-<x64\|arm64>.zip` |
+| eaclip | 剪贴板产品的公开发布名。当前下载包名为 `eaclip-<版本>-windows-x64.zip`；历史 ARM64 包保留 |
 | ClipHost / `cliphost-app.exe` | 程序本体（Rust + GPUI 原生界面，不需要 WebView2，也不需要 .NET） |
 | 剪贴板 n10 | Quicker 里用来安装、启动这个程序的动作 |
 | 超级菜单 n10 | Quicker 里打开超级菜单的配套动作，使用同一个宿主程序 |
