@@ -1,6 +1,6 @@
 # eaclip（Cea 剪贴板）使用文档
 
-eaclip 是 Windows 剪贴板管理工具（程序名 ClipHost，Rust + GPUI 原生界面）。本目录是它的使用说明，适用于 **0.31.26**。
+eaclip 是 Windows 剪贴板管理工具（程序名 ClipHost，Rust + GPUI 原生界面）。本目录是它的使用说明，适用于 **0.32.0**。
 
 | 文档 | 内容 |
 | --- | --- |

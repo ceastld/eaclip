@@ -4,6 +4,19 @@
 
 0.31.18、0.31.19、0.31.20、0.31.22、0.31.25、0.31.27 是未公开发布的候选版本，其内容分别由 0.31.21、0.31.23、0.31.26 和 0.31.28 承接，因此不单独列出。
 
+## 0.31.31（2026-10-22）
+
+[Release](https://github.com/ceastld/eaclip/releases/tag/rust-v0.31.31) · Windows x64
+
+- 修复便捷粘贴加载期间快速操作丢失或错序、连续粘贴准备后的行操作，以及 E 和系统组合键的接管。
+- 修复松键后立即按 Esc 仍粘贴、单键快捷键和输入中断后的会话残留。
+
+## 0.31.29（2026-10-22）
+
+[Release](https://github.com/ceastld/eaclip/releases/tag/rust-v0.31.29) · Windows x64
+
+- 兼容异常旧记录并改进数据库启动恢复，保留异常内容的只读保护。
+
 ## 0.31.28（2026-10-21）
 
 [Release](https://github.com/ceastld/eaclip/releases/tag/rust-v0.31.28) · Windows x64
