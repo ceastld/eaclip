@@ -77,7 +77,7 @@ jobs:
           import re
           import tomllib
 
-          manifest = tomllib.loads(pathlib.Path("host-tauri/Cargo.toml").read_text(encoding="utf-8"))
+          manifest = tomllib.loads(pathlib.Path("host/Cargo.toml").read_text(encoding="utf-8"))
           version = manifest["workspace"]["package"]["version"]
           if not re.fullmatch(r"\d+\.\d+\.\d+", version):
               raise SystemExit(f"Expected a three-part release version, got {version!r}")
@@ -207,12 +207,12 @@ jobs:
       - name: Restore native Rust dependency cache
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: host-tauri -> target
-          key: ${{ matrix.target }}-rust-1.90.0
+          workspaces: host -> target
+          key: host-layout-${{ matrix.target }}-rust-1.90.0
           cache-on-failure: true
 
       - name: Run native core, bridge, HTTP, GPUI and updater library regressions
-        working-directory: host-tauri
+        working-directory: host
         run: |
           # Hosted Windows runs elevated without a normal interactive Shell token.
           # These two tests require that token; keep their desktop validation separate.
@@ -225,28 +225,28 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native Rust library regressions failed.' }
 
       - name: Run display recovery integration regression
-        working-directory: host-tauri
+        working-directory: host
         run: |
           cargo test --locked --target $env:RUST_TARGET -p cliphost-gpui --test display_change -- --test-threads=1 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/display-change-tests.log')
           if ($LASTEXITCODE -ne 0) { throw 'Native display recovery integration regression failed.' }
 
       - name: Run DirectX resource lifecycle regression
-        working-directory: host-tauri
+        working-directory: host
         run: |
           cargo test --locked --target $env:RUST_TARGET -p cliphost-gpui --test directx_resource_lifecycle -- --test-threads=1 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/directx-resource-lifecycle-tests.log')
           if ($LASTEXITCODE -ne 0) { throw 'DirectX resource lifecycle regression failed.' }
 
       - name: Run shutdown diagnostics regression
-        working-directory: host-tauri
+        working-directory: host
         run: |
           cargo test --locked --target $env:RUST_TARGET -p cliphost-gpui --bin cliphost-gpui startup_diagnostics -- --test-threads=1 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/shutdown-diagnostics-tests.log')
           if ($LASTEXITCODE -ne 0) { throw 'Shutdown diagnostics regression failed.' }
 
       - name: Free test build files before Release compilation
-        working-directory: host-tauri
+        working-directory: host
         run: |
           cargo clean --profile dev --target $env:RUST_TARGET 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/clean.log')
@@ -255,22 +255,22 @@ jobs:
       - name: Build GPUI Release and prepare architecture-specific assets
         run: |
           $packageDirectory = ".tmp/release/ClipHost-Rust-$env:RELEASE_ARCH"
-          ./host-tauri/Build-Standalone.ps1 -Renderer Gpui -Target $env:RUST_TARGET `
+          ./host/Build-Standalone.ps1 -Renderer Gpui -Target $env:RUST_TARGET `
             -OutputDirectory $packageDirectory 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/package.log')
-          ./host-tauri/scripts/Test-GpuiExecutableIdentity.ps1 `
+          ./host/scripts/Test-GpuiExecutableIdentity.ps1 `
             -ExecutablePath (Join-Path $packageDirectory 'cliphost-app.exe') 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/executable-identity.json')
-          ./host-tauri/scripts/Prepare-GitHubRelease.ps1 -PackageDirectory $packageDirectory `
+          ./host/scripts/Prepare-GitHubRelease.ps1 -PackageDirectory $packageDirectory `
             -OutputDirectory .tmp/assets -ExpectedArchitecture $env:RELEASE_ARCH 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/assets.log')
 
       - name: Preserve internal native symbols for the exact release executable
         if: github.event.repository.private == true
         run: |
-          ./host-tauri/scripts/Save-NativeSymbols.ps1 `
+          ./host/scripts/Save-NativeSymbols.ps1 `
             -ExecutablePath ".tmp/release/ClipHost-Rust-$env:RELEASE_ARCH/cliphost-app.exe" `
-            -PdbDirectory "host-tauri/target/$env:RUST_TARGET/release" `
+            -PdbDirectory "host/target/$env:RUST_TARGET/release" `
             -OutputDirectory ".tmp/internal-symbols/$env:RELEASE_ARCH" `
             -ExpectedVersion $env:RELEASE_VERSION -ExpectedTarget $env:RUST_TARGET `
             -SourceCommit $env:GITHUB_SHA
@@ -288,7 +288,7 @@ jobs:
 
       - name: Verify and smoke test the frozen portable ZIP
         run: |
-          ./host-tauri/scripts/Test-StandaloneRuntime.ps1 -AssetDirectory .tmp/assets `
+          ./host/scripts/Test-StandaloneRuntime.ps1 -AssetDirectory .tmp/assets `
             -ExpectedArchitecture $env:RELEASE_ARCH -ExpectedVersion $env:RELEASE_VERSION `
             -OutputDirectory .tmp/ci/logs/runtime-smoke 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/runtime-smoke.log')
@@ -306,7 +306,7 @@ jobs:
 
       - name: Freeze the architecture-specific Quicker host dependency without uploading
         run: |
-          ./host-tauri/scripts/Publish-Dependency.ps1 -Renderer Gpui -Architecture $env:RELEASE_ARCH `
+          ./host/scripts/Publish-Dependency.ps1 -Renderer Gpui -Architecture $env:RELEASE_ARCH `
             -PackageDirectory ".tmp/release/ClipHost-Rust-$env:RELEASE_ARCH" -Version "${env:RELEASE_VERSION}.0" `
             -OutputDirectory .tmp/dependency 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/dependency-prepare.log')
@@ -376,7 +376,7 @@ jobs:
           $archives = @(Get-ChildItem -LiteralPath .tmp/ci/antivirus-inputs -Recurse -File -Filter '*.zip')
           $expected = @((ConvertFrom-Json $env:BUILD_MATRIX).include).Count * 2
           if ($archives.Count -ne $expected) { throw "Expected $expected frozen archives; found $($archives.Count)." }
-          ./host-tauri/scripts/Test-ReleaseAntivirus.ps1 -Path $archives.FullName `
+          ./host/scripts/Test-ReleaseAntivirus.ps1 -Path $archives.FullName `
             -OutputDirectory .tmp/ci/antivirus
 
       - name: Preserve antivirus evidence even when scanning fails
@@ -429,7 +429,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path .tmp/distribution-logs | Out-Null
           foreach ($arch in ($env:RELEASE_ARCHITECTURES -split ' ')) {
-            ./host-tauri/scripts/Import-PreparedPublication.ps1 `
+            ./host/scripts/Import-PreparedPublication.ps1 `
               -PublicationDirectory ".tmp/dependencies/rust-windows-dependency-$arch" `
               -ExpectedVersion "${env:RELEASE_VERSION}.0" 2>&1 |
               Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE ".tmp/distribution-logs/import-$arch.log")
@@ -442,7 +442,7 @@ jobs:
           QUICKER_USERNAME: ${{ secrets.QUICKER_USERNAME }}
           QUICKER_PASSWORD: ${{ secrets.QUICKER_PASSWORD }}
         run: |
-          $cliInfo = ./host-tauri/scripts/Install-QuickerReleaseCli.ps1 -OutputDirectory .tmp/quicker-cli -Login |
+          $cliInfo = ./host/scripts/Install-QuickerReleaseCli.ps1 -OutputDirectory .tmp/quicker-cli -Login |
             ConvertFrom-Json
           [IO.Path]::GetDirectoryName([string]$cliInfo.executable) >> $env:GITHUB_PATH
           $cliInfo | ConvertTo-Json | Set-Content -LiteralPath .tmp/distribution-logs/quicker-cli.json -Encoding utf8NoBOM
@@ -457,7 +457,7 @@ jobs:
             $options = @{ UploadPrepared=$true; OutputDirectory=".tmp/dependencies/rust-windows-dependency-$arch" }
             if ($env:PUBLISH_QUICKER -ne 'true') { $options.OssOnly = $true }
             elseif ($env:UPLOAD_BITIFUL -ne 'true') { $options.QuickerOnly = $true }
-            ./host-tauri/scripts/Publish-Dependency.ps1 @options 2>&1 |
+            ./host/scripts/Publish-Dependency.ps1 @options 2>&1 |
               Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE ".tmp/distribution-logs/dependency-upload-$arch.log")
           }
 
@@ -468,7 +468,7 @@ jobs:
           BITIFUL_SECRET_KEY: ${{ secrets.BITIFUL_SECRET_KEY }}
           BITIFUL_BUCKET_NAME: ${{ secrets.BITIFUL_BUCKET_NAME }}
         run: |
-          ./host-tauri/scripts/Publish-GitHubAssetsToBitiful.ps1 -AssetDirectory .tmp/assets `
+          ./host/scripts/Publish-GitHubAssetsToBitiful.ps1 -AssetDirectory .tmp/assets `
             -Version $env:RELEASE_VERSION -Architectures ($env:RELEASE_ARCHITECTURES -split ' ') `
             -OutputDirectory .tmp/bitiful-assets 2>&1 |
             Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/distribution-logs/portable-assets-upload.log')
@@ -531,13 +531,13 @@ jobs:
       - name: Verify selected architectures and asset checksums
         run: |
           read -r -a architectures <<< "$RELEASE_ARCHITECTURES"
-          python3 host-tauri/scripts/rust_release_assets.py local \
+          python3 host/scripts/rust_release_assets.py local \
             --version "$RELEASE_VERSION" --asset-directory .tmp/assets \
             --architectures "${architectures[@]}" \
             --output-directory .tmp/release-assets-local
 
       - name: Check public user docs before publishing
-        run: python3 host-tauri/scripts/sync_eaclip_release_notes.py --check-docs
+        run: python3 host/scripts/sync_eaclip_release_notes.py --check-docs
 
       - name: Create eaclip release without replacing an existing release
         env:
@@ -569,7 +569,7 @@ jobs:
           options=()
           if [[ "$RELEASE_DRAFT" == 'true' ]]; then options+=(--draft); fi
           read -r -a architectures <<< "$RELEASE_ARCHITECTURES"
-          python3 host-tauri/scripts/rust_release_assets.py remote \
+          python3 host/scripts/rust_release_assets.py remote \
             --version "$RELEASE_VERSION" --asset-directory .tmp/assets \
             --architectures "${architectures[@]}" \
             --output-directory .tmp/release-assets-remote "${options[@]}"
@@ -612,7 +612,7 @@ jobs:
         run: |
           options=()
           if [[ "$DOCS_SOURCE_IN_DESTINATION" == 'true' ]]; then options+=(--source-in-destination); fi
-          python3 host-tauri/scripts/sync_eaclip_release_notes.py \
+          python3 host/scripts/sync_eaclip_release_notes.py \
             --tag "$RELEASE_TAG" --output-directory .tmp/release-notes-sync --apply "${options[@]}"
 
       - name: Upload documentation candidates and synchronization receipt

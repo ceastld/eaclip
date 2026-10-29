@@ -2,6 +2,7 @@
 .tmp/
 .dev/
 target/
+host/target/
 host-tauri/target/
 node_modules/
 frontend/dist/

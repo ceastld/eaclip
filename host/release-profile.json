@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "rust-n10",
+  "product": "rust-gpui",
+  "sourceRepository": "ceastld/eaclip",
+  "releaseRepository": "ceastld/eaclip",
+  "workflow": "rust-release.yml",
+  "versionSource": "host/Cargo.toml",
+  "tagPattern": "rust-v{version}",
+  "renderer": "gpui",
+  "architectures": [
+    {"name": "x64", "target": "x86_64-pc-windows-msvc", "packageName": "cea.cliphost.rust"}
+  ],
+  "launcherCompatibilityFile": "host/launcher-compatibility.json",
+  "publicNotesPattern": "release-notes/public/rust-v{version}.md",
+  "actionRegistry": "../quicker-workspace/config/publish.registry.yaml",
+  "defaultActions": [
+    {"key": "clip-main/clipboard-n10", "command": "clip toggle"},
+    {"key": "clip-main/super-menu-n10", "command": "menu"}
+  ],
+  "distributionDefaults": {"github": true, "official": true, "bitiful": true},
+  "gateSet": "rust-gpui-v1",
+  "stateRoot": ".tmp/rust-releases"
+}

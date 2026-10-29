@@ -17,4 +17,4 @@
 - 互传设备使用 `desktop.svg`、`laptop.svg`、`phone.svg`，分别表示显示器、笔记本与手机，按设备类型选择；同样使用 16 网格、1 描边和单色蒙版。
 - 默认按 16 逻辑像素显示，不再用 14/15 这类在 125% 缩放下落到半像素的尺寸。GPUI 统一经 `crisp_svg::svg()` 绘制：先把尺寸和起点取整到物理像素再交给 `paint_svg`，避免 2 倍栅格贴到半像素后的二次模糊。
 
-前端 `/dev/gpui-alignment` 舞台下方的「共享图标」面板列出全部图标的三种尺寸，修改后先在此预览，再用 `host-tauri/scripts/Test-GpuiPreview.ps1 -Capture` 核对原生渲染（脚本使用现有 `target/debug` 程序，需先 `cargo build -p cliphost-gpui`）。
+前端 `/dev/gpui-alignment` 舞台下方的「共享图标」面板列出全部图标的三种尺寸，修改后先在此预览，再用 `host/scripts/Test-GpuiPreview.ps1 -Capture` 核对原生渲染（脚本使用现有 `target/debug` 程序，需先 `cargo build -p cliphost-gpui`）。

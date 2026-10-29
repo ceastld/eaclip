@@ -1,0 +1,67 @@
+name: Rust Workspace Check
+
+on:
+  push:
+    branches:
+      - "codex/host-*"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    if: github.repository == 'ceastld/eaclip' && github.event.repository.private == false
+    runs-on: windows-2022
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install pinned Rust toolchain
+        run: |
+          rustup toolchain install 1.90.0 --profile minimal --no-self-update
+          if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain installation failed.' }
+          rustup override set 1.90.0
+          if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain selection failed.' }
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host -> target
+          key: host-layout-rust-1.90.0
+
+      - name: Verify the default GPUI workspace entry
+        working-directory: host
+        run: |
+          $metadata = cargo metadata --locked --no-deps --format-version 1 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Cargo workspace inspection failed.' }
+          $defaults = @($metadata.packages | Where-Object { $metadata.workspace_default_members -contains $_.id })
+          if ($defaults.Count -ne 1 -or $defaults[0].name -cne 'cliphost-gpui') {
+            throw 'The default workspace entry must be the GPUI host.'
+          }
+
+      - name: Check GPUI and all its targets
+        working-directory: host
+        run: |
+          cargo check --locked -p cliphost-gpui --all-targets
+          if ($LASTEXITCODE -ne 0) { throw 'GPUI target checking failed.' }
+
+      - name: Test frozen release plans and public document sync
+        run: |
+          python -m unittest discover -s host/scripts -p test_rust_release.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen release plan tests failed.' }
+          python -m unittest discover -s host/scripts -p test_sync_eaclip_release_notes.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Public document sync tests failed.' }
