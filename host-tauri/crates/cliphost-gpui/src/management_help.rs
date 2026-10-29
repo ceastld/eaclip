@@ -1323,6 +1323,7 @@ mod model_tests {
                 "clip-usage--鼠标操作",
                 "clip-usage--粘贴触发方式",
                 "clip-usage--界面与常用功能",
+                "clip-usage--超级菜单与贴顶晾衣绳",
                 "clip-usage--外观主题",
                 "doc-commands",
                 "commands--常用命令一览",
@@ -1342,11 +1343,12 @@ mod model_tests {
                 }
             })
             .collect::<Vec<_>>();
-        assert_eq!(tables.len(), 10);
+        assert_eq!(tables.len(), 11);
         // The native list-shortcut documentation adds the Ctrl+C / Ctrl+P
         // row; it must render as one two-cell row rather than disappearing
         // or splitting on the command separator.
-        assert_eq!(tables.iter().map(|(_, rows)| rows.len()).sum::<usize>(), 57);
+        // The file-line keyboard section adds one table with nine shortcut rows.
+        assert_eq!(tables.iter().map(|(_, rows)| rows.len()).sum::<usize>(), 66);
         assert_eq!(
             tables[0]
                 .0
