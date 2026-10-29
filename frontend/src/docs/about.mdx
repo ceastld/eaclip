@@ -1,0 +1,49 @@
+import { DocExternalActions, DocExternalButton, DocNoteRow, DocNoteRows, DocShellUriLink, Note } from "../ui/DocComponents";
+import { DonateQrGallery } from "../ui/DonateQrGallery";
+import {
+  CLIPBOARD_QQ_GROUP_JOIN_LABEL,
+  CLIPBOARD_QQ_GROUP_JOIN_URL,
+  CLIPBOARD_QQ_GROUP_NUMBER
+} from "./aboutLinks";
+
+# 关于与作者
+
+你正在使用的是 **ClipHost（eaclip）** 剪贴板工具：用来查看历史、管理收藏、使用超级菜单和调整设置。当前正式版采用 GPUI 原生界面，可独立运行；Quicker 动作提供可选的安装与唤起入口。
+
+<DocExternalActions joined>
+  <DocExternalButton href="https://getquicker.net/User/Actions/113342-Cea">
+    Cea 分享的动作
+  </DocExternalButton>
+  <DocExternalButton href="https://getquicker.net/Common/Topics/New?objectType=SharedAction&objectId=9ec53d43-5539-4571-6886-08d8c752bfcb">
+    创建话题
+  </DocExternalButton>
+</DocExternalActions>
+
+<Note title="联系与交流">
+  <DocNoteRows>
+    <DocNoteRow label="邮箱">
+      <DocShellUriLink href="mailto:1950946176@qq.com">1950946176@qq.com</DocShellUriLink>
+    </DocNoteRow>
+    <DocNoteRow label="QQ 群">
+      {CLIPBOARD_QQ_GROUP_NUMBER}
+      <span className="doc-note-inline-sep" aria-hidden="true">
+        ·
+      </span>
+      <DocShellUriLink href={CLIPBOARD_QQ_GROUP_JOIN_URL}>{CLIPBOARD_QQ_GROUP_JOIN_LABEL}</DocShellUriLink>
+    </DocNoteRow>
+  </DocNoteRows>
+</Note>
+
+## 支持作者
+
+若你通过 **Quicker** 使用本工具，可考虑使用作者的推荐码购买专业版（规则以 Quicker 官方为准）：
+
+```text
+113342-5249
+```
+
+<Note title="赞赏">
+若剪贴板界面或相关动作对你有帮助，欢迎扫码支持作者持续维护。
+</Note>
+
+<DonateQrGallery />

@@ -1,0 +1,19 @@
+[package]
+name = "cliphost-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Host-bridge envelope and IDL router for ClipHost Tauri"
+
+[features]
+private-sync = ["cliphost-core/private-sync"]
+
+[dependencies]
+cliphost-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

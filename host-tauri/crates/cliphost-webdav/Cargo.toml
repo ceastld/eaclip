@@ -1,0 +1,23 @@
+[package]
+name = "cliphost-webdav"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Development-only encrypted WebDAV collection synchronization"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+sha2 = { workspace = true }
+url = { workspace = true }
+ring = "0.17.14"
+rustls = { workspace = true }
+tempfile = { workspace = true }
+reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "rustls-no-provider"] }
+quick-xml = "0.41"
+
+[dev-dependencies]
+tempfile = { workspace = true }

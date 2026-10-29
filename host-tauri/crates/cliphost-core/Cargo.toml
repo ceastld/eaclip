@@ -1,0 +1,49 @@
+[package]
+name = "cliphost-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "ClipHost Tauri domain: C#-aligned models, store, config, FIFO, hide policy"
+
+[features]
+webdav-sync-dev = ["dep:cliphost-webdav"]
+# Private Relay and Android transports are excluded from public builds.
+private-sync = ["dep:ring"]
+# Explicit isolated desktop verification; never part of the normal package.
+native-acceptance = ["parking_lot/deadlock_detection"]
+# Enables cross-crate contention fixtures only; normal application builds omit it.
+test-support = []
+
+[dependencies]
+cliphost-webdav = { workspace = true, optional = true }
+blake3 = { workspace = true }
+base64 = { workspace = true }
+sha2 = { workspace = true }
+rcgen = { workspace = true }
+rand = { workspace = true }
+rsa = { workspace = true }
+rustls = { workspace = true }
+chrono = { workspace = true }
+image = { workspace = true }
+open = { workspace = true }
+parking_lot = { workspace = true }
+regex = { workspace = true }
+regex-automata = { workspace = true }
+regex-syntax = { workspace = true }
+fancy-regex = { workspace = true }
+rfd = { workspace = true }
+rusqlite = { workspace = true, features = ["functions", "backup", "serialize"] }
+serde = { workspace = true }
+serde_json = { workspace = true, features = ["raw_value", "arbitrary_precision"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+unicode-normalization = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true }
+getrandom = "0.2"
+ring = { version = "0.17.14", optional = true }
+windows = { workspace = true, features = ["Win32_UI_Controls_Dialogs"] }
+windows-core = { workspace = true }
+tempfile = { workspace = true }

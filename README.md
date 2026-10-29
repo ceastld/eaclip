@@ -1,7 +1,8 @@
 # eaclip
 
-eaclip 剪贴板产品的公开发布仓库，用于发布后续版本的安装包、便携包与更新说明。
+eaclip 剪贴板产品的公开源码与发布仓库，提供 Rust / GPUI 桌面宿主、便携包与更新说明。
 
+- [源码与构建](SOURCE.md)
 - [版本与下载](https://github.com/ceastld/eaclip/releases)
 - [问题反馈与功能建议](https://github.com/QuickerHub/cea-action-issues/issues)
 - [使用说明与常见问题](docs/README.md)

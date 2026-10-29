@@ -1,0 +1,120 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ClipHost Tauri",
+  "version": "0.31.10",
+  "identifier": "net.getquicker.cliphost.tauri",
+  "build": {
+    "frontendDist": "../../frontend/dist",
+    "devUrl": "http://127.0.0.1:5280"
+  },
+  "app": {
+    "windows": [
+        {
+        "label": "clipboard",
+        "create": false,
+        "title": "ClipHost (Tauri)",
+        "width": 420,
+        "height": 760,
+        "decorations": false,
+        "transparent": false,
+        "visible": true,
+        "skipTaskbar": true,
+        "url": "/clipboard"
+      },
+      {
+        "label": "quick-paste",
+        "create": false,
+        "title": "Quick Paste",
+        "width": 520,
+        "height": 640,
+        "decorations": false,
+        "transparent": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "url": "/overlay/quick-paste"
+      },
+      {
+        "label": "copy-toast",
+        "create": false,
+        "title": "Copy Toast",
+        "width": 420,
+        "height": 160,
+        "decorations": false,
+        "transparent": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "url": "/overlay/copy-toast"
+      },
+      {
+        "label": "super-menu",
+        "create": false,
+        "title": "Super Menu",
+        "width": 800,
+        "height": 600,
+        "decorations": false,
+        "transparent": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "url": "/overlay/super-menu"
+      },
+      {
+        "label": "main",
+        "create": false,
+        "title": "ClipHost",
+        "width": 760,
+        "height": 580,
+        "minWidth": 680,
+        "minHeight": 460,
+        "decorations": false,
+        "transparent": false,
+        "visible": false,
+        "skipTaskbar": true,
+        "url": "/main/home"
+      },
+      {
+        "label": "context-menu",
+        "create": false,
+        "title": "Context Menu",
+        "width": 436,
+        "height": 300,
+        "decorations": false,
+        "resizable": false,
+        "transparent": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "url": "/overlay/context-menu"
+      },
+      {
+        "label": "panel",
+        "create": false,
+        "title": "超级面板",
+        "width": 420,
+        "height": 520,
+        "minWidth": 240,
+        "minHeight": 200,
+        "decorations": false,
+        "transparent": false,
+        "visible": false,
+        "skipTaskbar": true,
+        "alwaysOnTop": true,
+        "url": "/panel"
+      }
+    ],
+    "security": {
+      "csp": null
+    },
+    "withGlobalTauri": true
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/icon.ico"
+    ]
+  }
+}

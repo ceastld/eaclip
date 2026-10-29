@@ -1,0 +1,437 @@
+{
+  "home": {
+    "places": [
+      {
+        "name": "桌面",
+        "path": "C:\\Users\\demo\\Desktop",
+        "kind": "desktop"
+      },
+      {
+        "name": "下载",
+        "path": "C:\\Users\\demo\\Downloads",
+        "kind": "downloads"
+      },
+      {
+        "name": "文档",
+        "path": "C:\\Users\\demo\\Documents",
+        "kind": "documents"
+      },
+      {
+        "name": "图片",
+        "path": "C:\\Users\\demo\\Pictures",
+        "kind": "pictures"
+      }
+    ],
+    "drives": [
+      {
+        "name": "Windows-SSD (C:)",
+        "path": "C:\\",
+        "kind": "fixed",
+        "system": true,
+        "capacity": {
+          "freeBytes": 213674622976,
+          "totalBytes": 1021128474624
+        }
+      },
+      {
+        "name": "新加卷 (D:)",
+        "path": "D:\\",
+        "kind": "fixed",
+        "system": false,
+        "capacity": {
+          "freeBytes": 109521666048,
+          "totalBytes": 1990116046274
+        }
+      },
+      {
+        "name": "云端硬盘 (G:)",
+        "path": "G:\\",
+        "kind": "network",
+        "system": false,
+        "capacity": null
+      }
+    ]
+  },
+  "directories": {
+    "C:\\": [
+      {
+        "path": "C:\\Users",
+        "name": "Users",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Windows",
+        "name": "Windows",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Program Files",
+        "name": "Program Files",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\工具",
+        "name": "工具",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      }
+    ],
+    "C:\\Users": [
+      {
+        "path": "C:\\Users\\demo",
+        "name": "demo",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      }
+    ],
+    "C:\\Users\\demo": [
+      {
+        "path": "C:\\Users\\demo\\Desktop",
+        "name": "Desktop",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Downloads",
+        "name": "Downloads",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Documents",
+        "name": "Documents",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Pictures",
+        "name": "Pictures",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      }
+    ],
+    "C:\\Users\\demo\\Desktop": [
+      {
+        "path": "C:\\Users\\demo\\Desktop\\工作资料",
+        "name": "工作资料",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Desktop\\本周待办.txt",
+        "name": "本周待办.txt",
+        "isDir": false,
+        "sizeBytes": 2048,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "file"
+      },
+      {
+        "path": "C:\\Users\\demo\\Desktop\\项目入口.url",
+        "name": "项目入口.url",
+        "isDir": false,
+        "sizeBytes": 1024,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "link"
+      }
+    ],
+    "C:\\Users\\demo\\Downloads": [
+      {
+        "path": "C:\\Users\\demo\\Downloads\\安装包",
+        "name": "安装包",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Downloads\\已整理",
+        "name": "已整理",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Downloads\\项目参考图.png",
+        "name": "项目参考图.png",
+        "isDir": false,
+        "sizeBytes": 1887437,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "image"
+      },
+      {
+        "path": "C:\\Users\\demo\\Downloads\\会议纪要.pdf",
+        "name": "会议纪要.pdf",
+        "isDir": false,
+        "sizeBytes": 436224,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "pdf"
+      },
+      {
+        "path": "C:\\Users\\demo\\Downloads\\ClipHost-portable.zip",
+        "name": "ClipHost-portable.zip",
+        "isDir": false,
+        "sizeBytes": 25794970,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "archive"
+      }
+    ],
+    "C:\\Users\\demo\\Documents": [
+      {
+        "path": "C:\\Users\\demo\\Documents\\项目资料",
+        "name": "项目资料",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Documents\\笔记",
+        "name": "笔记",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Documents\\工作计划.docx",
+        "name": "工作计划.docx",
+        "isDir": false,
+        "sizeBytes": 38912,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "file"
+      },
+      {
+        "path": "C:\\Users\\demo\\Documents\\快速开始.md",
+        "name": "快速开始.md",
+        "isDir": false,
+        "sizeBytes": 4096,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "code"
+      }
+    ],
+    "C:\\Users\\demo\\Pictures": [
+      {
+        "path": "C:\\Users\\demo\\Pictures\\截图",
+        "name": "截图",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Pictures\\壁纸",
+        "name": "壁纸",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Pictures\\界面参考.png",
+        "name": "界面参考.png",
+        "isDir": false,
+        "sizeBytes": 2516582,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "image"
+      },
+      {
+        "path": "C:\\Users\\demo\\Pictures\\山间.jpg",
+        "name": "山间.jpg",
+        "isDir": false,
+        "sizeBytes": 3250586,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "image"
+      }
+    ],
+    "D:\\": [
+      {
+        "path": "D:\\项目",
+        "name": "项目",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\素材",
+        "name": "素材",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\归档",
+        "name": "归档",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\受限目录",
+        "name": "受限目录",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\磁盘说明.txt",
+        "name": "磁盘说明.txt",
+        "isDir": false,
+        "sizeBytes": 1024,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "file"
+      }
+    ],
+    "D:\\项目": [
+      {
+        "path": "D:\\项目\\剪贴板",
+        "name": "剪贴板",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\项目\\网站",
+        "name": "网站",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\项目\\项目索引.md",
+        "name": "项目索引.md",
+        "isDir": false,
+        "sizeBytes": 3072,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "code"
+      }
+    ],
+    "D:\\素材": [
+      {
+        "path": "D:\\素材\\图标",
+        "name": "图标",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\素材\\参考",
+        "name": "参考",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\素材\\封面.png",
+        "name": "封面.png",
+        "isDir": false,
+        "sizeBytes": 3355443,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "image"
+      }
+    ],
+    "D:\\项目\\剪贴板": [
+      {
+        "path": "D:\\项目\\剪贴板\\设计",
+        "name": "设计",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "D:\\项目\\剪贴板\\README.md",
+        "name": "README.md",
+        "isDir": false,
+        "sizeBytes": 6144,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "code"
+      },
+      {
+        "path": "D:\\项目\\剪贴板\\需求记录.txt",
+        "name": "需求记录.txt",
+        "isDir": false,
+        "sizeBytes": 8192,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "file"
+      }
+    ],
+    "C:\\Users\\demo\\Documents\\项目资料": [
+      {
+        "path": "C:\\Users\\demo\\Documents\\项目资料\\设计稿",
+        "name": "设计稿",
+        "isDir": true,
+        "sizeBytes": null,
+        "modifiedUnixMs": 1793031600000,
+        "kind": "folder"
+      },
+      {
+        "path": "C:\\Users\\demo\\Documents\\项目资料\\需求清单.md",
+        "name": "需求清单.md",
+        "isDir": false,
+        "sizeBytes": 12288,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "code"
+      },
+      {
+        "path": "C:\\Users\\demo\\Documents\\项目资料\\交付说明.pdf",
+        "name": "交付说明.pdf",
+        "isDir": false,
+        "sizeBytes": 393216,
+        "modifiedUnixMs": 1792971720000,
+        "kind": "pdf"
+      }
+    ],
+    "C:\\Windows": [],
+    "C:\\Program Files": [],
+    "C:\\工具": [],
+    "C:\\Users\\demo\\Desktop\\工作资料": [],
+    "C:\\Users\\demo\\Downloads\\安装包": [],
+    "C:\\Users\\demo\\Downloads\\已整理": [],
+    "C:\\Users\\demo\\Documents\\笔记": [],
+    "C:\\Users\\demo\\Pictures\\截图": [],
+    "C:\\Users\\demo\\Pictures\\壁纸": [],
+    "D:\\归档": [],
+    "D:\\受限目录": [],
+    "D:\\项目\\网站": [],
+    "D:\\素材\\图标": [],
+    "D:\\素材\\参考": [],
+    "D:\\项目\\剪贴板\\设计": [],
+    "C:\\Users\\demo\\Documents\\项目资料\\设计稿": []
+  },
+  "errors": {
+    "G:\\": "云端服务尚未连接，请稍后重试。",
+    "D:\\受限目录": "没有访问此文件夹的权限。"
+  }
+}

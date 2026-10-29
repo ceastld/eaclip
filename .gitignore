@@ -1,0 +1,12 @@
+# Local data and build outputs
+.tmp/
+.dev/
+target/
+host-tauri/target/
+node_modules/
+frontend/dist/
+*.pdb
+*.log
+.env
+.env.*
+!.env.example

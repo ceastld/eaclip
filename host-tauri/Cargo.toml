@@ -1,0 +1,144 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/cliphost-core",
+    "crates/cliphost-bridge",
+    "crates/cliphost-http",
+    "crates/cliphost-gpui",
+    "crates/cliphost-updater",
+    "crates/cliphost-webdav",
+    "src-tauri",
+]
+
+[workspace.package]
+version = "0.32.4"
+edition = "2021"
+license = "MIT"
+rust-version = "1.90"
+
+[patch.crates-io]
+gpui = { path = "vendor/gpui" }
+
+[workspace.dependencies]
+cliphost-core = { path = "crates/cliphost-core" }
+cliphost-bridge = { path = "crates/cliphost-bridge" }
+cliphost-http = { path = "crates/cliphost-http" }
+cliphost-updater = { path = "crates/cliphost-updater" }
+cliphost-webdav = { path = "crates/cliphost-webdav" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde", "clock"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
+blake3 = "1"
+sha2 = "0.10"
+rcgen = "0.13"
+rand = "0.8"
+rsa = { version = "0.9", default-features = false, features = ["std", "pem"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+rustls-pki-types = "1"
+parking_lot = "0.12"
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.8", features = ["json"] }
+tower-http = { version = "0.6", features = ["cors", "fs", "catch-panic"] }
+futures-util = "0.3"
+tokio-stream = { version = "0.1", features = ["sync"] }
+arboard = "3"
+rfd = "0.15"
+open = "5"
+image = { version = "0.25", default-features = false, features = [
+    "rayon", "bmp", "dds", "exr", "ff", "gif", "hdr", "ico", "jpeg",
+    "png", "pnm", "qoi", "tga", "tiff", "webp",
+] }
+regex = "1"
+regex-automata = "0.4"
+regex-syntax = "0.8"
+fancy-regex = "0.19.2"
+base64 = "0.22"
+tracing = "0.1"
+unicode-normalization = "0.1"
+url = "2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+windows-core = "0.58"
+windows = { version = "0.58", features = [
+    "implement",
+    "Foundation_Numerics",
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Graphics_Dwm",
+    "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_Direct2D",
+    "Win32_Graphics_Direct2D_Common",
+    "Win32_Graphics_Dxgi_Common",
+    "Win32_Media_MediaFoundation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_HiDpi",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Accessibility",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_SystemServices",
+    "Win32_System_Threading",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_Security",
+    "Win32_Security_Cryptography",
+    "Win32_Storage_FileSystem",
+    "Win32_Storage_Xps",
+    "Win32_System_Pipes",
+    "Win32_System_IO",
+    "Win32_System_Variant",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_Networking_WinSock",
+] }
+
+# Keep the portable RSA fallback responsive in debug/test builds.
+# Windows normally generates the same 3072-bit key through its native software provider.
+[profile.dev.package.num-bigint-dig]
+opt-level = 3
+
+# Native layout and glyph rendering should be representative during UI iteration.
+[profile.dev.package.gpui]
+opt-level = 3
+
+# So should worker-side image decode/resize/hash: unoptimized, one history
+# thumbnail took ~0.2-0.7 s, and rows scrolled in as blank boxes first.
+[profile.dev.package.image]
+opt-level = 3
+[profile.dev.package.png]
+opt-level = 3
+[profile.dev.package.fdeflate]
+opt-level = 3
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+[profile.dev.package.adler2]
+opt-level = 3
+[profile.dev.package.simd-adler32]
+opt-level = 3
+[profile.dev.package.crc32fast]
+opt-level = 3
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+[profile.dev.package.zune-inflate]
+opt-level = 3
+[profile.dev.package.image-webp]
+opt-level = 3
+[profile.dev.package.blake3]
+opt-level = 3
+
+# Keep native/HTTP panic recovery while removing unused cross-crate code.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "unwind"

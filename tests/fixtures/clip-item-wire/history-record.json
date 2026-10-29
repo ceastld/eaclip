@@ -1,0 +1,17 @@
+{
+  "Id": "history-record-contract",
+  "Item": {
+    "ObjType": 1,
+    "Text": "shared history payload",
+    "FutureContent": { "Enabled": true }
+  },
+  "Icon": null,
+  "Title": "persisted title",
+  "Description": "persisted description",
+  "SourceProcessName": "contract-source",
+  "CreateTime": "2026-01-02T03:04:05Z",
+  "UpdateTime": "2026-01-02T04:05:06Z",
+  "IsTop": true,
+  "SubIndex": 7,
+  "FutureRecord": { "Revision": 42 }
+}

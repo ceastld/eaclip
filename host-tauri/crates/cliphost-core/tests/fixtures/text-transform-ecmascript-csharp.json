@@ -1,0 +1,1890 @@
+[
+  {
+    "name": "ECMA character \\w\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\w\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130]\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\w\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\w\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130]\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\W\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\W\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130[\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\W\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\W\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130[\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\d\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\d\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az[09]_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\d\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\d\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az[09]_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\D\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\D\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az]09[_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\D\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\D\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az]09[_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\s\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\s\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D[ \t\r\n\u000B\f]\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\s\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\s\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D[ \t\r\n\u000B\f]\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\S\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\S\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D] \t\r\n\u000B\f[\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\S\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\S\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D] \t\r\n\u000B\f[\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\w]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\w]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130]\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\w]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\w]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130]\u0131\u017F[\u212A]\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\W]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\W]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130[\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\W]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\W]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130[\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\d]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\d]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az[09]_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\d]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\d]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az[09]_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\D]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\D]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az]09[_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\D]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\D]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az]09[_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\s]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\s]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D[ \t\r\n\u000B\f]\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\s]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\s]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D[ \t\r\n\u000B\f]\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\S]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\S]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D] \t\r\n\u000B\f[\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\S]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\S]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D] \t\r\n\u000B\f[\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [^\\w]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[^\\w]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130[\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [^\\w]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[^\\w]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az09_\u0130[\u0131\u017F]\u212A[\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\w-[A-Z]]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\w-[A-Z]]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "A[z09_\u0130]\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\w-[A-Z]]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\w-[A-Z]]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Az[09_]\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\b options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[]Az09_\u0130[]\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\b options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[]Az09_\u0130[]\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "A[]z[]0[]9[]_[]\u0130\u0131[]\u017F[]\u212A[]\u4E2D[]\u6587[]\u00E9[]\u0301[]\u203F[]\uFF11[]\uFF12[]\u0663[]\u200C[]\u200D[] []\t[]\r[]\n[]\u000B[]\f[]\u00A0[]\u0085[]\u2028[]\u2029[]",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "A[]z[]0[]9[]_[]\u0130\u0131[]\u017F[]\u212A[]\u4E2D[]\u6587[]\u00E9[]\u0301[]\u203F[]\uFF11[]\uFF12[]\u0663[]\u200C[]\u200D[] []\t[]\r[]\n[]\u000B[]\f[]\u00A0[]\u0085[]\u2028[]\u2029[]",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\b\\w\u002B\\b options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b\\w\u002B\\b",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130]\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\b\\w\u002B\\b options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b\\w\u002B\\b",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az09_\u0130]\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\p{L}\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\p{L}\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az]09_[\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9]\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character \\p{L}\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\p{L}\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az]09_[\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9]\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\p{L}]\u002B options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\p{L}]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az]09_[\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9]\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [\\p{L}]\u002B options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\p{L}]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[Az]09_[\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9]\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "error": null
+  },
+  {
+    "name": "ECMA character [^] options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[^]",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[A][z][0][9][_][\u0130][\u0131][\u017F][\u212A][\u4E2D][\u6587][\u00E9][\u0301][\u203F][\uFF11][\uFF12][\u0663][\u200C][\u200D][ ][\t][\r][\n][\u000B][\f][\u00A0][\u0085][\u2028][\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [^] options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[^]",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[A][z][0][9][_][\u0130][\u0131][\u017F][\u212A][\u4E2D][\u6587][\u00E9][\u0301][\u203F][\uFF11][\uFF12][\u0663][\u200C][\u200D][ ][\t][\r][\n][\u000B][\f][\u00A0][\u0085][\u2028][\u2029]",
+    "error": null
+  },
+  {
+    "name": "ECMA character [] options 256",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[]",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "ECMA character [] options 257",
+    "text": "Az09_\u0130\u0131\u017F\u212A\u4E2D\u6587\u00E9\u0301\u203F\uFF11\uFF12\u0663\u200C\u200D \t\r\n\u000B\f\u00A0\u0085\u2028\u2029",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[]",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "self reference options 256",
+    "text": "aa aaaa aaaaaa ",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "((a\u002B)(\\1) ?)\u002B",
+        "ReplaceMent": "\u003C$1/$2/$3\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Caaaaaa /aa/aaaa \u003E",
+    "error": null
+  },
+  {
+    "name": "self reference options 0",
+    "text": "aa aaaa aaaaaa ",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "((a\u002B)(\\1) ?)\u002B",
+        "ReplaceMent": "\u003C$1/$2/$3\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "aa aaaa aaaaaa ",
+    "error": null
+  },
+  {
+    "name": "unmatched numbered options 256",
+    "text": "b ab aab",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)?\\1b",
+        "ReplaceMent": "\u003C$1\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003C\u003E a\u003C\u003E \u003Ca\u003E",
+    "error": null
+  },
+  {
+    "name": "unmatched numbered options 0",
+    "text": "b ab aab",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)?\\1b",
+        "ReplaceMent": "\u003C$1\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "b ab \u003Ca\u003E",
+    "error": null
+  },
+  {
+    "name": "unmatched named options 256",
+    "text": "b ab aab",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003Cx\u003Ea)?\\k\u003Cx\u003Eb",
+        "ReplaceMent": "\u003C${x}\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003C\u003E a\u003C\u003E \u003Ca\u003E",
+    "error": null
+  },
+  {
+    "name": "unmatched named options 0",
+    "text": "b ab aab",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003Cx\u003Ea)?\\k\u003Cx\u003Eb",
+        "ReplaceMent": "\u003C${x}\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "b ab \u003Ca\u003E",
+    "error": null
+  },
+  {
+    "name": "forward numbered octal options 256",
+    "text": "\u0001a aa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\1(a)",
+        "ReplaceMent": "\u003C$1\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Ca\u003E aa",
+    "error": null
+  },
+  {
+    "name": "forward numbered octal options 0",
+    "text": "\u0001a aa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\1(a)",
+        "ReplaceMent": "\u003C$1\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u0001a aa",
+    "error": null
+  },
+  {
+    "name": "forward named reference options 256",
+    "text": "a aa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\k\u003Cx\u003E(?\u003Cx\u003Ea)",
+        "ReplaceMent": "\u003C${x}\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Ca\u003E \u003Ca\u003E\u003Ca\u003E",
+    "error": null
+  },
+  {
+    "name": "forward named reference options 0",
+    "text": "a aa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\k\u003Cx\u003E(?\u003Cx\u003Ea)",
+        "ReplaceMent": "\u003C${x}\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "a aa",
+    "error": null
+  },
+  {
+    "name": "prior named numbered options 256",
+    "text": "aa a\u0001",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003Cx\u003Ea)\\1",
+        "ReplaceMent": "\u003C${x}\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Ca\u003E a\u0001",
+    "error": null
+  },
+  {
+    "name": "prior named numbered options 0",
+    "text": "aa a\u0001",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003Cx\u003Ea)\\1",
+        "ReplaceMent": "\u003C${x}\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Ca\u003E a\u0001",
+    "error": null
+  },
+  {
+    "name": "forward named numbered options 256",
+    "text": "\u0001a aa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\1(?\u003Cx\u003Ea)",
+        "ReplaceMent": "\u003C${x}\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Ca\u003E aa",
+    "error": null
+  },
+  {
+    "name": "forward named numbered options 0",
+    "text": "\u0001a aa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\1(?\u003Cx\u003Ea)",
+        "ReplaceMent": "\u003C${x}\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u0001a aa",
+    "error": null
+  },
+  {
+    "name": "longest number prefix options 256",
+    "text": "aa233 aa23",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)\\123\u002B",
+        "ReplaceMent": "\u003C$1\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Ca\u003E \u003Ca\u003E",
+    "error": null
+  },
+  {
+    "name": "longest number prefix options 0",
+    "text": "aa233 aa23",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)\\123\u002B",
+        "ReplaceMent": "\u003C$1\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "aa233 aa23",
+    "error": null
+  },
+  {
+    "name": "sparse number parser options 256",
+    "text": "aba3 aba23",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)(?\u003C120\u003Eb)\\123",
+        "ReplaceMent": "\u003C$1/${120}\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Ca/b\u003E aba23",
+    "error": null
+  },
+  {
+    "name": "sparse number parser options 0",
+    "text": "aba3 aba23",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)(?\u003C120\u003Eb)\\123",
+        "ReplaceMent": "\u003C$1/${120}\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "aba3 aba23",
+    "error": null
+  },
+  {
+    "name": "explicit sparse number options 256",
+    "text": "aa33 aa3",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003C12\u003Ea)\\123\u002B",
+        "ReplaceMent": "\u003C${12}\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Ca\u003E \u003Ca\u003E",
+    "error": null
+  },
+  {
+    "name": "explicit sparse number options 0",
+    "text": "aa33 aa3",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003C12\u003Ea)\\123\u002B",
+        "ReplaceMent": "\u003C${12}\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "aa33 aa3",
+    "error": null
+  },
+  {
+    "name": "duplicate number options 256",
+    "text": "abb aba",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003C1\u003Ea)(b)\\1",
+        "ReplaceMent": "\u003C$1\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Cb\u003E aba",
+    "error": null
+  },
+  {
+    "name": "duplicate number options 0",
+    "text": "abb aba",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003C1\u003Ea)(b)\\1",
+        "ReplaceMent": "\u003C$1\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Cb\u003E aba",
+    "error": null
+  },
+  {
+    "name": "octal undefined options 256",
+    "text": "SS \u000B333",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\123\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003CSS\u003E \u000B333",
+    "error": null
+  },
+  {
+    "name": "octal undefined options 0",
+    "text": "SS \u000B333",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\123\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003CSS\u003E \u000B333",
+    "error": null
+  },
+  {
+    "name": "octal stops before third options 256",
+    "text": " 00",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\400\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003C 00\u003E",
+    "error": null
+  },
+  {
+    "name": "octal stops before third options 0",
+    "text": " 00",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\400\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": " 00",
+    "error": null
+  },
+  {
+    "name": "octal leading zero options 256",
+    "text": "??",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\077\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003C??\u003E",
+    "error": null
+  },
+  {
+    "name": "octal leading zero options 0",
+    "text": "??",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\077\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003C??\u003E",
+    "error": null
+  },
+  {
+    "name": "class octal options 256",
+    "text": " 0\u0000",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\400]\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003C 0\u003E\u0000",
+    "error": null
+  },
+  {
+    "name": "class octal options 0",
+    "text": " 0\u0000",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\400]\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": " 0\u003C\u0000\u003E",
+    "error": null
+  },
+  {
+    "name": "identity escapes options 256",
+    "text": "qy_89\u4E2D\u6587",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\q\\y\\_\\8\\9\\\u4E2D\u6587",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Cqy_89\u4E2D\u6587\u003E",
+    "error": null
+  },
+  {
+    "name": "identity escapes options 0",
+    "text": "qy_89\u4E2D\u6587",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\q\\y\\_\\8\\9\\\u4E2D\u6587",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "class identity escapes options 256",
+    "text": "q_89\u4E2D\u6587",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\q\\_\\8\\9\\\u4E2D]\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003Cq_89\u4E2D\u003E\u6587",
+    "error": null
+  },
+  {
+    "name": "class identity escapes options 0",
+    "text": "q_89\u4E2D\u6587",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\q\\_\\8\\9\\\u4E2D]\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "fixed hexadecimal options 256",
+    "text": "A\u4E2D\u0001\u001B",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\x41\\u4e2d\\cA\\e",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003CA\u4E2D\u0001\u001B\u003E",
+    "error": null
+  },
+  {
+    "name": "fixed hexadecimal options 0",
+    "text": "A\u4E2D\u0001\u001B",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\x41\\u4e2d\\cA\\e",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003CA\u4E2D\u0001\u001B\u003E",
+    "error": null
+  },
+  {
+    "name": "malformed named escape options 256",
+    "text": "k",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\k",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "malformed named escape options 0",
+    "text": "k",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\k",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "undefined named escape options 256",
+    "text": "missing",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\k\u003Cmissing\u003E",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "undefined named escape options 0",
+    "text": "missing",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\k\u003Cmissing\u003E",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "invalid hexadecimal options 256",
+    "text": "Q1",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\xQ1",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "invalid hexadecimal options 0",
+    "text": "Q1",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\xQ1",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "numeric replacement prefixes options 256",
+    "text": "a",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)",
+        "ReplaceMent": "$12/${12}/$01/$0/$$/$\u0026/$\u002B",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "a2/${12}/a/a/$/a/a",
+    "error": null
+  },
+  {
+    "name": "numeric replacement prefixes options 0",
+    "text": "a",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)",
+        "ReplaceMent": "$12/${12}/$01/$0/$$/$\u0026/$\u002B",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "$12/${12}/a/a/$/a/a",
+    "error": null
+  },
+  {
+    "name": "sparse replacement prefixes options 256",
+    "text": "a",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003C12\u003Ea)",
+        "ReplaceMent": "$123/$1/${12}/$120",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "a3/$1/a/a0",
+    "error": null
+  },
+  {
+    "name": "sparse replacement prefixes options 0",
+    "text": "a",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003C12\u003Ea)",
+        "ReplaceMent": "$123/$1/${12}/$120",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "$123/$1/a/$120",
+    "error": null
+  },
+  {
+    "name": "replacement overflow options 256",
+    "text": "a",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)",
+        "ReplaceMent": "$12345678901234567890",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "replacement overflow options 0",
+    "text": "a",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)",
+        "ReplaceMent": "$12345678901234567890",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "RegexParseException"
+  },
+  {
+    "name": "boundary ignore case scope options 256",
+    "text": "\u017F \u212A \u0130 i \u4E2DA",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?i:\\b\\w\u002B\\b)",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u017F \u212A \u003C\u0130\u003E \u003Ci\u003E \u4E2D\u003CA\u003E",
+    "error": null
+  },
+  {
+    "name": "boundary ignore case scope options 0",
+    "text": "\u017F \u212A \u0130 i \u4E2DA",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?i:\\b\\w\u002B\\b)",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003C\u017F\u003E \u003C\u212A\u003E \u003C\u0130\u003E \u003Ci\u003E \u003C\u4E2DA\u003E",
+    "error": null
+  },
+  {
+    "name": "character scope comments options 256",
+    "text": "A \u4E2D\uFF11\uFF123",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?x:\\w\u002B # \\d ignored\n)",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 256,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003CA\u003E \u4E2D\uFF11\uFF12\u003C3\u003E",
+    "error": null
+  },
+  {
+    "name": "character scope comments options 0",
+    "text": "A \u4E2D\uFF11\uFF123",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?x:\\w\u002B # \\d ignored\n)",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 0,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003CA\u003E \u003C\u4E2D\uFF11\uFF123\u003E",
+    "error": null
+  },
+  {
+    "name": "ECMA option combination 1",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003CAA\u003E\naa",
+    "error": null
+  },
+  {
+    "name": "ECMA option combination 2",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 258,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "AA\n\u003Caa\u003E",
+    "error": null
+  },
+  {
+    "name": "ECMA option combination 8",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 264,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "AA\naa",
+    "error": null
+  },
+  {
+    "name": "ECMA option combination 512",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 768,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "AA\naa",
+    "error": null
+  },
+  {
+    "name": "ECMA option combination 523",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 779,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "\u003CAA\u003E\n\u003Caa\u003E",
+    "error": null
+  },
+  {
+    "name": "ECMA option combination 4",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 260,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "ArgumentOutOfRangeException"
+  },
+  {
+    "name": "ECMA option combination 16",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 272,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "ArgumentOutOfRangeException"
+  },
+  {
+    "name": "ECMA option combination 32",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 288,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "ArgumentOutOfRangeException"
+  },
+  {
+    "name": "ECMA option combination 64",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 320,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "ArgumentOutOfRangeException"
+  },
+  {
+    "name": "ECMA option combination 1024",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 1280,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "ArgumentOutOfRangeException"
+  },
+  {
+    "name": "ECMA option combination 128",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 384,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "ArgumentOutOfRangeException"
+  },
+  {
+    "name": "ECMA option combination 2048",
+    "text": "AA\naa",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^a\u002B",
+        "ReplaceMent": "\u003C$\u0026\u003E",
+        "UseRegex": true,
+        "Options": 2304,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": null,
+    "error": "ArgumentOutOfRangeException"
+  },
+  {
+    "name": "literal case family options 257",
+    "text": "Ss\u017FKk\u212AIi\u0130\u0131",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "S\u002BK\u002BI\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Ss\u017FKk\u212AIi\u0130\u0131",
+    "error": null
+  },
+  {
+    "name": "literal case family options 769",
+    "text": "Ss\u017FKk\u212AIi\u0130\u0131",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "S\u002BK\u002BI\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 769,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Ss\u017FKk\u212AIi\u0130\u0131",
+    "error": null
+  },
+  {
+    "name": "named case syntax options 257",
+    "text": "SS Ss S\u017F",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003CSlot\u003ES)\\k\u003CSlot\u003E",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[SS] [Ss] S\u017F",
+    "error": null
+  },
+  {
+    "name": "named case syntax options 769",
+    "text": "SS Ss S\u017F",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003CSlot\u003ES)\\k\u003CSlot\u003E",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 769,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[SS] [Ss] S\u017F",
+    "error": null
+  },
+  {
+    "name": "scoped reference case options 257",
+    "text": "SS Ss S\u017F",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(S)(?i:\\1)",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[SS] [Ss] S\u017F",
+    "error": null
+  },
+  {
+    "name": "scoped reference case options 769",
+    "text": "SS Ss S\u017F",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(S)(?i:\\1)",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 769,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[SS] [Ss] S\u017F",
+    "error": null
+  },
+  {
+    "name": "case class negation ordering options 257",
+    "text": "Ss\u017FKk\u212AIi\u0130\u0131",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\W]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Ss[\u017FKk\u212A]Ii\u0130[\u0131]",
+    "error": null
+  },
+  {
+    "name": "case class negation ordering options 769",
+    "text": "Ss\u017FKk\u212AIi\u0130\u0131",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\W]\u002B",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 769,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "Ss[\u017FKk\u212A]Ii\u0130[\u0131]",
+    "error": null
+  },
+  {
+    "name": "scoped flags restore options 257",
+    "text": "sSS SsS",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?i:S)(?-i:S)S",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[sSS] SsS",
+    "error": null
+  },
+  {
+    "name": "scoped flags restore options 769",
+    "text": "sSS SsS",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?i:S)(?-i:S)S",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 769,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[sSS] SsS",
+    "error": null
+  },
+  {
+    "name": "conditional case name options 257",
+    "text": "sk SK i I",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003CSlot\u003ES)?(?(Slot)K|I)",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 257,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[sk] [SK] [i] [I]",
+    "error": null
+  },
+  {
+    "name": "conditional case name options 769",
+    "text": "sk SK i I",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?\u003CSlot\u003ES)?(?(Slot)K|I)",
+        "ReplaceMent": "[$\u0026]",
+        "UseRegex": true,
+        "Options": 769,
+        "EscapeReplaceMent": false
+      }
+    },
+    "expected": "[sk] [SK] [i] [I]",
+    "error": null
+  }
+]

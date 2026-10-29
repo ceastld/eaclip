@@ -1,0 +1,56 @@
+[package]
+name = "cliphost-gpui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Native ClipHost GPUI rendering and frontend design alignment"
+
+[features]
+webdav-sync-dev = ["cliphost-core/webdav-sync-dev", "cliphost-http/webdav-sync-dev"]
+private-sync = ["cliphost-core/private-sync", "cliphost-http/private-sync"]
+native-acceptance = ["cliphost-core/native-acceptance"]
+test-support = ["cliphost-core/test-support", "gpui/image-cache-diagnostics"]
+
+[dependencies]
+gpui = { version = "=0.2.2", default-features = false, features = ["windows-manifest"] }
+gpui-rsx = "=0.5.1"
+cliphost-core = { workspace = true }
+cliphost-http = { workspace = true }
+cliphost-updater = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+unicode-segmentation = "=1.13.3"
+html5ever = "=0.38.0"
+resvg = "=0.45.1"
+raw-window-handle = "0.6"
+anyhow = "1"
+log = "0.4"
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+image = { workspace = true }
+blake3 = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_HiDpi", "Win32_UI_Shell", "Win32_UI_Input_KeyboardAndMouse", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_System_Threading", "Win32_System_LibraryLoader", "Win32_System_DataExchange", "Win32_Security"] }
+# The shared clipboard dispatcher keeps the core/Tauri Win32 API version.
+# GPUI HWND adapters continue using `windows` 0.61 above.
+windows_compat = { package = "windows", version = "0.58", features = ["implement", "Foundation_Numerics", "Win32_Foundation", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_Graphics_DirectWrite", "Win32_Graphics_Direct2D", "Win32_Graphics_Direct2D_Common", "Win32_Graphics_Dxgi_Common", "Win32_Media_MediaFoundation", "Win32_System_Com", "Win32_System_Ole", "Win32_System_Memory", "Win32_System_DataExchange", "Win32_System_SystemServices", "Win32_System_LibraryLoader", "Win32_UI_Shell", "Win32_UI_HiDpi", "Win32_UI_Controls", "Win32_Globalization"] }
+windows-core = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
+rusqlite = { workspace = true }
+axum = { workspace = true }
+base64 = { workspace = true }
+
+[build-dependencies]
+embed-resource = "=3.0.11"
+
+[[example]]
+name = "android_sync_fixture"
+required-features = ["private-sync"]

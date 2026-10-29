@@ -1,0 +1,39 @@
+[package]
+name = "cliphost-http"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Loopback HTTP: /api/rpc, SSE, health, binary streams"
+
+[features]
+webdav-sync-dev = ["cliphost-core/webdav-sync-dev"]
+# Must be selected explicitly for private desktop/mobile development.
+private-sync = ["cliphost-core/private-sync", "cliphost-bridge/private-sync", "dep:webpki-roots"]
+
+[dependencies]
+axum = { workspace = true }
+cliphost-bridge = { workspace = true }
+cliphost-core = { workspace = true }
+futures-util = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+tokio-rustls = { workspace = true }
+rustls = { workspace = true }
+rustls-pki-types = { workspace = true }
+tower-http = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+webpki-roots = { version = "1", optional = true }
+url = { workspace = true }
+
+[dev-dependencies]
+cliphost-core = { workspace = true, features = ["test-support"] }
+tempfile = { workspace = true }
+tower = { version = "0.5", features = ["util"] }
+
+[[example]]
+name = "relay_fixture"
+required-features = ["private-sync"]

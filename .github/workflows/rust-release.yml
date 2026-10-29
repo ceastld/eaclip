@@ -1,0 +1,626 @@
+name: Rust Windows Release
+
+on:
+  push:
+    tags:
+      - "rust-v*.*.*"
+    branches:
+      - "codex/arm64-*"
+  workflow_dispatch:
+    inputs:
+      architectures:
+        description: "Build selected architecture (x64 by default; ARM64 is optional)"
+        type: choice
+        options: [x64, all, arm64]
+        default: x64
+      publish:
+        description: "Publish selected architectures to ceastld/eaclip (run from a matching rust-v tag)"
+        type: boolean
+        default: false
+      draft:
+        description: "Create the GitHub Release as a draft"
+        type: boolean
+        default: false
+      upload_bitiful:
+        description: "For a public release, mirror selected assets and host dependencies to Bitiful"
+        type: boolean
+        default: true
+      publish_quicker:
+        description: "For a public release, publish selected architecture-specific Quicker host dependencies"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rust-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      matrix: ${{ steps.release.outputs.matrix }}
+      architectures: ${{ steps.release.outputs.architectures }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Validate source version, tag and release notes
+        id: release
+        env:
+          SOURCE_REF_TYPE: ${{ github.ref_type }}
+          SOURCE_REF_NAME: ${{ github.ref_name }}
+          BUILD_ARCHITECTURES: ${{ inputs.architectures || (github.ref_type == 'branch' && startsWith(github.ref_name, 'codex/arm64-') && 'arm64') || 'x64' }}
+          PUBLISH_REQUESTED: ${{ github.event_name == 'workflow_dispatch' && inputs.publish }}
+          RELEASE_DRAFT: ${{ inputs.draft }}
+          UPLOAD_BITIFUL: ${{ inputs.upload_bitiful }}
+          PUBLISH_QUICKER: ${{ inputs.publish_quicker }}
+          HAS_RELEASE_TOKEN: ${{ github.repository == 'ceastld/eaclip' || secrets.EACLIP_RELEASE_TOKEN != '' }}
+          HAS_BITIFUL_ACCESS_KEY: ${{ secrets.BITIFUL_ACCESS_KEY != '' }}
+          HAS_BITIFUL_SECRET_KEY: ${{ secrets.BITIFUL_SECRET_KEY != '' }}
+          HAS_BITIFUL_BUCKET_NAME: ${{ secrets.BITIFUL_BUCKET_NAME != '' }}
+          HAS_QUICKER_READ_TOKEN: ${{ secrets.QUICKER_CLI_READ_TOKEN != '' }}
+          HAS_QUICKER_USERNAME: ${{ secrets.QUICKER_USERNAME != '' }}
+          HAS_QUICKER_PASSWORD: ${{ secrets.QUICKER_PASSWORD != '' }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import json
+          import pathlib
+          import re
+          import tomllib
+
+          manifest = tomllib.loads(pathlib.Path("host-tauri/Cargo.toml").read_text(encoding="utf-8"))
+          version = manifest["workspace"]["package"]["version"]
+          if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+              raise SystemExit(f"Expected a three-part release version, got {version!r}")
+          tag = f"rust-v{version}"
+          architectures = os.environ["BUILD_ARCHITECTURES"]
+          runners = [
+              {"arch": "x64", "runner": "windows-2022", "target": "x86_64-pc-windows-msvc"},
+              {"arch": "arm64", "runner": "windows-11-arm", "target": "aarch64-pc-windows-msvc"},
+          ]
+          if architectures not in ("all", "x64", "arm64"):
+              raise SystemExit(f"Unsupported architecture selection: {architectures!r}")
+          matrix = {"include": [item for item in runners if architectures in ("all", item["arch"])]}
+          is_tag = os.environ["SOURCE_REF_TYPE"] == "tag"
+          if is_tag and os.environ["SOURCE_REF_NAME"] != tag:
+              raise SystemExit(f"Source tag must match Cargo version: expected {tag}")
+          if os.environ["PUBLISH_REQUESTED"] == "true" and not is_tag:
+              raise SystemExit(f"Publishing requires workflow_dispatch from the source tag {tag}")
+          if os.environ["PUBLISH_REQUESTED"] == "true":
+              if os.environ["HAS_RELEASE_TOKEN"] != "true":
+                  raise SystemExit("Configure EACLIP_RELEASE_TOKEN with Contents: write access to ceastld/eaclip before publishing")
+              if os.environ["RELEASE_DRAFT"] != "true":
+                  bitiful = os.environ["UPLOAD_BITIFUL"] == "true"
+                  quicker = os.environ["PUBLISH_QUICKER"] == "true"
+                  required = {}
+                  if bitiful:
+                      required.update({"BITIFUL_ACCESS_KEY": "HAS_BITIFUL_ACCESS_KEY",
+                                       "BITIFUL_SECRET_KEY": "HAS_BITIFUL_SECRET_KEY",
+                                       "BITIFUL_BUCKET_NAME": "HAS_BITIFUL_BUCKET_NAME"})
+                  if quicker:
+                      required.update({"QUICKER_CLI_READ_TOKEN": "HAS_QUICKER_READ_TOKEN",
+                                       "QUICKER_USERNAME": "HAS_QUICKER_USERNAME",
+                                       "QUICKER_PASSWORD": "HAS_QUICKER_PASSWORD"})
+                  missing = [name for name, key in required.items() if os.environ[key] != "true"]
+                  if missing:
+                      raise SystemExit("Configure the required Actions secrets before publishing: " + ", ".join(missing))
+          notes = pathlib.Path("release-notes/public") / f"{tag}.md"
+          if not notes.is_file() or not notes.read_text(encoding="utf-8").strip():
+              raise SystemExit(f"Missing or empty release notes: {notes}")
+          heading = next((line for line in notes.read_text(encoding="utf-8").splitlines() if line.startswith("#")), "")
+          if not re.search(rf"(?<![\d.]){re.escape(version)}(?![\d.])", heading):
+              raise SystemExit(f"Release notes heading must name version {version}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\ntag={tag}\n")
+              output.write("matrix=" + json.dumps(matrix, separators=(",", ":")) + "\n")
+              output.write("architectures=" + " ".join(item["arch"] for item in matrix["include"]) + "\n")
+          PY
+
+      - name: Refuse to rebuild an already published release
+        if: github.event_name == 'workflow_dispatch' && inputs.publish
+        env:
+          GH_TOKEN: ${{ github.repository == 'ceastld/eaclip' && github.token || secrets.EACLIP_RELEASE_TOKEN }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/ci
+          gh api --paginate 'repos/ceastld/eaclip/releases?per_page=100' --jq '.[].tag_name' > .tmp/ci/existing-release-tags.txt
+          if grep -Fxq -- "$RELEASE_TAG" .tmp/ci/existing-release-tags.txt; then
+            echo "Release $RELEASE_TAG already exists; do not rebuild or upload that version again." >&2
+            exit 1
+          fi
+
+  build:
+    needs: prepare
+    name: Windows ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      RUST_TARGET: ${{ matrix.target }}
+      RELEASE_ARCH: ${{ matrix.arch }}
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      RUSTUP_TOOLCHAIN: 1.90.0-${{ matrix.target }}
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
+      CLIPHOST_TAURI_HEADLESS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Preserve frozen artifacts after distribution has started
+        if: github.run_attempt > 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $raw = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID/jobs?filter=all&per_page=100" --paginate --slurp
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot verify prior distribution attempts; refusing to replace frozen artifacts.' }
+          $pages = ($raw -join "`n") | ConvertFrom-Json
+          $started = @($pages | ForEach-Object { $_.jobs } | Where-Object {
+            $_.name -cin @('distribute', 'publish') -and $_.conclusion -cne 'skipped' -and $_.started_at
+          })
+          if ($started.Count -gt 0) {
+            throw 'Distribution or publishing already started for this run. Preserve its original artifacts and rerun only failed distribution/publish jobs.'
+          }
+
+      - name: Prepare isolated test files and logs
+        run: |
+          $testTemp = Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/tests'
+          New-Item -ItemType Directory -Force -Path $testTemp, '.tmp/ci/logs' | Out-Null
+          "TEMP=$testTemp" >> $env:GITHUB_ENV
+          "TMP=$testTemp" >> $env:GITHUB_ENV
+
+      - name: Install pinned native Rust toolchain
+        run: |
+          rustup toolchain install $env:RUSTUP_TOOLCHAIN --profile minimal --target $env:RUST_TARGET 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/toolchain-install.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain installation failed.' }
+          rustup show 2>&1 | Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/toolchain.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain inspection failed.' }
+          rustup target list --installed 2>&1 | Tee-Object -Append -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/toolchain.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Rust target inspection failed.' }
+          $hostLine = & rustc -vV | Where-Object { $_ -like 'host: *' }
+          if ($LASTEXITCODE -ne 0 -or $hostLine -cne "host: $env:RUST_TARGET") {
+            throw "Expected a native $env:RUST_TARGET toolchain; got $hostLine"
+          }
+
+      - name: Restore native Rust dependency cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: host-tauri -> target
+          key: ${{ matrix.target }}-rust-1.90.0
+          cache-on-failure: true
+
+      - name: Run native core, bridge, HTTP, GPUI and updater library regressions
+        working-directory: host-tauri
+        run: |
+          # Hosted Windows runs elevated without a normal interactive Shell token.
+          # These two tests require that token; keep their desktop validation separate.
+          cargo test --locked --no-fail-fast --target $env:RUST_TARGET `
+            -p cliphost-core -p cliphost-bridge -p cliphost-http -p cliphost-gpui -p cliphost-updater `
+            --lib -- --test-threads=1 `
+            --skip process_restart::tests::restart_shell_balances_com_after_success_and_failure `
+            --skip process_restart::tests::restart_shell_preserves_existing_apartment 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/tests.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Native Rust library regressions failed.' }
+
+      - name: Run display recovery integration regression
+        working-directory: host-tauri
+        run: |
+          cargo test --locked --target $env:RUST_TARGET -p cliphost-gpui --test display_change -- --test-threads=1 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/display-change-tests.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Native display recovery integration regression failed.' }
+
+      - name: Run DirectX resource lifecycle regression
+        working-directory: host-tauri
+        run: |
+          cargo test --locked --target $env:RUST_TARGET -p cliphost-gpui --test directx_resource_lifecycle -- --test-threads=1 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/directx-resource-lifecycle-tests.log')
+          if ($LASTEXITCODE -ne 0) { throw 'DirectX resource lifecycle regression failed.' }
+
+      - name: Run shutdown diagnostics regression
+        working-directory: host-tauri
+        run: |
+          cargo test --locked --target $env:RUST_TARGET -p cliphost-gpui --bin cliphost-gpui startup_diagnostics -- --test-threads=1 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/shutdown-diagnostics-tests.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Shutdown diagnostics regression failed.' }
+
+      - name: Free test build files before Release compilation
+        working-directory: host-tauri
+        run: |
+          cargo clean --profile dev --target $env:RUST_TARGET 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/clean.log')
+          if ($LASTEXITCODE -ne 0) { throw 'Test build cleanup failed.' }
+
+      - name: Build GPUI Release and prepare architecture-specific assets
+        run: |
+          $packageDirectory = ".tmp/release/ClipHost-Rust-$env:RELEASE_ARCH"
+          ./host-tauri/Build-Standalone.ps1 -Renderer Gpui -Target $env:RUST_TARGET `
+            -OutputDirectory $packageDirectory 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/package.log')
+          ./host-tauri/scripts/Test-GpuiExecutableIdentity.ps1 `
+            -ExecutablePath (Join-Path $packageDirectory 'cliphost-app.exe') 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/executable-identity.json')
+          ./host-tauri/scripts/Prepare-GitHubRelease.ps1 -PackageDirectory $packageDirectory `
+            -OutputDirectory .tmp/assets -ExpectedArchitecture $env:RELEASE_ARCH 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/assets.log')
+
+      - name: Preserve internal native symbols for the exact release executable
+        if: github.event.repository.private == true
+        run: |
+          ./host-tauri/scripts/Save-NativeSymbols.ps1 `
+            -ExecutablePath ".tmp/release/ClipHost-Rust-$env:RELEASE_ARCH/cliphost-app.exe" `
+            -PdbDirectory "host-tauri/target/$env:RUST_TARGET/release" `
+            -OutputDirectory ".tmp/internal-symbols/$env:RELEASE_ARCH" `
+            -ExpectedVersion $env:RELEASE_VERSION -ExpectedTarget $env:RUST_TARGET `
+            -SourceCommit $env:GITHUB_SHA
+
+      # This source repository is private. Keep symbols under its Actions
+      # permissions, outside every public release/mirror artifact pattern.
+      - name: Retain internal symbols separately from public assets
+        if: github.event.repository.private == true
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-windows-internal-symbols-${{ matrix.arch }}-attempt-${{ github.run_attempt }}
+          path: .tmp/internal-symbols/${{ matrix.arch }}/*
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Verify and smoke test the frozen portable ZIP
+        run: |
+          ./host-tauri/scripts/Test-StandaloneRuntime.ps1 -AssetDirectory .tmp/assets `
+            -ExpectedArchitecture $env:RELEASE_ARCH -ExpectedVersion $env:RELEASE_VERSION `
+            -OutputDirectory .tmp/ci/logs/runtime-smoke 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/runtime-smoke.log')
+
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-windows-assets-${{ matrix.arch }}
+          overwrite: true
+          path: .tmp/assets/*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Freeze the architecture-specific Quicker host dependency without uploading
+        run: |
+          ./host-tauri/scripts/Publish-Dependency.ps1 -Renderer Gpui -Architecture $env:RELEASE_ARCH `
+            -PackageDirectory ".tmp/release/ClipHost-Rust-$env:RELEASE_ARCH" -Version "${env:RELEASE_VERSION}.0" `
+            -OutputDirectory .tmp/dependency 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/ci/logs/dependency-prepare.log')
+
+      - name: Upload the frozen dependency and receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-windows-dependency-${{ matrix.arch }}
+          overwrite: true
+          path: |
+            .tmp/dependency/publication.json
+            .tmp/dependency/cea.cliphost.rust*/ClipHostRust.*.zip
+            .tmp/dependency/cea.cliphost.rust*/version.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Upload build and test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-windows-${{ matrix.arch }}-logs-attempt-${{ github.run_attempt }}
+          path: |
+            .tmp/ci/logs/*.log
+            .tmp/ci/logs/*.json
+            .tmp/ci/logs/runtime-smoke/*.json
+            .tmp/ci/logs/runtime-smoke/*.log
+            .tmp/cliphost-standalone-build-*/cargo.jsonl
+            .tmp/cliphost-standalone-build-*/cargo.stderr.log
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+  antivirus:
+    needs: [prepare, build]
+    runs-on: windows-2022
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-windows-assets-*
+          path: .tmp/ci/antivirus-inputs/portable
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-windows-dependency-*
+          path: .tmp/ci/antivirus-inputs/dependency
+
+      - name: Refresh Defender signatures on the isolated scan runner
+        run: Update-MpSignature -ErrorAction Stop
+
+      - name: Scan the original portable and dependency archives without remediation
+        env:
+          BUILD_MATRIX: ${{ needs.prepare.outputs.matrix }}
+        run: |
+          # Raw-file scans work for both PE architectures on this x64 runner.
+          # Do not rebuild, repack, or execute the payload; Defender policy applies.
+          $archives = @(Get-ChildItem -LiteralPath .tmp/ci/antivirus-inputs -Recurse -File -Filter '*.zip')
+          $expected = @((ConvertFrom-Json $env:BUILD_MATRIX).include).Count * 2
+          if ($archives.Count -ne $expected) { throw "Expected $expected frozen archives; found $($archives.Count)." }
+          ./host-tauri/scripts/Test-ReleaseAntivirus.ps1 -Path $archives.FullName `
+            -OutputDirectory .tmp/ci/antivirus
+
+      - name: Preserve antivirus evidence even when scanning fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-antivirus-attempt-${{ github.run_attempt }}
+          path: .tmp/ci/antivirus/*
+          if-no-files-found: warn
+          retention-days: 14
+
+  distribute:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish && !inputs.draft && (inputs.upload_bitiful || inputs.publish_quicker)
+    needs: [prepare, build, antivirus]
+    runs-on: windows-2022
+    timeout-minutes: 45
+    concurrency:
+      group: rust-dependency-publication
+      cancel-in-progress: false
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      PUBLISH_QUICKER: ${{ inputs.publish_quicker }}
+      UPLOAD_BITIFUL: ${{ inputs.upload_bitiful }}
+      RELEASE_ARCHITECTURES: ${{ needs.prepare.outputs.architectures }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-windows-dependency-*
+          path: .tmp/dependencies
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-windows-assets-*
+          path: .tmp/assets
+          merge-multiple: true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Validate and relocate the frozen dependency receipt
+        run: |
+          New-Item -ItemType Directory -Force -Path .tmp/distribution-logs | Out-Null
+          foreach ($arch in ($env:RELEASE_ARCHITECTURES -split ' ')) {
+            ./host-tauri/scripts/Import-PreparedPublication.ps1 `
+              -PublicationDirectory ".tmp/dependencies/rust-windows-dependency-$arch" `
+              -ExpectedVersion "${env:RELEASE_VERSION}.0" 2>&1 |
+              Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE ".tmp/distribution-logs/import-$arch.log")
+          }
+
+      - name: Install and sign in to the pinned Quicker release CLI
+        if: inputs.publish_quicker
+        env:
+          QUICKER_CLI_READ_TOKEN: ${{ secrets.QUICKER_CLI_READ_TOKEN }}
+          QUICKER_USERNAME: ${{ secrets.QUICKER_USERNAME }}
+          QUICKER_PASSWORD: ${{ secrets.QUICKER_PASSWORD }}
+        run: |
+          $cliInfo = ./host-tauri/scripts/Install-QuickerReleaseCli.ps1 -OutputDirectory .tmp/quicker-cli -Login |
+            ConvertFrom-Json
+          [IO.Path]::GetDirectoryName([string]$cliInfo.executable) >> $env:GITHUB_PATH
+          $cliInfo | ConvertTo-Json | Set-Content -LiteralPath .tmp/distribution-logs/quicker-cli.json -Encoding utf8NoBOM
+
+      - name: Publish or reuse selected architecture-specific host dependencies
+        env:
+          BITIFUL_ACCESS_KEY: ${{ secrets.BITIFUL_ACCESS_KEY }}
+          BITIFUL_SECRET_KEY: ${{ secrets.BITIFUL_SECRET_KEY }}
+          BITIFUL_BUCKET_NAME: ${{ secrets.BITIFUL_BUCKET_NAME }}
+        run: |
+          foreach ($arch in ($env:RELEASE_ARCHITECTURES -split ' ')) {
+            $options = @{ UploadPrepared=$true; OutputDirectory=".tmp/dependencies/rust-windows-dependency-$arch" }
+            if ($env:PUBLISH_QUICKER -ne 'true') { $options.OssOnly = $true }
+            elseif ($env:UPLOAD_BITIFUL -ne 'true') { $options.QuickerOnly = $true }
+            ./host-tauri/scripts/Publish-Dependency.ps1 @options 2>&1 |
+              Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE ".tmp/distribution-logs/dependency-upload-$arch.log")
+          }
+
+      - name: Mirror or reuse selected portable architectures on Bitiful
+        if: inputs.upload_bitiful
+        env:
+          BITIFUL_ACCESS_KEY: ${{ secrets.BITIFUL_ACCESS_KEY }}
+          BITIFUL_SECRET_KEY: ${{ secrets.BITIFUL_SECRET_KEY }}
+          BITIFUL_BUCKET_NAME: ${{ secrets.BITIFUL_BUCKET_NAME }}
+        run: |
+          ./host-tauri/scripts/Publish-GitHubAssetsToBitiful.ps1 -AssetDirectory .tmp/assets `
+            -Version $env:RELEASE_VERSION -Architectures ($env:RELEASE_ARCHITECTURES -split ' ') `
+            -OutputDirectory .tmp/bitiful-assets 2>&1 |
+            Tee-Object -FilePath (Join-Path $env:GITHUB_WORKSPACE '.tmp/distribution-logs/portable-assets-upload.log')
+
+      - name: Clear the runner's Quicker login
+        if: always() && inputs.publish_quicker
+        run: |
+          $cli = Join-Path $env:GITHUB_WORKSPACE '.tmp/quicker-cli/win-x64/quicker.exe'
+          if (Test-Path -LiteralPath $cli -PathType Leaf) {
+            try {
+              & $cli logout *> $null
+              if ($LASTEXITCODE -ne 0) { Write-Warning 'Quicker session cleanup failed on the disposable runner.' }
+            } catch {
+              Write-Warning 'Quicker session cleanup failed on the disposable runner.'
+            }
+          }
+          exit 0
+
+      - name: Upload distribution receipts and selected logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-windows-distribution-attempt-${{ github.run_attempt }}
+          path: |
+            .tmp/dependencies/*/publication.json
+            .tmp/dependencies/*/bitiful-upload.json
+            .tmp/dependencies/*/quicker-upload.json
+            .tmp/bitiful-assets/bitiful-assets.json
+            .tmp/distribution-logs/*.log
+            .tmp/distribution-logs/quicker-cli.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+  publish:
+    if: always() && !failure() && !cancelled() && github.event_name == 'workflow_dispatch' && inputs.publish && needs.prepare.result == 'success' && needs.build.result == 'success' && needs.antivirus.result == 'success' && (needs.distribute.result == 'success' || needs.distribute.result == 'skipped')
+    needs: [prepare, build, antivirus, distribute]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ needs.prepare.outputs.tag }}
+    env:
+      RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+      RELEASE_ARCHITECTURES: ${{ needs.prepare.outputs.architectures }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rust-windows-assets-*
+          path: .tmp/assets
+          merge-multiple: true
+
+      - name: Verify selected architectures and asset checksums
+        run: |
+          read -r -a architectures <<< "$RELEASE_ARCHITECTURES"
+          python3 host-tauri/scripts/rust_release_assets.py local \
+            --version "$RELEASE_VERSION" --asset-directory .tmp/assets \
+            --architectures "${architectures[@]}" \
+            --output-directory .tmp/release-assets-local
+
+      - name: Check public user docs before publishing
+        run: python3 host-tauri/scripts/sync_eaclip_release_notes.py --check-docs
+
+      - name: Create eaclip release without replacing an existing release
+        env:
+          GH_TOKEN: ${{ github.repository == 'ceastld/eaclip' && github.token || secrets.EACLIP_RELEASE_TOKEN }}
+          RELEASE_DRAFT: ${{ inputs.draft }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo 'Release authentication is unavailable. Cross-repository runs require EACLIP_RELEASE_TOKEN with Contents: write access to ceastld/eaclip.' >&2
+            exit 1
+          fi
+          gh api --paginate 'repos/ceastld/eaclip/releases?per_page=100' --jq '.[].tag_name' > .tmp/existing-release-tags.txt
+          if grep -Fxq -- "$RELEASE_TAG" .tmp/existing-release-tags.txt; then
+            echo "Release $RELEASE_TAG already exists in ceastld/eaclip; inspect it before retrying." >&2
+            exit 1
+          fi
+          options=()
+          if [[ "$RELEASE_DRAFT" == 'true' ]]; then options+=(--draft); fi
+          gh release create "$RELEASE_TAG" --repo ceastld/eaclip \
+            --title "ClipHost $RELEASE_VERSION (GPUI)" \
+            --notes-file "release-notes/public/$RELEASE_TAG.md" \
+            "${options[@]}" .tmp/assets/*
+
+      - name: Verify uploaded metadata and downloaded assets
+        env:
+          GH_TOKEN: ${{ github.repository == 'ceastld/eaclip' && github.token || secrets.EACLIP_RELEASE_TOKEN }}
+          RELEASE_DRAFT: ${{ inputs.draft }}
+        run: |
+          options=()
+          if [[ "$RELEASE_DRAFT" == 'true' ]]; then options+=(--draft); fi
+          read -r -a architectures <<< "$RELEASE_ARCHITECTURES"
+          python3 host-tauri/scripts/rust_release_assets.py remote \
+            --version "$RELEASE_VERSION" --asset-directory .tmp/assets \
+            --architectures "${architectures[@]}" \
+            --output-directory .tmp/release-assets-remote "${options[@]}"
+
+      - name: Upload publication receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-windows-publication-attempt-${{ github.run_attempt }}
+          path: |
+            .tmp/existing-release-tags.txt
+            .tmp/release-assets-local/*.json
+            .tmp/release-assets-remote/*.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+
+  sync-release-notes:
+    if: always() && !cancelled() && needs.publish.result == 'success' && !inputs.draft
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: eaclip-release-documentation
+      cancel-in-progress: false
+    env:
+      RELEASE_TAG: ${{ needs.publish.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Synchronize public Release bodies and docs/user to the eaclip documentation
+        env:
+          GH_TOKEN: ${{ github.repository == 'ceastld/eaclip' && github.token || secrets.EACLIP_RELEASE_TOKEN }}
+          DOCS_SOURCE_IN_DESTINATION: ${{ github.repository == 'ceastld/eaclip' }}
+        run: |
+          options=()
+          if [[ "$DOCS_SOURCE_IN_DESTINATION" == 'true' ]]; then options+=(--source-in-destination); fi
+          python3 host-tauri/scripts/sync_eaclip_release_notes.py \
+            --tag "$RELEASE_TAG" --output-directory .tmp/release-notes-sync --apply "${options[@]}"
+
+      - name: Upload documentation candidates and synchronization receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eaclip-release-notes-attempt-${{ github.run_attempt }}
+          path: .tmp/release-notes-sync/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "title": "剪贴板",
+  "selectedId": "fixture-short",
+  "items": [
+    {
+      "id": "fixture-pinned",
+      "kind": "TextClipItem",
+      "title": "",
+      "text": "置顶：先对齐已确认的界面，再连接同一 Rust 核心。",
+      "filePaths": [],
+      "isTop": true,
+      "createTime": "2026-10-11T12:00:00Z",
+      "sourceProcessName": "Code.exe",
+      "description": "固定置顶样例",
+      "thumbnail": null
+    },
+    {
+      "id": "fixture-short",
+      "kind": "TextClipItem",
+      "title": "",
+      "text": "快速复制，轻松回贴。",
+      "filePaths": [],
+      "isTop": false,
+      "createTime": "2026-10-11T11:59:00Z",
+      "sourceProcessName": "notepad.exe",
+      "description": "短文本与默认选中状态",
+      "thumbnail": null
+    },
+    {
+      "id": "fixture-long",
+      "kind": "TextClipItem",
+      "title": "",
+      "text": "长中文与 emoji 对齐样例：剪贴板历史应保持紧凑、清晰，搜索和分类继续使用已有规则。📋\n中文输入、标点与换行需要在真实原生窗口中验证。你好，世界！🌏 Rust + GPUI。\n第三行保留可读内容，检查浏览器与 DirectWrite 的字形和基线。\n第四行用于验证三行裁切，不应撑高简约列表。",
+      "filePaths": [],
+      "isTop": false,
+      "createTime": "2026-10-11T11:58:00Z",
+      "sourceProcessName": "Code.exe",
+      "description": "长中文、emoji、多行裁切",
+      "thumbnail": null
+    },
+    {
+      "id": "fixture-image",
+      "kind": "ImageClipItem",
+      "title": "",
+      "text": "设计对齐缩略图",
+      "filePaths": [],
+      "isTop": false,
+      "createTime": "2026-10-11T11:57:00Z",
+      "sourceProcessName": "mspaint.exe",
+      "description": "固定色块、圆形和网格的无用户数据样例",
+      "thumbnail": {
+        "width": 320,
+        "height": 180,
+        "label": "设计对齐缩略图",
+        "asset": "clip-main-thumbnail.png"
+      }
+    },
+    {
+      "id": "fixture-files",
+      "kind": "FileClipItem",
+      "title": "",
+      "text": "界面对齐说明.txt\n配色参数.json",
+      "filePaths": ["C:\\ClipFixture\\界面对齐说明.txt", "C:\\ClipFixture\\配色参数.json"],
+      "isTop": false,
+      "createTime": "2026-10-11T11:56:00Z",
+      "sourceProcessName": "explorer.exe",
+      "description": "虚构路径，仅用于文件标签视觉验证",
+      "thumbnail": null
+    },
+    {
+      "id": "fixture-html",
+      "kind": "HtmlClipItem",
+      "title": "",
+      "text": "富文本保留原始载荷；列表只展示既有文字预览。",
+      "filePaths": [],
+      "isTop": false,
+      "createTime": "2026-10-11T11:55:00Z",
+      "sourceProcessName": "msedge.exe",
+      "description": "富文本类型的文字预览",
+      "thumbnail": null
+    },
+    {
+      "id": "fixture-url",
+      "kind": "TextClipItem",
+      "title": "",
+      "text": "https://example.com/clip/design-alignment",
+      "filePaths": [],
+      "isTop": false,
+      "createTime": "2026-10-11T11:54:00Z",
+      "sourceProcessName": "msedge.exe",
+      "description": "固定公开示例网址",
+      "thumbnail": null
+    }
+  ],
+  "stress": { "count": 1000, "seed": 0 }
+}

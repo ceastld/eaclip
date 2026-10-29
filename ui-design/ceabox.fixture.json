@@ -1,0 +1,195 @@
+{
+  "schemaVersion": 1,
+  "title": "CeaBox",
+  "description": "固定虚构样例，仅用于搜索界面设计，不读取用户收藏、剪贴板或动作。",
+  "defaultItemIds": [
+    "favorite-project-docs",
+    "favorite-project-notes",
+    "favorite-project-checklist",
+    "favorite-request-template",
+    "clipboard-project-notes",
+    "clipboard-project-plan",
+    "clipboard-search-code",
+    "clipboard-homepage-image",
+    "clipboard-deploy-notes",
+    "clipboard-design-link"
+  ],
+  "items": [
+    {
+      "id": "favorite-project-docs",
+      "source": "favorite",
+      "kind": "link",
+      "title": "项目文档",
+      "subtitle": "Atlas · 需求、方案与交付资料",
+      "content": "https://atlas.example.com/project/docs\n\nAtlas 项目资料\n需求说明、设计方案、接口约定与交付文件统一在这里归档。",
+      "context": "工作 / Atlas / 项目资料",
+      "time": "常用",
+      "aliases": ["xiangmu", "xiangmuwendang", "xmwd", "atlas", "docs"]
+    },
+    {
+      "id": "favorite-project-notes",
+      "source": "favorite",
+      "kind": "text",
+      "title": "项目会议记录",
+      "subtitle": "已整理 · 本周需求评审结论",
+      "content": "Atlas 项目 · 需求评审\n\n1. 搜索结果同时展示收藏、剪贴板和动作。\n2. 同等匹配时优先展示收藏，保留内容来源。\n3. 下次评审确认窄窗口和键盘操作。\n\n待办：整理项目文档，补充交付清单。",
+      "context": "工作 / Atlas / 会议记录",
+      "time": "常用",
+      "aliases": ["xiangmu", "xiangmuhuiyi", "huiyijilu", "hyjl", "meeting"]
+    },
+    {
+      "id": "favorite-project-checklist",
+      "source": "favorite",
+      "kind": "text",
+      "title": "项目交付清单",
+      "subtitle": "上线前要确认的 5 件事",
+      "content": "项目交付检查\n□ 需求范围已确认\n□ 设计稿与实现一致\n□ 安装与升级路径通过验证\n□ 操作说明已更新\n□ 交付文件已归档",
+      "context": "工作 / Atlas / 项目资料",
+      "time": "常用",
+      "aliases": ["xiangmu", "jiaofu", "qingdan", "checklist"]
+    },
+    {
+      "id": "favorite-request-template",
+      "source": "favorite",
+      "kind": "code",
+      "title": "标准请求模板",
+      "subtitle": "TypeScript · fetch 与错误处理",
+      "content": "async function request<T>(path: string): Promise<T> {\n  const response = await fetch(path);\n  if (!response.ok) throw new Error(`HTTP ${response.status}`);\n  return response.json() as Promise<T>;\n}",
+      "context": "开发 / 常用代码 / 网络请求",
+      "time": "常用",
+      "aliases": ["qingqiu", "daima", "request", "fetch", "typescript"]
+    },
+    {
+      "id": "favorite-project-cover",
+      "source": "favorite",
+      "kind": "image",
+      "title": "项目封面草图",
+      "subtitle": "图片样例 · 1600 × 900",
+      "content": "Atlas 项目封面草图\n1600 × 900 · 浅色背景、蓝色几何图形与标题区域。",
+      "context": "工作 / Atlas / 设计素材",
+      "time": "昨天收藏",
+      "aliases": ["xiangmu", "fengmian", "caotu", "tupian", "cover"]
+    },
+    {
+      "id": "favorite-team-contact",
+      "source": "favorite",
+      "kind": "text",
+      "title": "团队联系信息",
+      "subtitle": "示例协作组 · 工作资料",
+      "content": "Atlas 协作组\n项目协调：小林\n设计评审：小周\n共享资料：team.example.com\n\n每周三下午进行需求与设计评审。",
+      "context": "工作 / 团队资料",
+      "time": "上周收藏",
+      "aliases": ["tuandui", "lianxi", "gongzuo", "team", "contact"]
+    },
+    {
+      "id": "clipboard-project-notes",
+      "source": "clipboard",
+      "kind": "text",
+      "title": "项目会议记录",
+      "subtitle": "刚复制 · 需求评审中的临时笔记",
+      "content": "项目会议记录（临时）\n搜索主页需要直接看到结果。收藏和剪贴板中的同名内容都应保留，并显示来源，方便区分整理稿与刚复制的片段。",
+      "context": "记事本 · Atlas 评审笔记",
+      "time": "今天 10:42",
+      "aliases": ["xiangmu", "xiangmuhuiyi", "huiyijilu", "hyjl", "meeting"]
+    },
+    {
+      "id": "clipboard-project-plan",
+      "source": "clipboard",
+      "kind": "file",
+      "title": "项目排期.xlsx",
+      "subtitle": "1 个文件 · 128 KB",
+      "content": "E:\\演示资料\\Atlas\\项目排期.xlsx\n\n项目阶段、评审节点与交付时间。\n128 KB · 今天 10:35 修改",
+      "context": "文件资源管理器 · 演示资料 / Atlas",
+      "time": "今天 10:38",
+      "aliases": ["xiangmu", "paiqi", "wenjian", "xlsx", "schedule"]
+    },
+    {
+      "id": "clipboard-search-code",
+      "source": "clipboard",
+      "kind": "code",
+      "title": "搜索结果排序片段",
+      "subtitle": "TypeScript · 相关性与稳定顺序",
+      "content": "results.sort((a, b) =>\n  b.relevance - a.relevance ||\n  Number(b.source === 'favorite') - Number(a.source === 'favorite') ||\n  a.originalIndex - b.originalIndex\n);",
+      "context": "代码编辑器 · 搜索界面样例",
+      "time": "今天 10:31",
+      "aliases": ["sousuo", "paixu", "daima", "search", "sort", "typescript"]
+    },
+    {
+      "id": "clipboard-homepage-image",
+      "source": "clipboard",
+      "kind": "image",
+      "title": "首页布局截图",
+      "subtitle": "图片样例 · 1440 × 900",
+      "content": "首页布局截图\n1440 × 900 · 搜索输入区、来源切换、结果列表与内容预览。",
+      "context": "截图工具 · 设计评审",
+      "time": "今天 10:24",
+      "aliases": ["shouye", "buju", "jietu", "tupian", "screenshot"]
+    },
+    {
+      "id": "clipboard-deploy-notes",
+      "source": "clipboard",
+      "kind": "text",
+      "title": "部署检查备注",
+      "subtitle": "保留回退版本，验证安装与升级",
+      "content": "部署前检查：\n- 确认测试包的版本与文件摘要。\n- 验证已有配置在升级后仍能读取。\n- 项目文档中保留本次验证结果。\n\n完成检查后再安排交付。",
+      "context": "终端 · 演示环境",
+      "time": "今天 10:12",
+      "aliases": ["bushu", "jiancha", "deploy", "release"]
+    },
+    {
+      "id": "clipboard-design-link",
+      "source": "clipboard",
+      "kind": "link",
+      "title": "设计评审入口",
+      "subtitle": "Atlas · 项目设计稿与评审批注",
+      "content": "https://design.example.com/atlas/review\n\nAtlas 设计评审\n首页与搜索界面的最新设计稿，以及上次评审留下的批注。",
+      "context": "浏览器 · Atlas 设计评审",
+      "time": "今天 09:56",
+      "aliases": ["sheji", "pingshen", "xiangmu", "design", "review"]
+    },
+    {
+      "id": "clipboard-release-pdf",
+      "source": "clipboard",
+      "kind": "file",
+      "title": "交付说明.pdf",
+      "subtitle": "1 个文件 · 6 页",
+      "content": "E:\\演示资料\\Atlas\\交付说明.pdf\n\n项目范围、使用说明和交付内容。\n6 页 · 840 KB",
+      "context": "文件资源管理器 · 演示资料 / 交付",
+      "time": "昨天 17:48",
+      "aliases": ["jiaofu", "shuoming", "wenjian", "pdf", "delivery"]
+    },
+    {
+      "id": "action-open-project",
+      "source": "action",
+      "kind": "action",
+      "title": "打开项目目录",
+      "subtitle": "动作 · 定位 Atlas 的本地工作目录",
+      "content": "工作目录：E:\\演示资料\\Atlas\n\n在文件资源管理器中打开项目目录，方便查找需求文档、设计素材与交付文件。",
+      "context": "工作效率",
+      "time": "常用动作",
+      "aliases": ["xiangmu", "dakai", "xiangmumulu", "dkxm", "open", "project"]
+    },
+    {
+      "id": "action-meeting-summary",
+      "source": "action",
+      "kind": "action",
+      "title": "整理会议纪要",
+      "subtitle": "动作 · 将项目笔记整理成固定格式",
+      "content": "将项目评审中的临时记录整理成统一格式：\n\n会议结论\n待办事项与负责人\n下一次评审时间",
+      "context": "文本处理",
+      "time": "最近使用",
+      "aliases": ["huiyi", "jiyao", "xiangmu", "meeting", "summary"]
+    },
+    {
+      "id": "action-project-check",
+      "source": "action",
+      "kind": "action",
+      "title": "运行项目检查",
+      "subtitle": "动作 · 查看构建与检查的示例步骤",
+      "content": "项目检查步骤\n1. 检查代码格式与类型。\n2. 验证固定样例。\n3. 汇总检查结果，写入项目记录。",
+      "context": "开发工具",
+      "time": "最近使用",
+      "aliases": ["xiangmu", "jiancha", "yunxing", "project", "check"]
+    }
+  ]
+}

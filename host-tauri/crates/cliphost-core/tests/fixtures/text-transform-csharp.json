@@ -1,0 +1,3340 @@
+[
+  {
+    "name": "whole match",
+    "text": "中文 abc 你好",
+    "expected": "中文 [abc] 你好",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "abc"
+      }
+    }
+  },
+  {
+    "name": "number followed by literal",
+    "text": "ab",
+    "expected": "atail-b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "$1tail-$2",
+        "UseRegex": true,
+        "Pattern": "(a)(b)"
+      }
+    }
+  },
+  {
+    "name": "dollar and undefined references",
+    "text": "abc",
+    "expected": "a$/b/b/$2/${missing}/$missing/$c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "$$/$0/$1/$2/${missing}/$missing/$",
+        "UseRegex": true,
+        "Pattern": "(b)"
+      }
+    }
+  },
+  {
+    "name": "named group numbering",
+    "text": "ab",
+    "expected": "b|a|a|b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "$1|$2|${named}|${1}",
+        "UseRegex": true,
+        "Pattern": "(?<named>a)(b)"
+      }
+    }
+  },
+  {
+    "name": "prefix suffix entire input",
+    "text": "甲a乙a丙",
+    "expected": "甲[甲][a][乙a丙][甲a乙a丙]乙[甲a乙][a][丙][甲a乙a丙]丙",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "[$`][$&][$'][$_]",
+        "UseRegex": true,
+        "Pattern": "a"
+      }
+    }
+  },
+  {
+    "name": "last numbered group unmatched",
+    "text": "a ab",
+    "expected": "<> <b>",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "<$+>",
+        "UseRegex": true,
+        "Pattern": "(a)(b)?"
+      }
+    }
+  },
+  {
+    "name": "zero width matches",
+    "text": "你好",
+    "expected": "[]你[]好[]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": ""
+      }
+    }
+  },
+  {
+    "name": "numeric references",
+    "text": "ab",
+    "expected": "a/a/$12/$123/b3",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "$01/${01}/$12/$123/${2}3",
+        "UseRegex": true,
+        "Pattern": "(a)(b)"
+      }
+    }
+  },
+  {
+    "name": "replacement not recursive",
+    "text": "$1",
+    "expected": "$1",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "$1",
+        "UseRegex": true,
+        "Pattern": "(.+)"
+      }
+    }
+  },
+  {
+    "name": "named and bare dollars",
+    "text": "a",
+    "expected": "a:$word:${none}:${}:$!",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "${word}:$word:${none}:${}:$!",
+        "UseRegex": true,
+        "Pattern": "(?<word>a)"
+      }
+    }
+  },
+  {
+    "name": "empty literal pattern",
+    "text": "abc",
+    "expected": null,
+    "error": "System.ArgumentException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "ReplaceMent": "x",
+        "UseRegex": false,
+        "Pattern": ""
+      }
+    }
+  },
+  {
+    "name": "escaped literal text",
+    "text": "a\nb",
+    "expected": "a\tb",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "UseRegex": false,
+        "ReplaceMent": "\\t",
+        "EscapeReplaceMent": true,
+        "Pattern": "\\n",
+        "EscapePattern": true
+      }
+    }
+  },
+  {
+    "name": "ignore case multiline",
+    "text": "a\nA",
+    "expected": "x\nx",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 3,
+        "ReplaceMent": "x",
+        "UseRegex": true,
+        "Pattern": "^a"
+      }
+    }
+  },
+  {
+    "name": "singleline",
+    "text": "a\nb",
+    "expected": "a\nb!",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 16,
+        "ReplaceMent": "$&!",
+        "UseRegex": true,
+        "Pattern": "a.b"
+      }
+    }
+  },
+  {
+    "name": "ignore pattern whitespace",
+    "text": "ab",
+    "expected": "x",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 32,
+        "ReplaceMent": "x",
+        "UseRegex": true,
+        "Pattern": "a b # comment"
+      }
+    }
+  },
+  {
+    "name": "pair mixed line endings",
+    "text": "a\r\n\r\nb\rc\n \n",
+    "expected": "[a]\r\n[b]\r\n[c]\r\n[ ]",
+    "error": null,
+    "action": {
+      "Type": "Pair",
+      "Data": {
+        "Suffix": "]",
+        "Prefix": "[",
+        "MultiLines": true
+      }
+    }
+  },
+  {
+    "name": "pair trim",
+    "text": " \r\na\r\n\r\nb \n",
+    "expected": "【a】\r\n【b】",
+    "error": null,
+    "action": {
+      "Type": "Pair",
+      "Data": {
+        "Suffix": "】",
+        "Prefix": "【",
+        "MultiLines": true,
+        "Trim": true
+      }
+    }
+  },
+  {
+    "name": "pair empty input",
+    "text": "",
+    "expected": "",
+    "error": null,
+    "action": {
+      "Type": "Pair",
+      "Data": {
+        "Suffix": "]",
+        "Prefix": "[",
+        "MultiLines": true
+      }
+    }
+  },
+  {
+    "name": "pair whole input",
+    "text": "a\nb",
+    "expected": "[a\nb]",
+    "error": null,
+    "action": {
+      "Type": "Pair",
+      "Data": {
+        "Suffix": "]",
+        "Prefix": "[",
+        "MultiLines": false
+      }
+    }
+  },
+  {
+    "name": "rtl grouped digits",
+    "text": "12345",
+    "expected": "[12][345]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "\\d{1,3}"
+      }
+    }
+  },
+  {
+    "name": "rtl repeated capture",
+    "text": "abc",
+    "expected": "[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Pattern": "(\\w)+"
+      }
+    }
+  },
+  {
+    "name": "rtl group greed",
+    "text": "abc",
+    "expected": "[a][bc]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$1][$2]",
+        "UseRegex": true,
+        "Pattern": "(\\w+)(\\w+)"
+      }
+    }
+  },
+  {
+    "name": "rtl named numbering",
+    "text": "ab",
+    "expected": "b|a|a|b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "$1|$2|${named}|${1}",
+        "UseRegex": true,
+        "Pattern": "(?<named>a)(b)"
+      }
+    }
+  },
+  {
+    "name": "rtl alternation priority",
+    "text": "ababa",
+    "expected": "[ab][ab]a",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "ab|b"
+      }
+    }
+  },
+  {
+    "name": "rtl lazy repeat",
+    "text": "12345",
+    "expected": "[1][2][3][4][5]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "\\d{1,3}?"
+      }
+    }
+  },
+  {
+    "name": "rtl word boundary chinese",
+    "text": "你好 ab 世界",
+    "expected": "[你好] [ab] [世界]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "\\b\\w+\\b"
+      }
+    }
+  },
+  {
+    "name": "rtl literal unicode",
+    "text": "甲你好乙你好丙",
+    "expected": "甲[你好]乙[你好]丙",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "你好"
+      }
+    }
+  },
+  {
+    "name": "rtl prefix suffix input",
+    "text": "甲a乙a丙",
+    "expected": "甲[甲][a][乙a丙][甲a乙a丙]乙[甲a乙][a][丙][甲a乙a丙]丙",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$`][$&][$'][$_]",
+        "UseRegex": true,
+        "Pattern": "a"
+      }
+    }
+  },
+  {
+    "name": "rtl multiline anchor",
+    "text": "ab\nab",
+    "expected": "[a]b\n[a]b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 66,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "^a"
+      }
+    }
+  },
+  {
+    "name": "rtl empty matches",
+    "text": "你好",
+    "expected": "x你x好x",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "x",
+        "UseRegex": true,
+        "Pattern": ""
+      }
+    }
+  },
+  {
+    "name": "rtl adjacent empty match",
+    "text": "aaa",
+    "expected": "[][aaa]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "a*"
+      }
+    }
+  },
+  {
+    "name": "ltr adjacent empty match",
+    "text": "aaa",
+    "expected": "[aaa][]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "a*"
+      }
+    }
+  },
+  {
+    "name": "explicit capture",
+    "text": "ab",
+    "expected": "b|$2|b|b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 4,
+        "ReplaceMent": "$1|$2|${named}|$+",
+        "UseRegex": true,
+        "Pattern": "(a)(?<named>b)"
+      }
+    }
+  },
+  {
+    "name": "explicit capture nested",
+    "text": "abc",
+    "expected": "b|c|b|c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 4,
+        "ReplaceMent": "$1|$2|${first}|${second}",
+        "UseRegex": true,
+        "Pattern": "(a(?<first>b))(?<second>c)"
+      }
+    }
+  },
+  {
+    "name": "explicit capture with rtl",
+    "text": "abc",
+    "expected": "b|b|b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 68,
+        "ReplaceMent": "$1|${named}|$+",
+        "UseRegex": true,
+        "Pattern": "(a)(?<named>\\w)+"
+      }
+    }
+  },
+  {
+    "name": "rtl no match",
+    "text": "unchanged",
+    "expected": "unchanged",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "\\d+"
+      }
+    }
+  },
+  {
+    "name": "explicit capture no names",
+    "text": "ab",
+    "expected": "$1|$2|ab",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 4,
+        "ReplaceMent": "$1|$2|$+",
+        "UseRegex": true,
+        "Pattern": "(a)(b)"
+      }
+    }
+  },
+  {
+    "name": "positive lookahead",
+    "text": "ab ac ab",
+    "expected": "[a]b ac [a]b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "a(?=b)"
+      }
+    }
+  },
+  {
+    "name": "negative lookahead",
+    "text": "ab ac ad",
+    "expected": "ab [a]c [a]d",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "a(?!b)"
+      }
+    }
+  },
+  {
+    "name": "positive lookbehind",
+    "text": "USD123 EUR456 USD7",
+    "expected": "USD[123] EUR456 USD[7]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(?<=USD)\\d+"
+      }
+    }
+  },
+  {
+    "name": "negative lookbehind",
+    "text": "a1 b2 c3",
+    "expected": "a1 b[2] c[3]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(?<!a)\\d"
+      }
+    }
+  },
+  {
+    "name": "variable lookbehind",
+    "text": "id= 123 id=456",
+    "expected": "id= [123] id=[456]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(?<=id=\\s*)\\d+"
+      }
+    }
+  },
+  {
+    "name": "two assertions",
+    "text": "USD12kg EUR45kg USD78lb",
+    "expected": "USD[12]kg EUR45kg USD78lb",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(?<=USD)\\d+(?=kg)"
+      }
+    }
+  },
+  {
+    "name": "lookahead captures",
+    "text": "abc",
+    "expected": "<ab>a<bc>bc",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "<$1>",
+        "UseRegex": true,
+        "Pattern": "(?=(\\w{2}))"
+      }
+    }
+  },
+  {
+    "name": "lookbehind captures",
+    "text": "abc",
+    "expected": "abab/c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "$1/$&",
+        "UseRegex": true,
+        "Pattern": "(?<=(ab))c"
+      }
+    }
+  },
+  {
+    "name": "lookbehind capture greed",
+    "text": "abc",
+    "expected": "abc[a|bc]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$1|$2]",
+        "UseRegex": true,
+        "Pattern": "(?<=([ab]+)([bc]+))$"
+      }
+    }
+  },
+  {
+    "name": "numbered backreference",
+    "text": "aaaa bb cc xyz",
+    "expected": "[a] [b] [c] xyz",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Pattern": "(.)\\1+"
+      }
+    }
+  },
+  {
+    "name": "named backreference",
+    "text": "hello hello 中文 中文",
+    "expected": "hello 中文",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "${word}",
+        "UseRegex": true,
+        "Pattern": "(?<word>\\w+)\\s+\\k<word>"
+      }
+    }
+  },
+  {
+    "name": "quote named reference",
+    "text": "aa bb",
+    "expected": "a b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "${word}",
+        "UseRegex": true,
+        "Pattern": "(?<word>\\w)\\k'word'"
+      }
+    }
+  },
+  {
+    "name": "mixed numbered backreference",
+    "text": "abba abab",
+    "expected": "b|a|a abab",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "$1|$2|${named}",
+        "UseRegex": true,
+        "Pattern": "(?<named>a)(b)\\1\\2"
+      }
+    }
+  },
+  {
+    "name": "mixed named backreference",
+    "text": "aba abb",
+    "expected": "b|a abb",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "$1|$2",
+        "UseRegex": true,
+        "Pattern": "(?<named>a)(b)\\k<named>"
+      }
+    }
+  },
+  {
+    "name": "case insensitive reference",
+    "text": "aa aA Aa AA",
+    "expected": "[aa] [aA] [Aa] [AA]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 1,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(a)\\1"
+      }
+    }
+  },
+  {
+    "name": "scoped insensitive reference",
+    "text": "aA aa Aa",
+    "expected": "[aA] [aa] Aa",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(a)(?i:\\1)"
+      }
+    }
+  },
+  {
+    "name": "explicit capture reference",
+    "text": "abb aba",
+    "expected": "b/b aba",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 4,
+        "ReplaceMent": "$1/${named}",
+        "UseRegex": true,
+        "Pattern": "(a)(?<named>b)\\1"
+      }
+    }
+  },
+  {
+    "name": "atomic group",
+    "text": "abc ac",
+    "expected": "abc [ac]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(?>a|ab)c"
+      }
+    }
+  },
+  {
+    "name": "rtl numbered reference",
+    "text": "aaaa bbaa",
+    "expected": "[a][a] bb[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Pattern": "\\1(a)"
+      }
+    }
+  },
+  {
+    "name": "rtl named reference",
+    "text": "aaaa bbaa",
+    "expected": "[a][a] bb[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[${named}]",
+        "UseRegex": true,
+        "Pattern": "\\k<named>(?<named>a)"
+      }
+    }
+  },
+  {
+    "name": "rtl forward unassigned reference",
+    "text": "aa",
+    "expected": "aa",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(a)\\1"
+      }
+    }
+  },
+  {
+    "name": "rtl mixed reference",
+    "text": "abba abba",
+    "expected": "b|a|a b|a|a",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "$1|$2|${named}",
+        "UseRegex": true,
+        "Pattern": "\\2\\1(b)(?<named>a)"
+      }
+    }
+  },
+  {
+    "name": "rtl lookahead",
+    "text": "12345kg 67lb",
+    "expected": "123[45]kg 67lb",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "\\d{1,2}(?=kg)"
+      }
+    }
+  },
+  {
+    "name": "rtl negative lookahead",
+    "text": "ab ac ad",
+    "expected": "ab [a]c [a]d",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "a(?!b)"
+      }
+    }
+  },
+  {
+    "name": "rtl lookbehind",
+    "text": "USD12345 EUR456",
+    "expected": "USD[12]345 EUR456",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(?<=USD)\\d{1,2}"
+      }
+    }
+  },
+  {
+    "name": "rtl lookbehind capture",
+    "text": "abc",
+    "expected": "abab/c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "$1/$&",
+        "UseRegex": true,
+        "Pattern": "(?<=(ab))c"
+      }
+    }
+  },
+  {
+    "name": "rtl explicit reference",
+    "text": "bba",
+    "expected": "b/b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 68,
+        "ReplaceMent": "$1/${named}",
+        "UseRegex": true,
+        "Pattern": "\\1(?<named>b)(a)"
+      }
+    }
+  },
+  {
+    "name": "unicode reference",
+    "text": "中文中文 你好你好",
+    "expected": "[中文] [你好]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[${text}]",
+        "UseRegex": true,
+        "Pattern": "(?<text>\\w{2})\\k<text>"
+      }
+    }
+  },
+  {
+    "name": "lookbehind repeated capture",
+    "text": "abc",
+    "expected": "abc[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Pattern": "(?<=(\\w)+)$"
+      }
+    }
+  },
+  {
+    "name": "lookbehind captured backreference",
+    "text": "abcbc abcabc",
+    "expected": "abc[a|bc|bc] abcabc",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$1|$2|$&]",
+        "UseRegex": true,
+        "Pattern": "(?<=([ab]+)([bc]+))\\2"
+      }
+    }
+  },
+  {
+    "name": "lookahead atomic capture",
+    "text": "ab",
+    "expected": "ab",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Pattern": "(?=(a|ab))\\1$"
+      }
+    }
+  },
+  {
+    "name": "assertion backtrack rollback",
+    "text": "ab",
+    "expected": "[|ab]ab",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$1|$2]",
+        "UseRegex": true,
+        "Pattern": "(?:(?=(a))z|(?=(ab)))"
+      }
+    }
+  },
+  {
+    "name": "negative assertion capture",
+    "text": "ac ab",
+    "expected": "[|a]c ab",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$1|$&]",
+        "UseRegex": true,
+        "Pattern": "(?!(a)b)a"
+      }
+    }
+  },
+  {
+    "name": "rtl lookahead capture greed",
+    "text": "abc",
+    "expected": "[ab|c]abc",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$1|$2]",
+        "UseRegex": true,
+        "Pattern": "^(?=([ab]+)([bc]+))"
+      }
+    }
+  },
+  {
+    "name": "rtl lookbehind capture greed",
+    "text": "abc",
+    "expected": "abc[a|bc]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 64,
+        "ReplaceMent": "[$1|$2]",
+        "UseRegex": true,
+        "Pattern": "(?<=([ab]+)([bc]+))$"
+      }
+    }
+  },
+  {
+    "name": "nested directional assertions",
+    "text": "abc",
+    "expected": "ab[a|c]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Options": 0,
+        "ReplaceMent": "[$1|$&]",
+        "UseRegex": true,
+        "Pattern": "(?<=(a)(?=bc)b)c"
+      }
+    }
+  },
+  {
+    "name": "duplicate name final capture",
+    "text": "abc",
+    "expected": "b/b/$2c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?<n>b)(?=c)",
+        "ReplaceMent": "$1/${n}/$2",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name optional capture",
+    "text": "ab a",
+    "expected": "[b/b] [a/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?<n>b)?",
+        "ReplaceMent": "[$1/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name branch rollback",
+    "text": "ac ab",
+    "expected": "[a] [a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?:(?<n>b)d|c|b)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name repeated alternatives",
+    "text": "abba",
+    "expected": "[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?:(?<n>a)|(?<n>b))+",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name nested final save",
+    "text": "abc",
+    "expected": "[abc]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a(?<n>b)c)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name unnamed numbering",
+    "text": "abcd",
+    "expected": "b/c/d/$4/c/d",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(b)(?<n>c)(?<z>d)",
+        "ReplaceMent": "$1/$2/$3/$4/${n}/$+",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name named backreference",
+    "text": "abb aa",
+    "expected": "[abb/b] [aa/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?<n>b)?\\k<n>",
+        "ReplaceMent": "[$&/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name numeric backreference",
+    "text": "xbcc xbaa xbcb",
+    "expected": "[x/c] xbaa xbcb",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(x)(?<n>a|b)(?<n>c)?\\2",
+        "ReplaceMent": "[$1/$2]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name quoted spelling",
+    "text": "abb aa",
+    "expected": "[b/b] [a/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?'n'a)(?<n>b)?\\k'n'",
+        "ReplaceMent": "[$1/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name explicit capture",
+    "text": "abc",
+    "expected": "c/$2/c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(b)(?<n>c)",
+        "ReplaceMent": "$1/$2/${n}",
+        "UseRegex": true,
+        "Options": 4
+      }
+    }
+  },
+  {
+    "name": "duplicate name right to left",
+    "text": "ab",
+    "expected": "[a/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?<n>b)",
+        "ReplaceMent": "[$1/${n}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "duplicate name right to left reference",
+    "text": "aab",
+    "expected": "[aab/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\k<n>(?<n>a)(?<n>b)",
+        "ReplaceMent": "[$&/${n}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "duplicate name lookbehind direction",
+    "text": "abc",
+    "expected": "ab[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<=(?<n>a)(?<n>b))c",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name negative assertion rollback",
+    "text": "ab",
+    "expected": "[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?!(?<n>b)c)b",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name empty capture",
+    "text": "a",
+    "expected": "[]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?<n>)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name unicode and ignore case",
+    "text": "甲甲",
+    "expected": "[甲]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<字>甲)(?<字>乙)?\\k<字>",
+        "ReplaceMent": "[${字}]",
+        "UseRegex": true,
+        "Options": 1
+      }
+    }
+  },
+  {
+    "name": "duplicate name parser prefix collision",
+    "text": "ab",
+    "expected": "[b]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<ClipHostRefGroup0>a)(?<ClipHostRefGroup0>b)",
+        "ReplaceMent": "[${ClipHostRefGroup0}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "duplicate name ignored declaration",
+    "text": "ab",
+    "expected": "[b]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a) # (?<n>ignored)\n(?<n>b)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 32
+      }
+    }
+  },
+  {
+    "name": "conditional numbered capture",
+    "text": "ab c ac",
+    "expected": "[ab/a] [c/] ac",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(a)?(?(1)b|c)\\b",
+        "ReplaceMent": "[$&/$1]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional named capture",
+    "text": "ab c ac",
+    "expected": "[ab/a] [c/] ac",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?<n>a)?(?(n)b|c)\\b",
+        "ReplaceMent": "[$&/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional empty capture is present",
+    "text": "b c",
+    "expected": "[b] c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?<n>)(?(n)b|c)\\b",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional no else",
+    "text": "ab b",
+    "expected": "[ab][] []b[]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?<n>a)?(?(n)b)",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional no fallback to else",
+    "text": "ac ab",
+    "expected": "ac [ab]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?<n>a)(?(n)b|c)\\b",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional duplicate capture rollback",
+    "text": "ac ab",
+    "expected": "[a] [a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?:(?<n>b)d|(?(n)c|b)|b)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional mixed numbering",
+    "text": "abc",
+    "expected": "[b/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(b)(?(1)c|d)(?(2)|e)",
+        "ReplaceMent": "[$1/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional explicit capture",
+    "text": "ab c",
+    "expected": "[a/$2] [/$2]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?<n>a)?(?(n)(b)|(c))\\b",
+        "ReplaceMent": "[$1/$2]",
+        "UseRegex": true,
+        "Options": 4
+      }
+    }
+  },
+  {
+    "name": "conditional forward capture reference",
+    "text": "ab",
+    "expected": "[ab/b]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?(n)x|a)(?<n>b)",
+        "ReplaceMent": "[$&/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional right to left capture",
+    "text": "ba c",
+    "expected": "[ba/a] [c/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?(n)b|c)(?<n>a)?\\b",
+        "ReplaceMent": "[$&/${n}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "conditional positive assertion capture",
+    "text": "ab c",
+    "expected": "[ab/a] [c/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?(?=(?<n>a))ab|c)\\b",
+        "ReplaceMent": "[$&/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional negative assertion rollback",
+    "text": "ac ab",
+    "expected": "[ac/] [ab/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?(?!(?<n>a)b)ac|ab)\\b",
+        "ReplaceMent": "[$&/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional lookbehind direction",
+    "text": "abc",
+    "expected": "ab[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?(?<=(?<n>a)(?<n>b))c|z)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional predicate stays atomic",
+    "text": "ab",
+    "expected": "ab",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^(?(?=(a|ab))\\1$|ab)",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional bare predicate",
+    "text": "ab c",
+    "expected": "[ab] [c]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?(a.)ab|c)\\b",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional unknown name literal",
+    "text": "name c",
+    "expected": "[name] [c]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?(name)name|c)\\b",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional bare predicate right to left",
+    "text": "ab c",
+    "expected": "[ab] [c]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?(ab)ab|c)\\b",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "conditional nested branches",
+    "text": "abc ad e",
+    "expected": "[abc/a/b] [ad/a/] [e//]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?<n>a)?(?(n)(?<m>b)?(?(m)c|d)|e)\\b",
+        "ReplaceMent": "[$&/${n}/${m}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional false branch alternation",
+    "text": "ac d e",
+    "expected": "[ac] [d] [e]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?<n>a)?(?(n)c|(?:d|e))\\b",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional empty branches",
+    "text": "ab",
+    "expected": "[ab]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?(n))b",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional invalid numeric target",
+    "text": "a",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?(2)a|b)",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional invalid third branch",
+    "text": "a",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?(?=a)a|b|c)",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "conditional comments and scoped flags",
+    "text": "ab c",
+    "expected": "[ab] [c]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?x: # [(?(7)ignored)\n(?<n>a)? (?(n)b|c))",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number sparse replacement",
+    "text": "ab",
+    "expected": "b/$2/a/a/a",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<5>a)(b)",
+        "ReplaceMent": "$1/$2/$5/${05}/$+",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number named assignment",
+    "text": "abc",
+    "expected": "b/a/c/c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<2>a)(b)(?<n>c)",
+        "ReplaceMent": "$1/$2/$3/${n}",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number reserves named slots",
+    "text": "abc",
+    "expected": "b/a/c/a/c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?<1>b)(?<m>c)",
+        "ReplaceMent": "$1/$2/$3/${n}/${m}",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number shares unnamed slot",
+    "text": "ab a",
+    "expected": "[b/$2] [a/$2]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<1>a)(b)?",
+        "ReplaceMent": "[$1/$2]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number shares later declaration",
+    "text": "ab",
+    "expected": "[b/$2]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)(?<1>b)",
+        "ReplaceMent": "[$1/$2]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number duplicate optional",
+    "text": "ab a",
+    "expected": "[b/b] [a/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<8>a)(?<8>b)?",
+        "ReplaceMent": "[$8/$+]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number aliases leading zero",
+    "text": "ab a",
+    "expected": "[b/b] [a/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<1>a)(?<01>b)?",
+        "ReplaceMent": "[$1/${01}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number nested capture",
+    "text": "abc",
+    "expected": "[abc/$2]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<1>a(b)c)",
+        "ReplaceMent": "[$1/$2]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number quoted backreference",
+    "text": "aba abb",
+    "expected": "[b/a] abb",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?'12'a)(b)\\k'12'",
+        "ReplaceMent": "[$1/$12]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number bare backreference",
+    "text": "abb aa",
+    "expected": "[b] [a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<3>a)(?<3>b)?\\3",
+        "ReplaceMent": "[$3]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number condition",
+    "text": "ab c",
+    "expected": "[a/a] [/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\b(?<6>a)?(?(6)b|c)\\b",
+        "ReplaceMent": "[$6/$+]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number explicit capture option",
+    "text": "abc",
+    "expected": "c/a/$3/c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<2>a)(b)(?<n>c)",
+        "ReplaceMent": "$1/$2/$3/${n}",
+        "UseRegex": true,
+        "Options": 4
+      }
+    }
+  },
+  {
+    "name": "explicit number right to left collision",
+    "text": "ab",
+    "expected": "[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<1>a)(b)",
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "explicit number lookbehind collision",
+    "text": "abc",
+    "expected": "ab[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<=(a)(?<1>b))c",
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number rollback",
+    "text": "ac ab",
+    "expected": "[a] [a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<1>a)(?:(b)d|c|b)",
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number largest int",
+    "text": "ab",
+    "expected": "b/a/a",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<2147483647>a)(?<n>b)",
+        "ReplaceMent": "$1/${2147483647}/$+",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number zero invalid",
+    "text": "a",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<0>a)",
+        "ReplaceMent": "$0",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number overflow invalid",
+    "text": "a",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<2147483648>a)",
+        "ReplaceMent": "$1",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number zero prefix cannot introduce a slot",
+    "text": "ab",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<01>a)",
+        "ReplaceMent": "[$1/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number zero prefix aliases unnamed",
+    "text": "ab",
+    "expected": "[b/${n}]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<01>a)(b)",
+        "ReplaceMent": "[$1/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "explicit number zero prefix aliases named",
+    "text": "ab",
+    "expected": "[b/b]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<01>a)(?<n>b)",
+        "ReplaceMent": "[$1/${n}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking replacement",
+    "text": "aaa bb",
+    "expected": "[aaa] bb",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "a+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking ambiguous repetition",
+    "text": "aaaa!",
+    "expected": "aaaa!",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^(a|aa)+b$",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking repeated capture",
+    "text": "abba",
+    "expected": "[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?:(a)|b)+",
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking empty matches",
+    "text": "ab",
+    "expected": "[a][]b[]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "a*",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking named numbering",
+    "text": "ab",
+    "expected": "b/a/a/a",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(b)",
+        "ReplaceMent": "$1/$2/${n}/$+",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking duplicate names",
+    "text": "ab a",
+    "expected": "[b] [a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(?<n>b)?",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking duplicate alternatives",
+    "text": "abba",
+    "expected": "[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?:(?<n>a)|(?<n>b))+",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking nested duplicate",
+    "text": "abc",
+    "expected": "[bc]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a(?<n>b)c)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking explicit number",
+    "text": "ab",
+    "expected": "b/a/a",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<99>a)(b)",
+        "ReplaceMent": "$1/$99/$+",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking shared number",
+    "text": "ab a",
+    "expected": "[b] [a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<1>a)(b)?",
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking quoted group",
+    "text": "ab",
+    "expected": "b/a",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?'n'a)(b)",
+        "ReplaceMent": "$1/${n}",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking options",
+    "text": "Aa\nBb",
+    "expected": "[Aa]\n[Bb]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>^.+$)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 1027
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking explicit capture",
+    "text": "ab",
+    "expected": "a/$2",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a)(b)",
+        "ReplaceMent": "$1/$2",
+        "UseRegex": true,
+        "Options": 1028
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking ignores pattern comments",
+    "text": "ab",
+    "expected": "[b]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<n>a) # comment\n (?<n>b)",
+        "ReplaceMent": "[${n}]",
+        "UseRegex": true,
+        "Options": 1056
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking lookaround forbidden",
+    "text": "ab",
+    "expected": null,
+    "error": "System.NotSupportedException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "a(?=b)",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking backreference forbidden",
+    "text": "aa",
+    "expected": null,
+    "error": "System.NotSupportedException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)\\1",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking atomic forbidden",
+    "text": "ab",
+    "expected": null,
+    "error": "System.NotSupportedException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?>a)b",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking conditional forbidden",
+    "text": "ab",
+    "expected": null,
+    "error": "System.NotSupportedException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(a)(?(1)b|c)",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking reverse forbidden",
+    "text": "a",
+    "expected": null,
+    "error": "System.ArgumentOutOfRangeException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "a",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1088
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking ECMAScript forbidden",
+    "text": "a",
+    "expected": null,
+    "error": "System.ArgumentOutOfRangeException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "a",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1280
+      }
+    }
+  },
+  {
+    "name": "nonbacktracking G anchor forbidden",
+    "text": "a",
+    "expected": null,
+    "error": "System.NotSupportedException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "\\Ga",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "balancing paired parentheses",
+    "text": "()\n(甲(乙))\n(()\n)(\na",
+    "expected": "[()]\n[(甲(乙))]\n(()\n)(\n[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "^(?:[^()\\r\\n]|(?<open>\\()|(?<-open>\\)))*(?(open)(?!))$",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 2
+      }
+    }
+  },
+  {
+    "name": "balancing restores previous capture",
+    "text": "abca",
+    "expected": "[abca/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?<x>b)(?<-x>c)\\k<x>",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing captures intervening text",
+    "text": "a-b",
+    "expected": "[/-]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)-(?<gap-x>b)",
+        "ReplaceMent": "[${x}/${gap}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing source captured inside body",
+    "text": "a",
+    "expected": "[a/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<-x>(?<x>a))",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing source visible inside body",
+    "text": "ab ac",
+    "expected": "[ab/] ac",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?<-x>(?(x)b|c))",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing double pop fails",
+    "text": "ab",
+    "expected": "ab",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?<-x>(?<-x>b))",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing branch restores popped capture",
+    "text": "abde abcf",
+    "expected": "[abde/a] [abcf/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?:(?<-x>b)c|bd)(?(x)e|f)",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing assertion keeps pop",
+    "text": "abd abc",
+    "expected": "[abd/] abc",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?=(?<-x>b))b(?(x)c|d)",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing negative assertion restores pop",
+    "text": "abd abe",
+    "expected": "[abd/a] abe",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?!(?<-x>b)c)b(?(x)d|e)",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing numeric shared capture",
+    "text": "abca",
+    "expected": "[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<1>a)(b)(?<-1>c)\\1",
+        "ReplaceMent": "[$1]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing nested duplicate capture",
+    "text": "abcd",
+    "expected": "[b]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a(?<x>b)c)(?<-x>d)",
+        "ReplaceMent": "[${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing same destination source",
+    "text": "abc abd",
+    "expected": "[abc/] abd",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?<x-x>b)(?(x)c|d)",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing empty source capture",
+    "text": "a",
+    "expected": "[a/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>)(?<-x>a)",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing quoted syntax",
+    "text": "a-b",
+    "expected": "[-]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?'x'a)-(?'gap-x'b)",
+        "ReplaceMent": "[${gap}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing explicit capture option",
+    "text": "abca",
+    "expected": "[a/$2/a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(b)(?<x>c)(?<-x>)\\k<x>",
+        "ReplaceMent": "[$1/$2/${x}]",
+        "UseRegex": true,
+        "Options": 4
+      }
+    }
+  },
+  {
+    "name": "balancing right to left pop",
+    "text": "ab",
+    "expected": "[ab/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<-x>a)(?<x>b)",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "balancing right to left gap",
+    "text": "a-b",
+    "expected": "[/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<gap-x>a)-(?<x>b)",
+        "ReplaceMent": "[${gap}/${x}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "balancing empty source fails",
+    "text": "ab c",
+    "expected": "[ab/] c",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)?(?<-x>b)",
+        "ReplaceMent": "[$&/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing unknown source invalid",
+    "text": "a",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<-missing>a)",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing zero destination invalid",
+    "text": "a",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?<0-x>)",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing forbidden nonbacktracking",
+    "text": "ab",
+    "expected": null,
+    "error": "System.NotSupportedException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>a)(?<-x>b)",
+        "ReplaceMent": "changed",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "balancing leftward transient condition",
+    "text": "ca-b da-b",
+    "expected": "[/] da-b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?(gap)c|d)(?<gap-x>a)-(?<x>b)",
+        "ReplaceMent": "[${gap}/${x}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "balancing leftward two unit gap",
+    "text": "ca--b da--b",
+    "expected": "ca--b [/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?(gap)c|d)(?<gap-x>a)--(?<x>b)",
+        "ReplaceMent": "[${gap}/${x}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "balancing leftward surrogate pair gap",
+    "text": "ca😀b da😀b",
+    "expected": "ca😀b [/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?(gap)c|d)(?<gap-x>a)😀(?<x>b)",
+        "ReplaceMent": "[${gap}/${x}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "balancing unicode intervening capture",
+    "text": "甲😀乙",
+    "expected": "[😀/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<x>甲)😀(?<gap-x>乙)",
+        "ReplaceMent": "[${gap}/${x}]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "balancing leftward transfer keeps earlier destination",
+    "text": "a-bz",
+    "expected": "[z/]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<gap-x>a)-(?<x>b)(?<gap>z)",
+        "ReplaceMent": "[${gap}/${x}]",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "character classes: subtract vowels",
+    "text": "abcde xyz AEIOU",
+    "expected": "a[bcd]e [xyz] AEIOU",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-z-[aeiou]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: nested subtraction",
+    "text": "abcdefghijklmnopqrstuvwxyz",
+    "expected": "[abc]defghijkl[mno]pqrstuvw[xyz]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-z-[d-w-[m-o]]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: negative base",
+    "text": "12 abc ABC !甲",
+    "expected": "12[ ]abc[ ABC !甲]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[^0-9-[a-z]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: negative exclusion",
+    "text": "abcdefghijklmnopqrstuvwxyz",
+    "expected": "[a]bcd[e]fgh[i]jklmn[o]pqrst[u]vwxyz",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-z-[^aeiou]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: empty difference",
+    "text": "abc xyz",
+    "expected": "abc xyz",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-z-[a-z]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: disjoint difference",
+    "text": "abc 123 xyz",
+    "expected": "[abc] 123 [xyz]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-z-[0-9]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: Unicode categories",
+    "text": "AbéÉ甲乙 123",
+    "expected": "A[bé]É[甲乙] 123",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\p{L}-[\\p{Lu}]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: word minus digits",
+    "text": "a_1甲́ः⃝‌",
+    "expected": "[a]_1[甲́]ः⃝‌",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\w-[\\d_]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: ignore case",
+    "text": "AbC deF XYZ AEIOU",
+    "expected": "A[bC] [d]e[F] [XYZ] AEIOU",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-z-[aeiou]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 1
+      }
+    }
+  },
+  {
+    "name": "character classes: right to left captures",
+    "text": "bc de fg",
+    "expected": "bc/bc d/de fg/fg",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<word>[a-z-[aeiou]]+)",
+        "ReplaceMent": "${word}/$1",
+        "UseRegex": true,
+        "Options": 64
+      }
+    }
+  },
+  {
+    "name": "character classes: nonbacktracking",
+    "text": "abc xyz",
+    "expected": "abc/bc xyz/xyz",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<word>[a-z-[aeiou]]+)",
+        "ReplaceMent": "${word}/$1",
+        "UseRegex": true,
+        "Options": 1024
+      }
+    }
+  },
+  {
+    "name": "character classes: backreference",
+    "text": "bb aa cc ee xx",
+    "expected": "[bb] aa [cc] ee [xx]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "([a-z-[aeiou]])\\1",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: lookbehind capture",
+    "text": "ax bx cx",
+    "expected": "ax bb! cc!",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<=([a-z-[aeiou]]))x",
+        "ReplaceMent": "$1!",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: conditional",
+    "text": "bc bd ae",
+    "expected": "b b ae",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?<v>[a-z-[aeiou]])(?(v)[a-z-[aeiou]]|.)",
+        "ReplaceMent": "${v}",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: literal ampersands",
+    "text": "a&b c &&",
+    "expected": "[a&b] c [&&]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a&&b]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: literal tildes",
+    "text": "a~b c ~~",
+    "expected": "[a~b] c [~~]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a~~b]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: literal opening bracket",
+    "text": "[abc [[ ]",
+    "expected": "[[]abc [[[] ]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[[]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: initial closing bracket",
+    "text": "a]] b[]",
+    "expected": "[a]]] b[[]]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[]a]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: negative initial closing bracket",
+    "text": "abc]甲",
+    "expected": "a[bc]][甲]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[^]a]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: trailing hyphen",
+    "text": "a--b",
+    "expected": "[a--]b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: hyphen range",
+    "text": "-./012ABCabc",
+    "expected": "[-./012ABCa]bc",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[--a]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: escaped operators",
+    "text": "a[]&~-b",
+    "expected": "a[[]&~-]b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\[\\]&~\\-]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: hex range",
+    "text": "ABCDEF XYZ",
+    "expected": "A[BCD]E[F] [XYZ]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\x41-\\x5a-[AEIOU]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: octal range",
+    "text": "ABCDEF XYZ",
+    "expected": "A[BCD]E[F] [XYZ]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\101-\\132-[AEIOU]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: backspace",
+    "text": "a\b\bb",
+    "expected": "a[\b\b]b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\b]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: extended class spaces",
+    "text": "a #xa",
+    "expected": "[a #]x[a]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?x:[ a#-[x]]+)",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: comment bracket",
+    "text": "abc xyz",
+    "expected": "a[bc] [xyz]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?# [a-z-[x]])[a-z-[aeiou]]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: extended comment bracket",
+    "text": "abc xyz",
+    "expected": "a[bc] [xyz]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "(?x)[a-z-[aeiou]]+ # [unmatched[\n",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid trailing subtraction content",
+    "text": "abc",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-z-[b]c]",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid empty class",
+    "text": "abc",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[]",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid reversed range",
+    "text": "abc",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[z-a]",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid set range end",
+    "text": "a1",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-\\d]",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid repeated subtraction",
+    "text": "abc",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[a-z-[x]-[y]]",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true,
+        "Options": 0
+      }
+    }
+  },
+  {
+    "name": "character classes: escaped hyphen cannot start range",
+    "text": "-./012ABCabc",
+    "expected": "[-]./012ABC[a]bc",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\--a]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  },
+  {
+    "name": "character classes: escaped hyphen range end",
+    "text": "!\"#$%&()*+,-./",
+    "expected": "[!\"#$%&()*+,-]./",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[!-\\-]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid escaped Unicode letter",
+    "text": "甲乙",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\甲]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid escaped underscore",
+    "text": "a_",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\_]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid Rust script property",
+    "text": "αβ甲",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\p{Greek}]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  },
+  {
+    "name": "character classes: invalid lowercase category",
+    "text": "ABC",
+    "expected": null,
+    "error": "System.Text.RegularExpressions.RegexParseException",
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[\\p{lu}]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  },
+  {
+    "name": "character classes: POSIX syntax is literal",
+    "text": "a] [] α",
+    "expected": "[a]] [[]] α",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[[:alpha:]]",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  },
+  {
+    "name": "character classes: literal opening bracket range",
+    "text": "[\\]^_`ab",
+    "expected": "[[\\]^_`a]b",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[[-a]+",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  },
+  {
+    "name": "character classes: leading hyphen before bracket",
+    "text": "-] [] a]",
+    "expected": "[-]] [[]] [a]]",
+    "error": null,
+    "action": {
+      "Type": "SingleReplace",
+      "Data": {
+        "Pattern": "[-[a]]",
+        "ReplaceMent": "[$&]",
+        "UseRegex": true
+      }
+    }
+  }
+]
