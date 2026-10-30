@@ -587,6 +587,15 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  notify-update-api:
+    if: always() && !cancelled() && needs.publish.result == 'success' && !inputs.draft
+    needs: publish
+    uses: ./.github/workflows/notify-update-api.yml
+    with:
+      release_tag: ${{ needs.publish.outputs.tag }}
+    secrets:
+      APP_UPDATES_DISPATCH_TOKEN: ${{ secrets.APP_UPDATES_DISPATCH_TOKEN }}
+
   sync-release-notes:
     if: always() && !cancelled() && needs.publish.result == 'success' && !inputs.draft
     needs: publish
