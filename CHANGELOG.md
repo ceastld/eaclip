@@ -2,6 +2,7 @@
 
 各版本更新说明与公开下载：
 
+- [0.32.6](release-notes/rust-v0.32.6.md) · [下载](https://github.com/ceastld/eaclip/releases/tag/rust-v0.32.6)（Windows x64）
 - [0.32.5](release-notes/rust-v0.32.5.md) · [下载](https://github.com/ceastld/eaclip/releases/tag/rust-v0.32.5)（Windows x64）
 - [0.32.3](release-notes/rust-v0.32.3.md) · [下载](https://github.com/ceastld/eaclip/releases/tag/rust-v0.32.3)（Windows x64）
 - [0.32.2](release-notes/rust-v0.32.2.md) · [下载](https://github.com/ceastld/eaclip/releases/tag/rust-v0.32.2)（Windows x64）
