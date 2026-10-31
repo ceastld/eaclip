@@ -45,7 +45,7 @@ impl SettingsForm {
         if !self.list_settings_popover || self.leave_locked || self.composition_active(cx) {
             return false;
         }
-        self.set_search_keys(Some(page_keys(appearance)), cx);
+        self.set_search_keys(Some(page_keys(appearance)), None, cx);
         true
     }
 

@@ -16,9 +16,11 @@ const SINGLE_DOCK_WIDTH: f32 = 640.0;
 const SPLIT_DOCK_WIDTH: f32 = 1100.0;
 pub(super) const DOCK_MAX_HEIGHT: f32 = 720.0;
 const PANEL_GAP: f32 = 8.0;
-const FILE_HINT_HEIGHT: f32 = 20.0;
+const FILE_HINT_HEIGHT: f32 = 26.0;
 /// Strip edge to the target/hint line beside it.
 const FILE_HINT_GAP: f32 = 12.0;
+/// Strip top to the hint floating above it.
+const FILE_HINT_ABOVE_GAP: f32 = 6.0;
 /// Below this the line would show little more than a clipped target chip.
 const FILE_HINT_MIN_WIDTH: f32 = 120.0;
 
@@ -430,17 +432,20 @@ impl SuperMenuWindow {
         workspace.into_any_element()
     }
 
-    /// The accepted target and what a click does, in the strip's row (2026-10-28):
-    /// above the root it pushed the file menu lower than every other category.
-    /// Hidden while settings fly out beside the strip or when neither side has room.
+    /// The accepted target and what a click does, floating just above the strip
+    /// (2026-10-30: lined up beside the strip it read as one cluttered bar). It
+    /// overlays instead of taking layout, so the file menu stays where the other
+    /// categories open. Only a strip against the top edge falls back to its row.
+    /// Hidden while settings fly out beside the strip or when there is no room.
     pub(super) fn file_hint(&self, strip: Rect, size: (f32, f32)) -> Option<AnyElement> {
         if self.settings_open {
             return None;
         }
+        let above = strip.y - FILE_HINT_ABOVE_GAP - FILE_HINT_HEIGHT >= EDGE;
         let room_right = size.0 - EDGE - (strip.x + strip.width + FILE_HINT_GAP);
         let room_left = strip.x - FILE_HINT_GAP - EDGE;
         let right = room_right >= 360.0 || room_right >= room_left;
-        if room_right.max(room_left) < FILE_HINT_MIN_WIDTH {
+        if !above && room_right.max(room_left) < FILE_HINT_MIN_WIDTH {
             return None;
         }
         let t = self.tokens.theme(self.dark);
@@ -455,56 +460,102 @@ impl SuperMenuWindow {
         } else {
             title
         };
-        let text = if self.browsing() {
-            format!("{} · {} · {} {verb}", tr("单击 在浏览栏打开", "Click opens here"),
-                tr("Ctrl+单击 并排", "Ctrl+click side by side"), tr("底部按钮", "Footer:"))
+        // (gesture key-cap, what it does); the capsule clips trailing segments first.
+        let open_here = tr("在浏览栏打开", "opens here");
+        let hover = (tr("悬停", "Hover"), tr("展开", "expands"));
+        let segments: Vec<(&str, &str)> = if self.browsing() {
+            vec![(tr("单击", "Click"), open_here), (tr("Ctrl+单击", "Ctrl+click"), tr("并排", "side by side")),
+                (tr("底部按钮", "Footer"), verb)]
         } else if kind != "dialog" && self.host.file_menu_prefers_internal_browser() {
-            format!("{} · {}", tr("单击 在浏览栏打开", "Click opens here"), tr("悬停 展开", "Hover expands"))
+            vec![(tr("单击", "Click"), open_here), hover]
         } else {
-            format!("{} {verb} · {} · ⇢ {}", tr("单击", "Click:"), tr("悬停 展开", "Hover expands"),
-                tr("在浏览栏打开", "open here"))
+            vec![(tr("单击", "Click"), verb), hover, ("⇢", open_here)]
         };
         let icon = match kind {
             "dialog" => "file",
             "explorer" => "folder-open",
             _ => "all",
         };
-        // Near the right edge the line grows leftwards from the strip's start.
-        let hint = div().absolute().top(px(strip.y + (strip.height - FILE_HINT_HEIGHT) * 0.5));
-        let hint = if right {
-            hint.left(px(strip.x + strip.width + FILE_HINT_GAP)).max_w(px(room_right.max(1.0)))
+        // Above, it starts at the strip's left edge and may run past its end;
+        // beside, near the right edge it grows leftwards from the strip's start.
+        let hint = if above {
+            div()
+                .absolute()
+                .top(px(strip.y - FILE_HINT_ABOVE_GAP - FILE_HINT_HEIGHT))
+                .left(px(strip.x))
+                .max_w(px((size.0 - EDGE - strip.x).max(1.0)))
         } else {
-            hint.right(px(size.0 - strip.x + FILE_HINT_GAP))
-                .max_w(px(room_left.max(1.0)))
-                .justify_end()
+            let hint = div().absolute().top(px(strip.y + (strip.height - FILE_HINT_HEIGHT) * 0.5));
+            if right {
+                hint.left(px(strip.x + strip.width + FILE_HINT_GAP)).max_w(px(room_right.max(1.0)))
+            } else {
+                hint.right(px(size.0 - strip.x + FILE_HINT_GAP))
+                    .max_w(px(room_left.max(1.0)))
+                    .justify_end()
+            }
         };
-        let hint = hint
+        // A solid capsule: bare muted text over the see-through backdrop read poorly.
+        let segment = |key: &str, action: &str| {
+            div()
+                .flex()
+                .flex_none()
+                .items_center()
+                .gap(px(5.0))
+                .child(
+                    div()
+                        .h(px(17.0))
+                        .px(px(5.0))
+                        .flex()
+                        .items_center()
+                        .rounded(px(4.0))
+                        .bg(color(&t.secondary))
+                        .text_size(px(10.5))
+                        .font_weight(gpui::FontWeight::MEDIUM)
+                        .text_color(color(&t.text))
+                        .child(key.to_string()),
+                )
+                .child(action.to_string())
+        };
+        let capsule = div()
             .h(px(FILE_HINT_HEIGHT))
+            .min_w_0()
+            .pl(px(9.0))
+            .pr(px(5.0))
             .flex()
             .items_center()
-            .gap(px(6.0))
+            .gap(px(8.0))
             .overflow_hidden()
             .whitespace_nowrap()
+            .rounded_full()
+            .border_1()
+            .border_color(color(&t.border))
+            .bg(color(&t.surface))
+            .shadow_md()
             .text_size(px(11.0))
-            .text_color(color(&t.text_muted))
+            .text_color(color(&t.text_secondary))
             .child(
                 div()
-                    .h(px(19.0))
-                    .max_w(px(220.0))
-                    .px(px(7.0))
+                    .max_w(px(200.0))
                     .flex()
                     .flex_none()
                     .items_center()
-                    .gap(px(4.0))
-                    .rounded_full()
-                    .border_1()
-                    .border_color(color(&t.border))
-                    .text_color(color(&t.text_secondary))
-                    .children(self.icon(icon, 11.0))
+                    .gap(px(5.0))
+                    .text_color(color(&t.text))
+                    .font_weight(gpui::FontWeight::MEDIUM)
+                    .children(self.icon(icon, 12.0).map(|i| i.text_color(color(&t.accent))))
                     .child(div().min_w_0().truncate().child(target)),
             )
-            .child(div().min_w_0().truncate().child(text))
-            .into_any_element();
+            .child(div().w(px(1.0)).h(px(12.0)).flex_none().bg(color(&t.border)))
+            .child(
+                div()
+                    .min_w_0()
+                    .flex()
+                    .items_center()
+                    .gap(px(10.0))
+                    .overflow_hidden()
+                    .children(segments.into_iter().map(|(key, action)| segment(key, action))),
+            );
+        let hint = hint.h(px(FILE_HINT_HEIGHT)).flex().items_center().child(capsule).into_any_element();
         Some(hint)
     }
 }

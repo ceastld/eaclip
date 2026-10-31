@@ -13,6 +13,7 @@ use std::{
 
 const BITIFUL: &str = "https://quicker-pkgs.s3.bitiful.net";
 const GITHUB: &str = "https://api.github.com/repos/ceastld/eaclip/releases/latest";
+const UPDATE_API: &str = "https://update.alinko.cc/eaclip/version.json";
 
 fn allowed_url(value: &url::Url) -> bool {
     value.scheme() == "https"
@@ -22,7 +23,8 @@ fn allowed_url(value: &url::Url) -> bool {
         && matches!(
             value.host_str(),
             Some(
-                "quicker-pkgs.s3.bitiful.net"
+                "update.alinko.cc"
+                    | "quicker-pkgs.s3.bitiful.net"
                     | "api.github.com"
                     | "github.com"
                     | "release-assets.githubusercontent.com"
@@ -67,6 +69,87 @@ fn bounded_get(client: &Client, address: &str, limit: u64) -> Result<Vec<u8>> {
         return Err(invalid("更新元数据过大"));
     }
     Ok(data)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ApiManifest {
+    product: String,
+    release: String,
+    version: String,
+    download_url: String,
+    sha256_sums_url: String,
+    sha256: Option<String>,
+    size: Option<u64>,
+    notes: Option<String>,
+}
+
+fn validate_api_manifest(manifest: &ApiManifest) -> Result<String> {
+    let release = Version::parse_release(&manifest.release)?;
+    if manifest.product != "eaclip"
+        || Version::parse(&manifest.version)? != release
+        || manifest.version != format!("{}.0", manifest.release)
+        || manifest
+            .size
+            .is_some_and(|size| size == 0 || size > MAX_ARCHIVE)
+        || manifest
+            .sha256
+            .as_deref()
+            .is_some_and(|hash| !valid_hash(hash))
+    {
+        return Err(invalid("版本检查API的产品、版本或摘要无效"));
+    }
+    let stem = format!("eaclip-{}-windows-x64", manifest.release);
+    let github = format!(
+        "https://github.com/ceastld/eaclip/releases/download/rust-v{}/{stem}",
+        manifest.release
+    );
+    let domestic = format!("{BITIFUL}/eaclip/rust-v{}/{stem}", manifest.release);
+    if ![format!("{github}.zip"), format!("{domestic}.zip")].contains(&manifest.download_url)
+        || ![
+            format!("{github}.SHA256SUMS.txt"),
+            format!("{domestic}.SHA256SUMS.txt"),
+        ]
+        .contains(&manifest.sha256_sums_url)
+    {
+        return Err(invalid("版本检查API的附件地址与正式版本不匹配"));
+    }
+    Ok(stem)
+}
+
+fn api_release(client: &Client) -> Result<OfficialRelease> {
+    let manifest: ApiManifest =
+        serde_json::from_slice(&bounded_get(client, UPDATE_API, 64 * 1024)?)?;
+    let stem = validate_api_manifest(&manifest)?;
+    let sha256 = match manifest.sha256 {
+        Some(hash) => hash.to_lowercase(),
+        None => {
+            let sums = bounded_get(client, &manifest.sha256_sums_url, 16 * 1024)?;
+            parse_sums(&sums, &stem)?[&format!("{stem}.zip")].clone()
+        }
+    };
+    let github = format!(
+        "https://github.com/ceastld/eaclip/releases/download/rust-v{}/{stem}.zip",
+        manifest.release
+    );
+    let domestic = format!("{BITIFUL}/eaclip/rust-v{}/{stem}.zip", manifest.release);
+    let alternate = if manifest.download_url == github {
+        domestic
+    } else {
+        github
+    };
+    Ok(OfficialRelease {
+        version: manifest.version,
+        download_urls: vec![manifest.download_url, alternate],
+        sha256,
+        size: manifest.size,
+        release_url: format!(
+            "https://github.com/ceastld/eaclip/releases/tag/rust-v{}",
+            manifest.release
+        ),
+        release_notes: manifest.notes,
+        source: "Cloudflare".into(),
+    })
 }
 
 #[derive(Deserialize)]
@@ -218,11 +301,27 @@ fn parse_github(release: GithubRelease) -> Result<OfficialRelease> {
 /// Fetches fixed public HTTPS metadata only. This performs no filesystem writes.
 pub fn check_official_release() -> Result<OfficialRelease> {
     let client = client(Duration::from_secs(12))?;
-    match domestic_release(&client) {
+    with_fallbacks(
+        || api_release(&client),
+        || domestic_release(&client),
+        || github_release(&client),
+    )
+}
+
+fn with_fallbacks(
+    api: impl FnOnce() -> Result<OfficialRelease>,
+    domestic: impl FnOnce() -> Result<OfficialRelease>,
+    github: impl FnOnce() -> Result<OfficialRelease>,
+) -> Result<OfficialRelease> {
+    let api_error = match api() {
+        Ok(release) => return Ok(release),
+        Err(error) => error,
+    };
+    match domestic() {
         Ok(release) => Ok(release),
-        Err(domestic) => github_release(&client).map_err(|github| {
+        Err(domestic) => github().map_err(|github| {
             invalid(format!(
-                "检查更新失败。国内源：{domestic}；GitHub：{github}"
+                "检查更新失败。版本API：{api_error}；国内源：{domestic}；GitHub：{github}"
             ))
         }),
     }
@@ -358,6 +457,103 @@ pub(crate) fn download_loopback(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn api_manifest() -> ApiManifest {
+        serde_json::from_value(serde_json::json!({
+            "product": "eaclip",
+            "release": "0.32.5",
+            "version": "0.32.5.0",
+            "downloadUrl": "https://github.com/ceastld/eaclip/releases/download/rust-v0.32.5/eaclip-0.32.5-windows-x64.zip",
+            "sha256SumsUrl": "https://github.com/ceastld/eaclip/releases/download/rust-v0.32.5/eaclip-0.32.5-windows-x64.SHA256SUMS.txt",
+            "notes": "ClipHost 0.32.5 (GPUI)"
+        })).unwrap()
+    }
+
+    #[test]
+    fn api_manifest_accepts_deployed_schema_and_inline_hash() {
+        let mut manifest = api_manifest();
+        assert_eq!(
+            validate_api_manifest(&manifest).unwrap(),
+            "eaclip-0.32.5-windows-x64"
+        );
+        manifest.sha256 = Some("a".repeat(64));
+        manifest.size = Some(23_945_856);
+        assert!(validate_api_manifest(&manifest).is_ok());
+    }
+
+    #[test]
+    fn api_manifest_rejects_wrong_product_version_and_attachments() {
+        for (field, value) in [
+            ("product", "raishot"),
+            ("release", "0.32.5-beta"),
+            ("version", "0.32.6.0"),
+            ("version", "0.32.5.1"),
+            ("downloadUrl", "https://github.com/ceastld/eaclip/releases/download/rust-v0.32.4/eaclip-0.32.4-windows-x64.zip"),
+            ("downloadUrl", "https://github.com/ceastld/other/releases/download/rust-v0.32.5/eaclip-0.32.5-windows-x64.zip"),
+            ("sha256SumsUrl", "https://example.test/sums.txt"),
+            ("sha256", "invalid"),
+        ] {
+            let mut json = serde_json::to_value(serde_json::json!({
+                "product": "eaclip", "release": "0.32.5", "version": "0.32.5.0",
+                "downloadUrl": api_manifest().download_url,
+                "sha256SumsUrl": api_manifest().sha256_sums_url,
+            })).unwrap();
+            json[field] = value.into();
+            let manifest: ApiManifest = serde_json::from_value(json).unwrap();
+            assert!(validate_api_manifest(&manifest).is_err(), "{field}: {value}");
+        }
+    }
+
+    fn fake_release(source: &str) -> OfficialRelease {
+        OfficialRelease {
+            version: "0.32.5.0".into(),
+            download_urls: vec![],
+            sha256: "a".repeat(64),
+            size: None,
+            release_url: String::new(),
+            release_notes: None,
+            source: source.into(),
+        }
+    }
+
+    #[test]
+    fn api_success_does_not_query_legacy_sources_and_failure_falls_back() {
+        let release = with_fallbacks(
+            || Ok(fake_release("Cloudflare")),
+            || panic!("successful API must not query Bitiful"),
+            || panic!("successful API must not query GitHub"),
+        )
+        .unwrap();
+        assert_eq!(release.source, "Cloudflare");
+        let release = with_fallbacks(
+            || Err(invalid("API unavailable")),
+            || Ok(fake_release("Bitiful")),
+            || panic!("successful Bitiful fallback must not query GitHub"),
+        )
+        .unwrap();
+        assert_eq!(release.source, "Bitiful");
+        let release = with_fallbacks(
+            || Err(invalid("API unavailable")),
+            || Err(invalid("Bitiful unavailable")),
+            || Ok(fake_release("GitHub")),
+        )
+        .unwrap();
+        assert_eq!(release.source, "GitHub");
+        let error = with_fallbacks(
+            || Err(invalid("API unavailable")),
+            || Err(invalid("Bitiful unavailable")),
+            || Err(invalid("GitHub unavailable")),
+        )
+        .unwrap_err()
+        .to_string();
+        for message in [
+            "API unavailable",
+            "Bitiful unavailable",
+            "GitHub unavailable",
+        ] {
+            assert!(error.contains(message));
+        }
+    }
     #[test]
     fn pointer_rejects_other_product_and_prerelease() {
         let mut p = Pointer {
@@ -401,6 +597,10 @@ mod tests {
         }
         assert!(allowed_url(
             &url::Url::parse("https://release-assets.githubusercontent.com/a").unwrap()
+        ));
+        assert!(allowed_url(&url::Url::parse(UPDATE_API).unwrap()));
+        assert!(!allowed_url(
+            &url::Url::parse("https://update.alinko.cc.evil.test/eaclip/version.json").unwrap()
         ));
     }
 }

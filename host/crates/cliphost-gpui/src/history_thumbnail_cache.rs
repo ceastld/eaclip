@@ -19,6 +19,7 @@ use crate::native_content::ContentImage;
 
 const CACHE_DIRECTORY: &str = "history-v1";
 const ALGORITHM: &[u8] = b"history-static-png-triangle-v1\0width=1024\0height=640\0";
+const DISPLAY_ALGORITHM: &[u8] = b"history-display-png-triangle-v2\0width=1024\0height=";
 const MAGIC: &[u8; 8] = b"CLTHMB01";
 const HEADER_BYTES: usize = 88;
 const MAX_ENTRY_BYTES: u64 = 4 * 1024 * 1024;
@@ -52,16 +53,47 @@ pub(crate) fn load_or_generate(
     load_or_generate_with(root, source_version, generate, LIMITS)
 }
 
-/// Prepare a static cache hit from the same decode that validates its PNG.
-/// Encoded callers and different display heights keep separate in-flight results;
-/// all continue to share the same disposable disk thumbnail.
+/// The list's thumbnail: stored at the size the row paints (at most 1024 wide
+/// and `max_height_px` tall), never the 1024x640 encoded thumbnail. Each display
+/// height owns its own disk entry, so a hit decodes only those few pixels.
+/// `generate` should already return a PNG within those bounds; larger PNGs are
+/// shrunk once here before being stored.
 pub(crate) fn load_or_generate_display(
     root: &Path,
     source_version: &str,
     max_height_px: u32,
     generate: impl FnOnce() -> SharedResult,
 ) -> SharedResult {
-    load_or_generate_prepared(root, source_version, generate, LIMITS, Some(max_height_px.clamp(1, 640)))
+    let height = max_height_px.clamp(1, MAX_THUMB_HEIGHT);
+    let generate = move || generate().map(|image| shrink_to_display(image, height));
+    load_or_generate_prepared(root, source_version, generate, LIMITS, Some(height))
+}
+
+/// Static PNGs larger than the display bounds are resized and re-encoded;
+/// animations and already-small PNGs are returned unchanged.
+fn shrink_to_display(image: ContentImage, height: u32) -> ContentImage {
+    if image.render.is_some() || image.image.format() != ImageFormat::Png {
+        return image;
+    }
+    let Ok((width, current)) = png_dimensions(image.image.bytes()) else { return image };
+    if width <= MAX_THUMB_WIDTH && current <= height {
+        return image;
+    }
+    let shrunk = png_reader(image.image.bytes()).ok()
+        .and_then(|reader| reader.decode().ok())
+        .and_then(|decoded| {
+            let resized = decoded.thumbnail(decoded.width().min(MAX_THUMB_WIDTH), decoded.height().min(height));
+            let mut bytes = Cursor::new(Vec::new());
+            resized.write_to(&mut bytes, image::ImageFormat::Png).ok()?;
+            Some(bytes.into_inner())
+        });
+    match shrunk {
+        Some(bytes) => ContentImage {
+            image: Arc::new(Image::from_bytes(ImageFormat::Png, bytes)),
+            ..image
+        },
+        None => image,
+    }
 }
 
 fn load_or_generate_with(
@@ -83,9 +115,11 @@ fn load_or_generate_prepared(
     if source_version.is_empty() {
         return generate().map(|image| prepare_generated(image, display_height));
     }
-    let key = cache_key(source_version);
-    let gate_key = display_height.map(|height| format!("{key}-display-{height}"));
-    let gate = key_gate(root, gate_key.as_deref().unwrap_or(&key));
+    let key = match display_height {
+        Some(height) => display_cache_key(source_version, height),
+        None => cache_key(source_version),
+    };
+    let gate = key_gate(root, &key);
     // Only callers for the same root/version wait here. No registry or quota
     // lock is retained across source reads, generation, or thumbnail decoding.
     let mut result = gate.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -131,6 +165,14 @@ fn prepare_generated(image: ContentImage, display_height: Option<u32>) -> Conten
 fn cache_key(source_version: &str) -> String {
     let mut hasher = blake3::Hasher::new();
     hasher.update(ALGORITHM);
+    hasher.update(source_version.as_bytes());
+    hasher.finalize().to_hex().to_string()
+}
+
+fn display_cache_key(source_version: &str, height: u32) -> String {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(DISPLAY_ALGORITHM);
+    hasher.update(&height.to_le_bytes());
     hasher.update(source_version.as_bytes());
     hasher.finalize().to_hex().to_string()
 }

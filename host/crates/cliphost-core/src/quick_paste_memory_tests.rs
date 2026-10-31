@@ -155,6 +155,67 @@ fn quick_paste_memory_loading_cancel_preserves_memory_and_expiry_resets_selectio
 }
 
 #[test]
+fn quick_paste_memory_setting_off_then_on_does_not_restore_prior_selection() {
+    let (_root, host) = fixture();
+    assert_eq!(open(&host), 0);
+    host.qp_move(1);
+    host.qp_debug_end();
+    host.settings_form_update(&json!({
+        "configId": "quickPaste", "values": { "RememberSelection": false }
+    })).unwrap();
+    // Re-enable without opening another session while memory is disabled.
+    host.settings_form_update(&json!({
+        "configId": "quickPaste", "values": { "RememberSelection": true }
+    })).unwrap();
+    assert_eq!(open(&host), 0, "turning memory back on must not revive the old second item");
+    host.qp_debug_end();
+}
+
+#[test]
+fn quick_paste_memory_zero_duration_then_positive_does_not_restore_prior_selection() {
+    let (_root, host) = fixture();
+    assert_eq!(open(&host), 0);
+    host.qp_move(1);
+    host.qp_debug_end();
+    host.settings_form_update(&json!({
+        "configId": "quickPaste", "values": { "SelectionMemorySeconds": 0 }
+    })).unwrap();
+    // A zero-duration setting must retire memory even without an intervening session.
+    host.settings_form_update(&json!({
+        "configId": "quickPaste", "values": { "SelectionMemorySeconds": 10 }
+    })).unwrap();
+    assert_eq!(open(&host), 0, "a positive duration must not revive memory disabled by zero seconds");
+    host.qp_debug_end();
+}
+
+#[test]
+fn quick_paste_memory_three_second_setting_applies_to_keyboard_hook_opening() {
+    for (age_seconds, expected_index) in [(2, 1), (4, 0)] {
+        let (_root, host) = fixture();
+        host.settings_form_update(&json!({
+            "configId": "quickPaste", "values": { "SelectionMemorySeconds": 3 }
+        })).unwrap();
+        assert_eq!(open(&host), 0);
+        host.qp_move(1);
+        host.qp_debug_end();
+        host.inner.lock().qp.remembered.as_mut().unwrap().at =
+            Instant::now() - Duration::from_secs(age_seconds);
+        assert!(host.dispatch_low_level_key(KeyEvent {
+            vk: 0xC0, down: true, alt: true, ctrl: false, shift: false, win: false, now_ms: 1,
+        }));
+        host.poll_quick_paste_with_modifiers(|| false);
+        {
+            let inner = host.inner.lock();
+            assert_eq!(inner.qp.machine.phase, QuickPastePhase::SessionActive);
+            assert!(inner.qp.overlay_visible);
+            assert_eq!(inner.qp.active_index, expected_index,
+                "three-second memory must respect its age through the keyboard hook: {age_seconds}s");
+        }
+        host.qp_debug_end();
+    }
+}
+
+#[test]
 fn quick_paste_memory_late_commit_cannot_replace_a_newer_session_retry() {
     let (_root, host) = fixture();
     assert_eq!(open(&host), 0);

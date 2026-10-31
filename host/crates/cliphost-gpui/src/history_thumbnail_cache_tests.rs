@@ -94,12 +94,24 @@ fn disk_hit_retains_natural_dimensions_without_generating_or_touching_the_file()
     assert_eq!(fs::metadata(path).unwrap().modified().unwrap(), old_time);
 }
 
+fn display_file_for(root: &Path, version: &str, height: u32) -> PathBuf {
+    root.join("Image/Thumbnails")
+        .join(CACHE_DIRECTORY)
+        .join(format!("{}.thumb", display_cache_key(version, height)))
+}
+
+fn stored_png_size(path: &Path) -> (u32, u32) {
+    png_dimensions(&fs::read(path).unwrap()[HEADER_BYTES..]).unwrap()
+}
+
 #[test]
 fn display_disk_hit_keeps_natural_dimensions_and_reuses_the_verified_pixels() {
     let fixture = fixture();
     let root = fixture.path();
-    load_or_generate(root, "display-hit", || Ok(display(51))).unwrap();
-    let path = file_for(root, "display-hit");
+    load_or_generate_display(root, "display-hit", 8, || Ok(display(51))).unwrap();
+    let path = display_file_for(root, "display-hit", 8);
+    // The disk entry is the painted size, not the generator's larger PNG.
+    assert_eq!(stored_png_size(&path), (16, 8));
     let bytes = fs::read(&path).unwrap();
     let modified = fs::metadata(&path).unwrap().modified().unwrap();
     let prepared = load_or_generate_display(root, "display-hit", 8, || {
@@ -118,40 +130,47 @@ fn display_disk_hit_keeps_natural_dimensions_and_reuses_the_verified_pixels() {
 }
 
 #[test]
-fn display_inflight_results_keep_encoded_and_different_heights_independent() {
+fn display_heights_and_encoded_thumbnails_keep_separate_disk_entries() {
     let fixture = fixture();
     let root = fixture.path();
-    let key = cache_key("display-heights");
-    // Keep completed in-flight results alive, just as concurrent callers do.
-    let _encoded_gate = key_gate(root, &key);
-    let _small_gate = key_gate(root, &format!("{key}-display-8"));
     let encoded = load_or_generate(root, "display-heights", || Ok(display(52))).unwrap();
     assert!(encoded.render.is_none());
-    let small = load_or_generate_display(root, "display-heights", 8, || panic!("disk hit")).unwrap();
-    let large = load_or_generate_display(root, "display-heights", 16, || panic!("disk hit")).unwrap();
-    let minimum = load_or_generate_display(root, "display-heights", 0, || panic!("disk hit")).unwrap();
+    let calls = AtomicUsize::new(0);
+    let generate = || {
+        calls.fetch_add(1, Ordering::SeqCst);
+        Ok(display(52))
+    };
+    let small = load_or_generate_display(root, "display-heights", 8, generate).unwrap();
+    let large = load_or_generate_display(root, "display-heights", 16, generate).unwrap();
+    let minimum = load_or_generate_display(root, "display-heights", 0, generate).unwrap();
+    assert_eq!(calls.load(Ordering::SeqCst), 3);
     assert_eq!(small.render.as_ref().unwrap().size(0).height.0, 8);
     assert_eq!(large.render.as_ref().unwrap().size(0).height.0, 16);
     assert_eq!(minimum.render.as_ref().unwrap().size(0).height.0, 1);
-    let encoded_again = load_or_generate(root, "display-heights", || panic!("in-flight hit")).unwrap();
-    assert!(encoded_again.render.is_none());
+    assert_eq!(stored_png_size(&display_file_for(root, "display-heights", 8)), (16, 8));
+    assert_eq!(stored_png_size(&display_file_for(root, "display-heights", 16)), (32, 16));
+    // The encoded caller still owns its own full-size entry.
+    assert_eq!(stored_png_size(&file_for(root, "display-heights")), (32, 16));
+    let small_again = load_or_generate_display(root, "display-heights", 8, || panic!("disk hit")).unwrap();
+    assert_eq!(small_again.render.as_ref().unwrap().size(0).height.0, 8);
+    let encoded_again = load_or_generate(root, "display-heights", || panic!("disk hit")).unwrap();
     assert_eq!(encoded_again.image.bytes(), encoded.image.bytes());
-    assert_eq!(cached_files(root).len(), 1);
+    assert_eq!(cached_files(root).len(), 4);
 }
 
 #[test]
 fn display_disk_hit_rejects_corrupt_pixels_even_with_a_valid_outer_digest() {
     let fixture = fixture();
     let root = fixture.path();
-    load_or_generate(root, "display-corrupt", || Ok(display(53))).unwrap();
-    let path = file_for(root, "display-corrupt");
+    load_or_generate_display(root, "display-corrupt", 8, || Ok(display(53))).unwrap();
+    let path = display_file_for(root, "display-corrupt", 8);
     let mut bytes = fs::read(&path).unwrap();
     let data = bytes[HEADER_BYTES..].windows(4).position(|chunk| chunk == b"IDAT").unwrap();
     bytes[HEADER_BYTES + data + 4] ^= 0xff;
     let digest = blake3::hash(&bytes[HEADER_BYTES..]);
     bytes[24..56].copy_from_slice(digest.as_bytes());
     fs::write(&path, bytes).unwrap();
-    assert!(read_entry_prepared(&path, &cache_key("display-corrupt"), Some(8)).is_err());
+    assert!(read_entry_prepared(&path, &display_cache_key("display-corrupt", 8), Some(8)).is_err());
     let calls = AtomicUsize::new(0);
     let recovered = load_or_generate_display(root, "display-corrupt", 8, || {
         calls.fetch_add(1, Ordering::SeqCst);
@@ -175,8 +194,11 @@ fn display_disk_hit_timing_comparison() {
     ]));
     let mut encoded = Cursor::new(Vec::new());
     image::DynamicImage::ImageRgb8(original).write_to(&mut encoded, image::ImageFormat::Png).unwrap();
-    let thumbnail = crate::native_content::list_image(encoded.into_inner()).unwrap();
+    let source = encoded.into_inner();
+    let thumbnail = crate::native_content::list_image(source.clone()).unwrap();
     load_or_generate(root, "display-timing", || Ok(thumbnail)).unwrap();
+    let small = crate::native_content::list_display_image(source, 160).unwrap();
+    drop(load_or_generate_display(root, "display-timing", 160, || Ok(small)).unwrap());
     let mut old_times = Vec::new();
     let mut new_times = Vec::new();
     for round in 0..20 {
@@ -200,7 +222,7 @@ fn display_disk_hit_timing_comparison() {
     old_times.sort_by(f64::total_cmp);
     new_times.sort_by(f64::total_cmp);
     eprintln!("{}", serde_json::json!({
-        "rounds":20,"naturalSize":[3840,2160],"cachedSize":[1024,576],"displayHeight":160,
+        "rounds":20,"naturalSize":[3840,2160],"encodedSize":[1024,576],"displaySize":[284,160],
         "encodedThenDisplayMedianMs":(old_times[9]+old_times[10])/2.0,
         "verifiedDisplayMedianMs":(new_times[9]+new_times[10])/2.0,
     }));

@@ -170,8 +170,11 @@ pub struct ClipConfigDto {
     pub black_list: String,
     #[serde(default, alias = "ClearFilterWhileHide")]
     pub clear_filter_while_hide: bool,
-    #[serde(default, alias = "AutoScrollToTop")]
+    #[serde(default = "default_true", alias = "AutoScrollToTop")]
     pub auto_scroll_to_top: bool,
+    /// One-time upgrade to the 2026-10-27 default-on. Persisted; omitted from GET.
+    #[serde(default)]
+    pub auto_scroll_to_top_default_applied: bool,
     #[serde(default = "default_auto_scroll_to_top_idle_seconds", alias = "AutoScrollToTopIdleSeconds")]
     pub auto_scroll_to_top_idle_seconds: u32,
     #[serde(default = "default_true", alias = "CollectQuickerSteps")]
@@ -309,7 +312,8 @@ impl Default for ClipConfigDto {
             window_background_frosted_glass: true,
             black_list: String::new(),
             clear_filter_while_hide: false,
-            auto_scroll_to_top: false,
+            auto_scroll_to_top: true,
+            auto_scroll_to_top_default_applied: false,
             auto_scroll_to_top_idle_seconds: default_auto_scroll_to_top_idle_seconds(),
             collect_quicker_steps: true,
             ignore_white_space: false,

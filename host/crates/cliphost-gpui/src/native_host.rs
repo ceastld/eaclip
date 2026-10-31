@@ -12,12 +12,16 @@ use serde_json::json;
 
 use crate::platform::{self, Geometry};
 
+#[path = "native_activation.rs"]
+mod activation;
+use activation::ActivationObservation;
+
 pub struct NativeWindow {
     hwnd: isize,
     host: HostState,
     geometry: Option<Geometry>,
     foreground: isize,
-    active: Option<bool>,
+    activation: ActivationObservation<(isize, u64)>,
     motion: Option<EdgeMotion>,
     last_hide_poll: Option<Instant>,
     initialized: bool,
@@ -55,7 +59,10 @@ impl NativeWindow {
             host: host.clone(),
             geometry: None,
             foreground: cliphost_core::window_menu::foreground_hwnd(),
-            active: cliphost_core::window_chrome::is_active(hwnd),
+            activation: ActivationObservation::new(
+                host.native_clipboard_activation_stamp(),
+                cliphost_core::window_chrome::is_active(hwnd),
+            ),
             motion: None,
             last_hide_poll: None,
             initialized: false,
@@ -106,10 +113,11 @@ impl NativeWindow {
             )
             .into());
         }
+        let error_stamp = host.native_clipboard_activation_stamp();
         if let Some(error) = platform::take_error(window)? {
             // A failed Show/focus cannot leave invisible list input engaged.
             // The same core Hide retires pending input and presentation epochs.
-            host.window_hide();
+            host.hide_native_clipboard_if_current(error_stamp);
             return Err(error);
         }
         if !self.initialized {
@@ -127,13 +135,9 @@ impl NativeWindow {
             host.notify_accessibility_foreground();
         }
         let active = cliphost_core::window_chrome::is_active(self.hwnd);
-        if active != self.active {
-            self.active = active;
-            match active {
-                Some(true) => host.notify_activated(),
-                Some(false) => host.notify_deactivated(),
-                None => {}
-            }
+        let stamp = host.native_clipboard_activation_stamp();
+        if let Some(active) = self.activation.observe(stamp, active) {
+            host.notify_native_clipboard_activation(stamp, active);
         }
         let now = Instant::now();
         if self
@@ -259,10 +263,14 @@ impl NativeWindow {
             .into());
         }
         let focus_host = host.clone();
+        let stamp = host.native_clipboard_activation_stamp();
         // Search activation also belongs to the caller's current operation;
         // a retired parent request must not regain focus through this handoff.
         let _permission =
-            platform::guard_condition_inherited(move || focus_host.clipboard_keyboard_focus_allowed());
+            platform::guard_condition_inherited(move || {
+                focus_host.native_clipboard_activation_stamp() == stamp
+                    && focus_host.clipboard_keyboard_focus_allowed()
+            });
         platform::set_no_activate(window, false)?;
         platform::activate(window)?;
         Ok(())

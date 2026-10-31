@@ -3,6 +3,8 @@
 #[cfg(windows)]
 use cliphost_core::i18n::tr;
 use cliphost_core::{host::ChromeTask, HostState};
+#[cfg(windows)]
+use cliphost_core::ChromeCommand;
 
 #[path = "caption_regions.rs"]
 mod caption_regions;
@@ -380,7 +382,7 @@ unsafe extern "system" fn host_style_proc(
             Ok(result) => result,
             Err(error) => {
                 NATIVE_QUEUE.with(|queues| queues.borrow_mut().entry(hwnd.0 as isize)
-                    .or_default().errors.push_back(error));
+                    .or_default().errors.push_back(NativeError { message: error, condition: None }));
                 LRESULT(0)
             }
         };
@@ -1321,10 +1323,15 @@ struct NativeJob {
     condition: Option<NativeCondition>,
 }
 #[cfg(windows)]
+struct NativeError {
+    message: String,
+    condition: Option<NativeCondition>,
+}
+#[cfg(windows)]
 #[derive(Default)]
 struct NativeQueue {
     jobs: std::collections::VecDeque<NativeJob>,
-    errors: std::collections::VecDeque<String>,
+    errors: std::collections::VecDeque<NativeError>,
     posted: bool,
     running: bool,
 }
@@ -1364,6 +1371,8 @@ pub fn guard_condition_inherited(check: impl Fn() -> bool + 'static) -> Operatio
 #[cfg(windows)]
 pub fn guard_task(host: &HostState, task: ChromeTask) -> OperationGuard {
     let host = host.clone();
+    let clipboard_show = (task.command() == ChromeCommand::Show)
+        .then(|| host.native_clipboard_activation_stamp());
     let explicit = host.chrome_task_explicit_presentation(task);
     let checked = std::cell::Cell::new(None);
     guard_condition(move || {
@@ -1373,6 +1382,7 @@ pub fn guard_task(host: &HostState, task: ChromeTask) -> OperationGuard {
             allowed
         });
         allowed
+            && clipboard_show.is_none_or(|stamp| stamp == host.native_clipboard_activation_stamp())
             && host.chrome_command_lifecycle_allowed(task.command())
             && host.chrome_task_input_allowed(task)
             && (!explicit || host.chrome_task_explicit_presentation(task))
@@ -1497,7 +1507,7 @@ unsafe fn dispatch_native(hwnd: windows::Win32::Foundation::HWND) {
                     .entry(hwnd.0 as isize)
                     .or_default()
                     .errors
-                    .push_back(error)
+                    .push_back(NativeError { message: error, condition: job.condition })
             });
         }
     }
@@ -1521,12 +1531,23 @@ pub fn has_pending(window: &gpui::Window) -> Result<bool, String> {
 #[cfg(windows)]
 pub fn take_error(window: &gpui::Window) -> Result<Option<String>, String> {
     let hwnd = hwnd(window)?;
-    Ok(NATIVE_QUEUE.with(|queues| {
-        queues
-            .borrow_mut()
-            .get_mut(&(hwnd.0 as isize))
-            .and_then(|queue| queue.errors.pop_front())
-    }))
+    Ok(take_error_hwnd(hwnd))
+}
+
+#[cfg(windows)]
+fn take_error_hwnd(hwnd: windows::Win32::Foundation::HWND) -> Option<String> {
+    loop {
+        let error = NATIVE_QUEUE.with(|queues| {
+            queues.borrow_mut().get_mut(&(hwnd.0 as isize))
+                .and_then(|queue| queue.errors.pop_front())
+        })?;
+        // Execution and error consumption are separate UI turns. A failed old
+        // focus/show must not hide a presentation that replaced it meanwhile.
+        // Evaluate outside the queue borrow, just like job dispatch.
+        if error.condition.as_ref().is_none_or(|check| check()) {
+            return Some(error.message);
+        }
+    }
 }
 
 /// Ordinary (activatable) windows still receive the core's `WindowFromPoint`
@@ -2211,6 +2232,10 @@ mod main_presentation_tests;
 #[cfg(all(test, windows))]
 #[path = "overlay_frame_tests.rs"]
 mod overlay_frame_tests;
+
+#[cfg(all(test, windows))]
+#[path = "native_error_tests.rs"]
+mod native_error_tests;
 
 #[cfg(all(test, windows))]
 mod tests {

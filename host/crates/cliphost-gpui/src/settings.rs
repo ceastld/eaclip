@@ -176,7 +176,8 @@ fn main_page_search_schema(id: &str) -> Option<Value> {
 /// Stable field identities, independent of localized schema group labels.
 fn super_menu_field_section(key: &str) -> (usize, &'static str, &'static str) {
     match key {
-        "ShowSettingItem" | "ShowAdderMenuItem" | "ShowBookMarksMenu" =>
+        // Bookmark source fields sit beside 显示浏览器书签 (2026-10-30).
+        "ShowSettingItem" | "ShowAdderMenuItem" | "ShowBookMarksMenu" | "BookmarkBrowser" | "BookmarkFilePath" =>
             (1, "items", tr("显示条目", "Visible items")),
         "ShowWindowMenuItem" | "ExpandWindowMenu" | "Grouping" | "ShowWindowThumbnail" =>
             (2, "windows", tr("窗口菜单", "Window menu")),
@@ -212,6 +213,16 @@ fn sidebar_settings_page(id: &str) -> bool {
 
 fn settings_scope_includes(scope: Option<&str>, config_id: &str) -> bool {
     scope.is_none_or(|scope| settings_navigation_id(scope) == settings_navigation_id(config_id))
+}
+
+/// Searching mixes pages, so a bare group such as 选择记忆 could be read as
+/// the main window's setting. Results name the page: 便捷粘贴：选择记忆.
+fn settings_search_group_title(page: Option<&str>, group: &str) -> String {
+    match page.map(str::trim).filter(|page| !page.is_empty()) {
+        Some(page) if !group.is_empty() && group != page => format!("{page}{}{group}", tr("：", ": ")),
+        Some(page) => page.to_string(),
+        None => group.to_string(),
+    }
 }
 
 fn settings_search_label(config_id: &str, label: &str) -> String {
@@ -700,6 +711,8 @@ pub struct SettingsForm {
     tag_undo_error: Option<String>,
     /// Projection only: hidden fields retain their controls, drafts and writes.
     search_keys: Option<HashSet<String>>,
+    /// Search results mix pages, so group titles name their page.
+    search_label: Option<String>,
     super_menu_sections: Option<SuperMenuSections>,
     inputs: HashMap<String, Entity<SearchInput>>,
     sliders: HashMap<String, Entity<SettingsSlider>>,
@@ -1385,6 +1398,7 @@ impl SettingsForm {
             tag_undo_recovery: None,
             tag_undo_error: None,
             search_keys,
+            search_label: None,
             super_menu_sections: None,
             inputs: HashMap::new(),
             sliders: HashMap::new(),
@@ -2497,7 +2511,11 @@ impl SettingsForm {
         }
     }
 
-    fn set_search_keys(&mut self, keys: Option<HashSet<String>>, cx: &mut Context<Self>) {
+    fn set_search_keys(&mut self, keys: Option<HashSet<String>>, label: Option<String>, cx: &mut Context<Self>) {
+        if self.search_label != label {
+            self.search_label = label;
+            cx.notify();
+        }
         if self.search_keys != keys {
             self.retire_sliders(cx);
             self.choice_popup = None;
@@ -4700,7 +4718,8 @@ impl Render for SettingsForm {
                 }
                 root = root.child(section.child(widgets::card(rows, s, palette)));
             } else {
-                root = root.child(widgets::section(group, s, t).child(widgets::card(rows, s, palette)));
+                let title = settings_search_group_title(self.search_label.as_deref(), &group);
+                root = root.child(widgets::section(title, s, t).child(widgets::card(rows, s, palette)));
             }
             if quick_paste_help {
                 root = root.child(quick_paste_help::shortcuts(s, t, palette));
@@ -6194,18 +6213,16 @@ impl SettingsWindow {
                 }
             }
             for (id, form) in &self.forms {
-                let keys = matches
-                    .iter()
-                    .find(|item| item.config_id == *id)
-                    .map(|item| item.field_keys.clone())
-                    .unwrap_or_default();
-                form.update(cx, |form, cx| form.set_search_keys(Some(keys), cx));
+                let item = matches.iter().find(|item| item.config_id == *id);
+                let keys = item.map(|item| item.field_keys.clone()).unwrap_or_default();
+                let label = item.map(|item| item.label.clone());
+                form.update(cx, |form, cx| form.set_search_keys(Some(keys), label, cx));
             }
         } else {
             self.ensure_global_system_form(window, cx);
             self.ensure_super_menu_forms(window, cx);
             for form in self.forms.values() {
-                form.update(cx, |form, cx| form.set_search_keys(None, cx));
+                form.update(cx, |form, cx| form.set_search_keys(None, None, cx));
             }
         }
         self.search_results = matches;
@@ -6999,7 +7016,6 @@ impl Render for SettingsWindow {
                 .iter()
                 .filter(|item| settings_scope_includes(self.search_query.scope(), &item.config_id))
                 .collect::<Vec<_>>();
-            let multiple_categories = visible.len() > 1;
             if visible.is_empty() && !self.schema_loading {
                 flow = flow.child(
                     rsx! {
@@ -7129,16 +7145,7 @@ impl Render for SettingsWindow {
                             ))}
                                 w_full min_w_0 flex flex_col gap={px(10.0)} />
                         }
-                            .when(multiple_categories, |section| {
-                                section.child(
-                                    rsx! {
-                                        <div text_size={px(14.0)} font_weight={FontWeight::MEDIUM}
-                                            text_color={color(&t.text_secondary)}>
-                                            {item.label.clone()}
-                                        </div>
-                                    },
-                                )
-                            })
+                            // Group titles carry the page name, see settings_search_group_title.
                             .child(form.clone()),
                     );
                 }
@@ -7492,7 +7499,7 @@ mod tests {
         let fields = cliphost_core::extra_settings::menu_global_fields(&Default::default());
         let sections = fields.iter().map(|field| super_menu_field_section(field["key"].as_str().unwrap()).1).collect::<Vec<_>>();
         assert_eq!(sections.iter().filter(|id| **id == "general").count(), 5);
-        assert_eq!(sections.iter().filter(|id| **id == "items").count(), 3);
+        assert_eq!(sections.iter().filter(|id| **id == "items").count(), 5);
         assert_eq!(sections.iter().filter(|id| **id == "windows").count(), 4);
         assert_eq!(super_menu_field_section("FutureSetting").1, "general");
         assert_eq!(super_menu_field_section("ShowWindowMenuItem").1, "windows");
@@ -7963,6 +7970,19 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["global", SYSTEM_PAGE, "clip", DATA_PAGE]
         );
+    }
+
+    #[test]
+    fn search_group_titles_name_their_page() {
+        let separator = tr("：", ": ");
+        assert_eq!(
+            settings_search_group_title(Some("便捷粘贴"), "选择记忆"),
+            format!("便捷粘贴{separator}选择记忆")
+        );
+        assert_eq!(settings_search_group_title(Some("便捷粘贴"), ""), "便捷粘贴");
+        assert_eq!(settings_search_group_title(Some("便捷粘贴"), "便捷粘贴"), "便捷粘贴");
+        assert_eq!(settings_search_group_title(Some(" "), "选择记忆"), "选择记忆");
+        assert_eq!(settings_search_group_title(None, "选择记忆"), "选择记忆");
     }
 
     #[test]

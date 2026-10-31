@@ -155,7 +155,7 @@ fn load_cached_path_resources(
     }
     let mut guarded = Some(source);
     let generate = || {
-        let resources = decode_open_source(guarded.take().unwrap(), &version, |file, bytes| {
+        let resources = decode_open_source(guarded.take().unwrap(), &version, display_height, |file, bytes| {
             file.take(MAX_SOURCE_BYTES + 1).read_to_end(bytes).map_err(io_error)?;
             Ok(())
         })?;
@@ -213,12 +213,15 @@ fn load_path_with(
     if expected.is_empty() || version.source_version != expected {
         return Err("HISTORY_IMAGE_SOURCE_CHANGED".into());
     }
-    decode_open_source(source, &version, read)
+    decode_open_source(source, &version, None, read)
 }
 
+/// `display_height` resizes straight to the list row's raster height;
+/// `None` keeps the 1024x640 encoded thumbnail.
 fn decode_open_source(
     mut source: GuardedSource,
     version: &HistoryImageSource,
+    display_height: Option<u32>,
     read: impl FnOnce(&mut File, &mut Vec<u8>) -> Result<(), String>,
 ) -> Result<ContentResources, String> {
     source.file.seek(SeekFrom::Start(0)).map_err(io_error)?;
@@ -238,7 +241,10 @@ fn decode_open_source(
     let mut resources = unavailable();
     resources.images.insert(
         PRIMARY_IMAGE_RESOURCE.into(),
-        native_content::list_image(bytes),
+        match display_height {
+            Some(height) => native_content::list_display_image(bytes, height),
+            None => native_content::list_image(bytes),
+        },
     );
     resources.limit_retained_bytes(native_content::CONTENT_RESOURCE_BUDGET_BYTES);
     Ok(resources)

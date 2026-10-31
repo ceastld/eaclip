@@ -184,6 +184,12 @@ impl HostState {
         self.inner.lock().extras.file_menu.top_edge_line
     }
 
+    /// How long the pointer rests at the top edge before the line drops.
+    pub fn file_line_delay(&self) -> std::time::Duration {
+        let ms = self.inner.lock().extras.file_menu.top_edge_line_delay.max(0);
+        std::time::Duration::from_millis(ms as u64)
+    }
+
     /// The window a click on the line acts on: the foreground window when the
     /// line drops, or the last outside window if one of ours is in front.
     pub fn file_line_target(&self) -> i64 {

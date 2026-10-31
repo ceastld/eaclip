@@ -71,7 +71,7 @@ fn auto_scroll_to_top_list_presentation_requires_an_expanded_visible_window() {
 #[test]
 fn auto_scroll_to_top_defaults_and_pascal_case_compatibility() {
     let old: ClipConfigDto = serde_json::from_value(json!({})).unwrap();
-    assert!(!old.auto_scroll_to_top);
+    assert!(old.auto_scroll_to_top);
     assert_eq!(old.auto_scroll_to_top_idle_seconds, 60);
     let enabled: ClipConfigDto = serde_json::from_value(json!({
         "AutoScrollToTop": true, "AutoScrollToTopIdleSeconds": 125
@@ -84,14 +84,14 @@ fn auto_scroll_to_top_defaults_and_pascal_case_compatibility() {
 }
 
 #[test]
-fn auto_scroll_to_top_load_normalizes_idle_time_and_keeps_old_defaults() {
+fn auto_scroll_to_top_load_normalizes_idle_time_and_defaults_on() {
     let dir = tempfile::tempdir().unwrap();
     let paths = AppPaths::from_data_root(dir.path().join("data"));
     fs::create_dir_all(&paths.configs).unwrap();
     let path = paths.configs.join("ClipConfig.json");
     fs::write(&path, br#"{"MaxItemSize":100}"#).unwrap();
     let old = load_config(&paths).unwrap();
-    assert!(!old.auto_scroll_to_top);
+    assert!(old.auto_scroll_to_top);
     assert_eq!(old.auto_scroll_to_top_idle_seconds, 60);
     for (stored, expected) in [(0, 1), (86_401, 86_400), (125, 125)] {
         fs::write(&path, json!({"MaxItemSize":100, "AutoScrollToTop":true,
@@ -100,6 +100,26 @@ fn auto_scroll_to_top_load_normalizes_idle_time_and_keeps_old_defaults() {
         assert!(loaded.auto_scroll_to_top);
         assert_eq!(loaded.auto_scroll_to_top_idle_seconds, expected);
     }
+}
+
+#[test]
+fn auto_scroll_to_top_default_on_upgrades_old_configs_once() {
+    crate::clipboard::force_headless(true);
+    let dir = tempfile::tempdir().unwrap();
+    let paths = AppPaths::from_data_root(dir.path().join("BetterClipTauri"));
+    paths.ensure().unwrap();
+    let path = paths.configs.join("ClipConfig.json");
+    fs::write(&path, json!({"maxItemSize":100, "autoScrollToTop":false}).to_string()).unwrap();
+    let host = HostState::open(paths.clone(), 28965).unwrap();
+    assert_eq!(host.config_get()["autoScrollToTop"], true);
+    assert!(host.config_get().get("autoScrollToTopDefaultApplied").is_none());
+    let saved: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(saved["autoScrollToTop"], true);
+    assert_eq!(saved["autoScrollToTopDefaultApplied"], true);
+    host.settings_form_update(&json!({"configId":"clip", "values":{"AutoScrollToTop":false}})).unwrap();
+    drop(host);
+    let reopened = HostState::open(paths, 28965).unwrap();
+    assert_eq!(reopened.config_get()["autoScrollToTop"], false);
 }
 
 #[test]

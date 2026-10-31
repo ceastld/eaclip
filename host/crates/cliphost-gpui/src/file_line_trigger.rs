@@ -7,8 +7,9 @@
 
 use std::time::{Duration, Instant};
 
-pub const PEEK_AFTER: Duration = Duration::from_millis(200);
-pub const DROP_AFTER: Duration = Duration::from_millis(260);
+/// Rest before the line is down; the thread shows two fifths of the way in.
+/// User adjustable since 2026-10-30, when ~0.46 s felt sluggish.
+pub const DEFAULT_DELAY: Duration = Duration::from_millis(200);
 pub const RETRACT_AFTER: Duration = Duration::from_millis(320);
 /// Physical pixels the pointer may drift while still "resting" at the edge.
 pub const STILL_PX: i32 = 6;
@@ -55,17 +56,31 @@ pub struct EdgeTrigger {
     /// The pointer has been on the line since it dropped. A line dropped
     /// without the pointer (a key, a drag) waits for it to arrive and leave.
     visited: bool,
+    delay: Duration,
 }
 
 impl Default for EdgeTrigger {
     fn default() -> Self {
-        Self { phase: Phase::Hidden, rest: None, peek_at: None, left_at: None, visited: false }
+        Self { phase: Phase::Hidden, rest: None, peek_at: None, left_at: None, visited: false, delay: DEFAULT_DELAY }
     }
 }
 
 impl EdgeTrigger {
     pub fn phase(&self) -> Phase {
         self.phase
+    }
+
+    /// Total rest at the edge before the line drops; zero drops on the next poll.
+    pub fn set_delay(&mut self, delay: Duration) {
+        self.delay = delay;
+    }
+
+    fn peek_after(&self) -> Duration {
+        self.delay * 2 / 5
+    }
+
+    fn drop_after(&self) -> Duration {
+        self.delay - self.peek_after()
     }
 
     pub fn step(&mut self, sample: Sample) -> Change {
@@ -81,7 +96,7 @@ impl EdgeTrigger {
                 }
                 match self.rest {
                     Some((x, since)) if (sample.x - x).abs() <= STILL_PX => {
-                        if sample.now.duration_since(since) < PEEK_AFTER {
+                        if sample.now.duration_since(since) < self.peek_after() {
                             return Change::None;
                         }
                         self.rest = Some((sample.x, sample.now));
@@ -106,7 +121,7 @@ impl EdgeTrigger {
                     }
                     return change;
                 }
-                if self.peek_at.is_some_and(|at| sample.now.duration_since(at) >= DROP_AFTER) {
+                if self.peek_at.is_some_and(|at| sample.now.duration_since(at) >= self.drop_after()) {
                     self.drop_now(true);
                     return Change::Drop;
                 }
@@ -142,7 +157,7 @@ impl EdgeTrigger {
     }
 
     fn hide(&mut self) -> Change {
-        *self = Self::default();
+        *self = Self { delay: self.delay, ..Self::default() };
         Change::Hide
     }
 }
@@ -159,6 +174,12 @@ mod tests {
         Sample { now, x, at_edge: true, in_peek_band: true, in_line: true, blocked: false }
     }
 
+    fn slow() -> EdgeTrigger {
+        let mut trigger = EdgeTrigger::default();
+        trigger.set_delay(Duration::from_millis(500));
+        trigger
+    }
+
     fn away(now: Instant) -> Sample {
         Sample { now, x: 500, at_edge: false, in_peek_band: false, in_line: false, blocked: false }
     }
@@ -166,20 +187,20 @@ mod tests {
     #[test]
     fn resting_shows_the_thread_then_drops_the_line() {
         let base = Instant::now();
-        let mut trigger = EdgeTrigger::default();
+        let mut trigger = slow();
         assert_eq!(trigger.step(edge(at(base, 0), 400)), Change::None);
         assert_eq!(trigger.step(edge(at(base, 120), 403)), Change::None, "small drift still rests");
         assert_eq!(trigger.step(edge(at(base, 200), 402)), Change::Peek);
         assert_eq!(trigger.phase(), Phase::Peek);
         assert_eq!(trigger.step(edge(at(base, 400), 402)), Change::None);
-        assert_eq!(trigger.step(edge(at(base, 460), 402)), Change::Drop);
+        assert_eq!(trigger.step(edge(at(base, 500), 402)), Change::Drop);
         assert_eq!(trigger.phase(), Phase::Down);
     }
 
     #[test]
     fn sliding_along_the_edge_never_triggers() {
         let base = Instant::now();
-        let mut trigger = EdgeTrigger::default();
+        let mut trigger = slow();
         for step in 0..40 {
             let change = trigger.step(edge(at(base, step * 40), 100 + step as i32 * 20));
             assert_eq!(change, Change::None, "step {step}");
@@ -190,7 +211,7 @@ mod tests {
     #[test]
     fn sliding_after_the_thread_appears_restarts_the_entire_rest() {
         let base = Instant::now();
-        let mut trigger = EdgeTrigger::default();
+        let mut trigger = slow();
         trigger.step(edge(at(base, 0), 300));
         assert_eq!(trigger.step(edge(at(base, 200), 300)), Change::Peek);
         assert_eq!(trigger.step(edge(at(base, 430), 340)), Change::Hide);
@@ -198,19 +219,44 @@ mod tests {
         assert_eq!(trigger.step(edge(at(base, 460), 340)), Change::None,
             "the old drop deadline must not survive pointer movement");
         assert_eq!(trigger.step(edge(at(base, 630), 340)), Change::Peek);
-        assert_eq!(trigger.step(edge(at(base, 889), 343)), Change::None);
-        assert_eq!(trigger.step(edge(at(base, 890), 342)), Change::Drop);
+        assert_eq!(trigger.step(edge(at(base, 929), 343)), Change::None);
+        assert_eq!(trigger.step(edge(at(base, 930), 342)), Change::Drop);
     }
 
     #[test]
     fn leaving_the_thread_cancels_without_dropping() {
         let base = Instant::now();
-        let mut trigger = EdgeTrigger::default();
+        let mut trigger = slow();
         trigger.step(edge(at(base, 0), 300));
         assert_eq!(trigger.step(edge(at(base, 220), 300)), Change::Peek);
         assert_eq!(trigger.step(away(at(base, 260))), Change::Hide);
         assert_eq!(trigger.phase(), Phase::Hidden);
         assert_eq!(trigger.step(edge(at(base, 280), 300)), Change::None, "a fresh rest starts over");
+    }
+
+    #[test]
+    fn the_default_drops_within_a_fifth_of_a_second() {
+        let base = Instant::now();
+        let mut trigger = EdgeTrigger::default();
+        trigger.step(edge(at(base, 0), 300));
+        assert_eq!(trigger.step(edge(at(base, 40), 300)), Change::None);
+        assert_eq!(trigger.step(edge(at(base, 80), 300)), Change::Peek);
+        assert_eq!(trigger.step(edge(at(base, 160), 300)), Change::None);
+        assert_eq!(trigger.step(edge(at(base, 200), 300)), Change::Drop);
+    }
+
+    #[test]
+    fn zero_delay_still_needs_a_resting_pointer_and_survives_hiding() {
+        let base = Instant::now();
+        let mut trigger = EdgeTrigger::default();
+        trigger.set_delay(Duration::ZERO);
+        assert_eq!(trigger.step(edge(at(base, 0), 300)), Change::None, "the first sample only starts the rest");
+        assert_eq!(trigger.step(edge(at(base, 40), 360)), Change::None, "sliding still restarts it");
+        assert_eq!(trigger.step(edge(at(base, 80), 360)), Change::Peek);
+        assert_eq!(trigger.step(edge(at(base, 120), 360)), Change::Drop);
+        trigger.retract();
+        trigger.step(edge(at(base, 200), 360));
+        assert_eq!(trigger.step(edge(at(base, 240), 360)), Change::Peek, "hiding keeps the chosen delay");
     }
 
     #[test]

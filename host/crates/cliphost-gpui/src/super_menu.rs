@@ -407,6 +407,7 @@ enum SettingControl {
 enum SettingLink {
     CustomDirs,
     TextActions,
+    BookmarkFile,
 }
 
 /// One in-menu setting; `config`/`key` are the existing settings form identities.
@@ -465,6 +466,11 @@ const FILE_SETTINGS: &[SettingSpec] = &[
         ("关闭时收进「打开的文件夹」子菜单", "Otherwise grouped under Open folders")),
     hinted(setting("menu_file", "TopEdgeLine", ("贴顶晾衣绳", "Top-edge file line"), SettingControl::Switch),
         ("指针停在屏幕顶边时落下文件夹；全屏程序时不触发", "Rest at the top screen edge to drop folders; off in full screen")),
+    SettingSpec {
+        hint: Some(("顶边停留多久后落下；越小越快，越易误触", "Rest before it drops; shorter triggers more easily")),
+        requires: Some("TopEdgeLine"),
+        ..setting("menu_file", "TopEdgeLineDelay", ("展开延迟（毫秒）", "Drop delay (ms)"), SettingControl::Stepper { min: 0.0, max: 1000.0, step: 50.0 })
+    },
     setting("menu_file", "Files", ("自定义目录", "Custom folders"), SettingControl::Link(SettingLink::CustomDirs)),
 ];
 
@@ -479,10 +485,27 @@ const FAVOR_SETTINGS: &[SettingSpec] = &[
     setting("menu_global", "ShowBookMarksMenu", ("显示浏览器书签", "Show browser bookmarks"), SettingControl::Switch),
 ];
 
-const BOOKMARK_SETTINGS: &[SettingSpec] = &[hinted(
-    setting("menu_global", "ShowBookMarksMenu", ("在收藏中也显示书签", "Also show in Favorites"), SettingControl::Switch),
-    ("收藏分类末尾附加浏览器书签", "Appends browser bookmarks to Favorites"),
-)];
+/// Below the 书签来源 picker (`bookmark_source_rows`), 2026-10-30.
+const BOOKMARK_SETTINGS: &[SettingSpec] = &[
+    hinted(
+        setting("menu_global", "ShowBookMarksMenu", ("在收藏中也显示书签", "Also show in Favorites"), SettingControl::Switch),
+        ("收藏分类末尾附加当前来源的书签", "Appends the current source to Favorites"),
+    ),
+    setting("menu_global", "BookmarkFilePath", ("指定 Bookmarks 文件", "Bookmarks file"), SettingControl::Link(SettingLink::BookmarkFile)),
+];
+
+/// Letter tile colors for the browsers `bookmarks::local_sources` discovers.
+fn browser_mark(browser: &str) -> (&'static str, &'static str) {
+    match browser {
+        "msedge" => ("E", "#0c8ce9"),
+        "chrome" => ("C", "#e8453c"),
+        "chromium" => ("C", "#4c8bf5"),
+        "vivaldi" => ("V", "#ef3939"),
+        "brave" => ("B", "#fb542b"),
+        "360chromex" => ("3", "#2bb24c"),
+        _ => ("?", "#888888"),
+    }
+}
 
 const TEXT_SETTINGS: &[SettingSpec] = &[hinted(
     setting("textAction", "", ("管理文本操作", "Manage text actions"), SettingControl::Link(SettingLink::TextActions)),
@@ -1434,6 +1457,8 @@ pub struct SuperMenuWindow {
     settings_general: bool,
     settings_values: HashMap<(&'static str, String), Value>,
     settings_reload_pending: bool,
+    /// 书签来源 for the settings panel; read on first paint, cleared on reload.
+    bookmark_sources: RefCell<Option<cliphost_core::bookmarks::BookmarkSources>>,
     #[cfg(all(windows, debug_assertions))]
     settings_switch_bounds: Rc<RefCell<HashMap<usize, Bounds<Pixels>>>>,
 }
@@ -1465,6 +1490,7 @@ impl SuperMenuWindow {
             settings_general: false,
             settings_values: HashMap::new(),
             settings_reload_pending: false,
+            bookmark_sources: RefCell::default(),
             #[cfg(all(windows, debug_assertions))]
             settings_switch_bounds: Rc::default(),
             clips: Vec::new(),
@@ -4156,6 +4182,7 @@ impl SuperMenuWindow {
 
     fn load_setting_values(&mut self) {
         self.settings_values.clear();
+        self.bookmark_sources.take();
         for config in ["menu_global", "menu_file"] {
             let Ok(form) = self.host.settings_form_get(&json!({ "configId": config })) else {
                 continue;
@@ -4193,6 +4220,119 @@ impl SuperMenuWindow {
         cx.notify();
     }
 
+    /// One click switches which browser profile the 书签 category shows.
+    fn set_bookmark_source(&mut self, browser: String, profile: String, cx: &mut Context<Self>) {
+        let values = json!({ "BookmarkBrowser": browser, "BookmarkProfile": profile });
+        match self.host.settings_form_update(&json!({ "configId": "menu_global", "values": values })) {
+            Ok(_) => {
+                self.load_setting_values();
+                if self.busy {
+                    self.settings_reload_pending = true;
+                } else {
+                    self.change_category(self.category, cx);
+                    self.status.clear();
+                }
+            }
+            Err(error) => self.status = error,
+        }
+        cx.notify();
+    }
+
+    /// 书签来源: one radio row per browser, and its profiles under the active one.
+    fn bookmark_source_rows(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
+        let t = self.tokens.theme(self.dark);
+        let hover = color(&t.hover);
+        let sources = self.bookmark_sources.borrow_mut()
+            .get_or_insert_with(|| self.host.bookmark_sources()).clone();
+        let mut rows = vec![rsx! {
+            <div px={px(8.0)} pt={px(6.0)} pb={px(2.0)} text_size={px(10.5)} font_weight={gpui::FontWeight::MEDIUM}
+                text_color={color(&t.text_muted)}>{tr("书签来源", "Bookmark source")}</div>
+        }.into_any_element()];
+        if sources.custom_file || sources.sources.is_empty() {
+            let note = if sources.custom_file {
+                tr("正在使用指定的 Bookmarks 文件；清空路径后可选择浏览器", "Using the configured Bookmarks file; clear it to pick a browser")
+            } else {
+                tr("未发现本机浏览器书签，将尝试通过扩展读取", "No local browser bookmarks found; the extension is tried instead")
+            };
+            rows.push(rsx! {
+                <div px={px(8.0)} py={px(6.0)} text_size={px(11.0)} line_height={px(16.0)} text_color={color(&t.text_secondary)}>{note}</div>
+            }.into_any_element());
+        } else {
+            let current = sources.current.and_then(|index| sources.sources.get(index));
+            let mut browsers: Vec<&str> = Vec::new();
+            for source in &sources.sources {
+                if !browsers.contains(&source.browser.as_str()) {
+                    browsers.push(&source.browser);
+                }
+            }
+            for (index, browser) in browsers.into_iter().enumerate() {
+                let profiles: Vec<_> = sources.sources.iter().filter(|s| s.browser == browser).collect();
+                let shown = current.filter(|c| c.browser == browser);
+                let active = shown.is_some();
+                let shown = shown.unwrap_or(profiles[0]);
+                let count = if active { shown.count } else { profiles.iter().map(|s| s.count).sum() };
+                let detail = if profiles.len() > 1 {
+                    format!("{} {} · {count} {}", profiles.len(), tr("个配置", "profiles"), tr("个书签", "bookmarks"))
+                } else {
+                    format!("{} · {count} {}", shown.profile, tr("个书签", "bookmarks"))
+                };
+                let (mark, tint) = browser_mark(browser);
+                let target = (browser.to_string(), shown.profile.clone());
+                let radio = if active {
+                    div().flex_none().size(px(14.0)).rounded_full().border(px(4.0)).border_color(color(&t.accent)).bg(color(&t.background))
+                } else {
+                    div().flex_none().size(px(14.0)).rounded_full().border(px(1.5)).border_color(color(&t.border))
+                };
+                let main = rsx! {
+                    <div id={("super-bookmark-source", index)} flex items_center gap={px(10.0)} min_h={px(42.0)} px={px(8.0)} py={px(6.0)}
+                        rounded={px(7.0)} cursor_pointer />
+                }
+                    .when(!active, |row| row.hover(move |style| style.bg(hover)))
+                    .child(rsx! {
+                        <div flex flex_none items_center justify_center size={px(22.0)} rounded={px(6.0)} text_size={px(11.5)}
+                            font_weight={gpui::FontWeight::BOLD} text_color={gpui::white()} bg={color(tint)}>{mark}</div>
+                    })
+                    .child(
+                        div().flex().flex_col().flex_1().min_w_0().gap(px(1.0)).text_size(px(12.0)).line_height(px(17.0))
+                            .child(shown.name.clone())
+                            .child(div().text_size(px(10.5)).line_height(px(14.0)).text_color(color(&t.text_muted)).child(detail)),
+                    )
+                    .child(radio)
+                    .on_click(cx.listener(move |menu, _, _, cx| {
+                        if !active {
+                            menu.set_bookmark_source(target.0.clone(), target.1.clone(), cx);
+                        }
+                    }));
+                let mut group = div().flex().flex_col().rounded(px(7.0)).when(active, |g| g.bg(color(&t.tab_active))).child(main);
+                if active && profiles.len() > 1 {
+                    let mut segmented = rsx! { <div flex p={px(2.0)} rounded={px(7.0)} bg={color(&t.secondary)} /> };
+                    for (profile_index, profile) in profiles.iter().enumerate() {
+                        let selected = profile.profile == shown.profile;
+                        let target = (browser.to_string(), profile.profile.clone());
+                        segmented = segmented.child(
+                            rsx! {
+                                <div id={("super-bookmark-profile", index * 64 + profile_index)} flex flex_1 min_w_0 items_center justify_center
+                                    h={px(24.0)} px={px(4.0)} rounded={px(5.0)} text_size={px(11.0)} overflow_hidden whitespace_nowrap
+                                    cursor_pointer>{profile.profile.clone()}</div>
+                            }
+                                .text_color(color(if selected { &t.text } else { &t.text_secondary }))
+                                .when(selected, |chip| chip.bg(color(&t.background)).font_weight(gpui::FontWeight::MEDIUM).shadow_sm())
+                                .on_click(cx.listener(move |menu, _, _, cx| {
+                                    if !selected {
+                                        menu.set_bookmark_source(target.0.clone(), target.1.clone(), cx);
+                                    }
+                                })),
+                        );
+                    }
+                    group = group.child(div().pl(px(40.0)).pr(px(8.0)).pb(px(8.0)).child(segmented));
+                }
+                rows.push(group.into_any_element());
+            }
+        }
+        rows.push(rsx! { <div h={px(1.0)} mx={px(8.0)} my={px(4.0)} bg={color(&t.border)} /> }.into_any_element());
+        rows
+    }
+
     fn open_setting_link(&mut self, link: SettingLink, cx: &mut Context<Self>) {
         match link {
             SettingLink::CustomDirs => {
@@ -4202,6 +4342,11 @@ impl SuperMenuWindow {
             }
             SettingLink::TextActions => {
                 self.host.open_settings_page("textAction");
+                self.dismiss(cx);
+            }
+            // A typed path needs focus, which the NoActivate menu lacks.
+            SettingLink::BookmarkFile => {
+                self.host.open_settings_page("menu_global");
                 self.dismiss(cx);
             }
         }
@@ -4395,6 +4540,9 @@ impl SuperMenuWindow {
                 })),
         );
         let mut body = rsx! { <div id={"super-settings-body"} flex flex_col flex_1 min_h_0 p={px(4.0)} overflow_y_scroll /> };
+        if self.category == Category::Bookmarks && !self.settings_general {
+            body = body.children(self.bookmark_source_rows(cx));
+        }
         for (index, spec) in specs.iter().copied().enumerate() {
             if matches!(spec.control, SettingControl::Link(_)) && index > 0 {
                 body = body.child(rsx! { <div h={px(1.0)} mx={px(8.0)} my={px(4.0)} bg={color(&t.border)} /> });
@@ -4572,6 +4720,10 @@ impl SuperMenuWindow {
                         format!("{count} {}", tr("个", "folders"))
                     }
                     SettingLink::TextActions => String::new(),
+                    SettingLink::BookmarkFile => match value.as_str().map(str::trim).filter(|path| !path.is_empty()) {
+                        Some(path) => std::path::Path::new(path).file_name().and_then(|n| n.to_str()).unwrap_or(path).to_string(),
+                        None => tr("未设置", "Not set").to_string(),
+                    },
                 };
                 row.cursor_pointer()
                     .hover(move |style| style.bg(hover))

@@ -551,6 +551,12 @@ pub(super) fn list_image(bytes: Vec<u8>) -> Option<ContentImage> {
     bounded_bitmap(bytes, 1024, 640)
 }
 
+/// The list row's own thumbnail: decoded once and resized straight to the
+/// painted height, so cold loads skip the 1024x640 intermediate PNG.
+pub(super) fn list_display_image(bytes: Vec<u8>, max_height_px: u32) -> Option<ContentImage> {
+    bounded_bitmap(bytes, DISPLAY_RASTER_MAX_WIDTH, max_height_px.clamp(1, 640))
+}
+
 fn bounded_bitmap(bytes: Vec<u8>, max_width: u32, max_height: u32) -> Option<ContentImage> {
     let mut reader = image::ImageReader::new(Cursor::new(&bytes))
         .with_guessed_format()

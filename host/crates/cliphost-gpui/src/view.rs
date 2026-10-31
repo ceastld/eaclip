@@ -2032,6 +2032,7 @@ impl ClipboardPreview {
             poll,
             self.content_cache.next_idle_deadline().into_iter()
                 .chain(self.favorites.as_ref().and_then(|favorites| favorites.read(cx).next_idle_content_deadline()))
+                .chain(self.history_idle.next_hidden_deadline())
                 .chain(can_expire_fifo.then(|| host.as_ref().and_then(|host| host.next_native_ui_deadline())).flatten()),
             Instant::now(),
         )
@@ -2371,7 +2372,15 @@ impl ClipboardPreview {
                             this.configuration["autoScrollToTopIdleSeconds"].as_u64().unwrap_or(60).clamp(1, 86_400),
                             now,
                         );
-                        let presented = !this.favorites_active && host.native_clipboard_list_presented();
+                        let presence = if !snapshot.visible {
+                            crate::history_idle::HistoryPresence::Hidden
+                        } else if !this.favorites_active && host.native_clipboard_list_presented() {
+                            crate::history_idle::HistoryPresence::Presented
+                        } else {
+                            crate::history_idle::HistoryPresence::Concealed
+                        };
+                        // A pinned window keeps its place while someone is on it.
+                        let in_use = snapshot.pointer_in_host || snapshot.is_active || snapshot.has_fake_focus;
                         let busy = snapshot.spa_modal_open || snapshot.has_open_host_overlay
                             || snapshot.move_interaction_active || snapshot.is_layout_busy
                             || content_drag_active || this.native_dragging
@@ -2383,7 +2392,7 @@ impl ClipboardPreview {
                             || this.process_editor.is_some() || this.process_open_pending
                             || this.fifo_panel.is_some() || this.menu_lease.is_some()
                             || this.favorite_lease.is_some();
-                        if this.history_idle.poll(now, presented, busy) {
+                        if this.history_idle.poll(now, presence, busy, in_use) {
                             this.return_history_to_top(cx);
                         }
                         this.sync_history_top_button(cx);

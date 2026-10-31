@@ -1032,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-app"
-version = "0.32.5"
+version = "0.32.6"
 dependencies = [
  "cliphost-core",
  "cliphost-http",
@@ -1055,7 +1055,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-bridge"
-version = "0.32.5"
+version = "0.32.6"
 dependencies = [
  "cliphost-core",
  "serde",
@@ -1066,7 +1066,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-core"
-version = "0.32.5"
+version = "0.32.6"
 dependencies = [
  "base64 0.22.1",
  "blake3",
@@ -1103,7 +1103,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-gpui"
-version = "0.32.5"
+version = "0.32.6"
 dependencies = [
  "anyhow",
  "axum",
@@ -1138,7 +1138,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-http"
-version = "0.32.5"
+version = "0.32.6"
 dependencies = [
  "axum",
  "chrono",
@@ -1162,7 +1162,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-updater"
-version = "0.32.5"
+version = "0.32.6"
 dependencies = [
  "reqwest",
  "rustls",
@@ -1179,7 +1179,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-webdav"
-version = "0.32.5"
+version = "0.32.6"
 dependencies = [
  "quick-xml 0.41.0",
  "reqwest",

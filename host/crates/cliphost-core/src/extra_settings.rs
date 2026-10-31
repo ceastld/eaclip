@@ -349,6 +349,13 @@ pub struct MenuGlobalSettings {
     pub show_window_menu_item: bool,
     pub expand_window_menu: bool,
     pub show_book_marks_menu: bool,
+    #[serde(default)]
+    pub bookmark_browser: String,
+    /// Profile directory (`Default`, `Profile 1`) within `bookmark_browser`.
+    #[serde(default)]
+    pub bookmark_profile: String,
+    #[serde(default)]
+    pub bookmark_file_path: String,
     pub grouping: bool,
     pub quick_load_submenu: bool,
     /// Small window thumbnail atop the window actions submenu (2026-10-23, off by default).
@@ -368,6 +375,9 @@ impl Default for MenuGlobalSettings {
             show_window_menu_item: true,
             expand_window_menu: true,
             show_book_marks_menu: false,
+            bookmark_browser: String::new(),
+            bookmark_profile: String::new(),
+            bookmark_file_path: String::new(),
             grouping: false,
             quick_load_submenu: false,
             show_window_thumbnail: false,
@@ -389,7 +399,11 @@ pub struct FileMenuSettings {
     pub split_dir_and_file: bool,
     /// 2026-10-28 top-edge file line; a global edge trigger, so off by default.
     pub top_edge_line: bool,
+    /// Milliseconds the pointer rests at the edge before the line drops.
+    pub top_edge_line_delay: i32,
 }
+
+pub const TOP_EDGE_LINE_DELAY_MAX: i32 = 1000;
 
 impl Default for FileMenuSettings {
     fn default() -> Self {
@@ -404,6 +418,7 @@ impl Default for FileMenuSettings {
             show_hidden_files: false,
             split_dir_and_file: true,
             top_edge_line: false,
+            top_edge_line_delay: 200,
         }
     }
 }
@@ -758,6 +773,9 @@ pub fn menu_global_fields(cfg: &MenuGlobalSettings) -> Vec<Value> {
         f("ShowWindowMenuItem", tr("显示窗口菜单", "Show window menu"), "", tr("显示条目", "Visible items"), "boolean", 7, json!(cfg.show_window_menu_item)),
         f("ExpandWindowMenu", tr("展开窗口菜单", "Expand window menu"), "", tr("显示条目", "Visible items"), "boolean", 8, json!(cfg.expand_window_menu)),
         f("ShowBookMarksMenu", tr("显示浏览器书签", "Show browser bookmarks"), "", tr("显示条目", "Visible items"), "boolean", 9, json!(cfg.show_book_marks_menu)),
+        enum_f("BookmarkBrowser", tr("书签浏览器", "Bookmark browser"), tr("无需扩展，自动读取本机书签", "Read local bookmarks without an extension"), tr("浏览器书签", "Bookmarks"), 13, &cfg.bookmark_browser,
+            &[("", Text("自动（第一个发现的浏览器）", "Automatic (first found)")), ("msedge", Text("Microsoft Edge", "Microsoft Edge")), ("chrome", Text("Google Chrome", "Google Chrome")), ("chromium", Text("Chromium", "Chromium")), ("vivaldi", Text("Vivaldi", "Vivaldi")), ("brave", Text("Brave", "Brave")), ("360chromex", Text("360 极速浏览器", "360 Chrome"))]),
+        f("BookmarkFilePath", tr("书签文件路径", "Bookmarks file"), tr("可选：指定 Bookmarks 文件；留空发现 Default 和 Profile *", "Optional Bookmarks file; otherwise discover Default and Profile *"), tr("浏览器书签", "Bookmarks"), "text", 14, json!(cfg.bookmark_file_path)),
         f("Grouping", tr("按进程分组", "Group by process"), "", tr("窗口菜单分组", "Window menu grouping"), "boolean", 10, json!(cfg.grouping)),
         f(
             "QuickLoadSubmenu",
@@ -830,6 +848,9 @@ pub fn file_menu_fields(cfg: &FileMenuSettings) -> Vec<Value> {
         f("TopEdgeLine", tr("贴顶晾衣绳", "Top-edge file line"),
             tr("指针停在屏幕顶边时落下文件菜单的绳子；全屏程序时不触发。", "Resting the pointer at the top screen edge drops a line of file menu folders; off while a full-screen program is in front."),
             "", "boolean", 9, json!(cfg.top_edge_line)),
+        num_f("TopEdgeLineDelay", tr("晾衣绳展开延迟（毫秒）", "File line delay (ms)"),
+            tr("指针在顶边停留多久后落下；越小越快，但沿顶边移动时更易误触。", "How long to rest at the top edge before the line drops. Shorter is faster but triggers more easily while moving along the edge."),
+            "", 10, json!(cfg.top_edge_line_delay), 0.0, TOP_EDGE_LINE_DELAY_MAX as f64, 50.0),
     ]
 }
 
@@ -922,6 +943,16 @@ pub fn apply_user(cfg: &mut UserSettings, values: &Value) {
 }
 
 pub fn apply_menu_global(cfg: &mut MenuGlobalSettings, values: &Value) {
+    if let Some(v) = take_str(values, "BookmarkBrowser") {
+        if ["", "msedge", "chrome", "chromium", "vivaldi", "brave", "360chromex"].contains(&v.as_str()) {
+            // Another browser's profile name means nothing here.
+            if cfg.bookmark_browser != v { cfg.bookmark_profile.clear(); }
+            cfg.bookmark_browser = v;
+        }
+    }
+    take_str(values, "BookmarkProfile").inspect(|v| cfg.bookmark_profile = v.trim().into());
+    take_str(values, "BookmarkFilePath").inspect(|v| cfg.bookmark_file_path = v.trim().into());
+
     if let Some(v) = values
         .get("MenuFontSize")
         .and_then(|v| v.as_f64())
@@ -984,6 +1015,9 @@ pub fn apply_file_menu(cfg: &mut FileMenuSettings, values: &Value) {
     if let Some(v) = take_bool(values, "TopEdgeLine") {
         cfg.top_edge_line = v;
     }
+    if let Some(v) = values.get("TopEdgeLineDelay").and_then(Value::as_f64) {
+        cfg.top_edge_line_delay = (v.round() as i32).clamp(0, TOP_EDGE_LINE_DELAY_MAX);
+    }
 }
 
 fn take_bool(values: &Value, key: &str) -> Option<bool> {
@@ -1038,6 +1072,21 @@ mod tests {
         assert_eq!(field["value"], true);
         apply_file_menu(&mut cfg, &json!({"ShowExtension": false}));
         assert!(cfg.top_edge_line, "partial writes must preserve the line");
+    }
+
+    #[test]
+    fn top_edge_line_delay_defaults_quick_and_clamps() {
+        let mut cfg: FileMenuSettings = serde_json::from_value(json!({"TopEdgeLine": true})).unwrap();
+        assert_eq!(cfg.top_edge_line_delay, 200, "older configs take the quicker default");
+        apply_file_menu(&mut cfg, &json!({"TopEdgeLineDelay": 350}));
+        let restored: FileMenuSettings = serde_json::from_value(serde_json::to_value(&cfg).unwrap()).unwrap();
+        assert_eq!(restored.top_edge_line_delay, 350);
+        let field = file_menu_fields(&restored).into_iter().find(|field| field["key"] == "TopEdgeLineDelay").unwrap();
+        assert_eq!(field["value"], 350);
+        apply_file_menu(&mut cfg, &json!({"TopEdgeLineDelay": -20}));
+        assert_eq!(cfg.top_edge_line_delay, 0);
+        apply_file_menu(&mut cfg, &json!({"TopEdgeLineDelay": 99_999}));
+        assert_eq!(cfg.top_edge_line_delay, TOP_EDGE_LINE_DELAY_MAX);
     }
 
     #[test]

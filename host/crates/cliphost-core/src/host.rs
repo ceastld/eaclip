@@ -152,6 +152,9 @@ mod native_paste_tests;
 #[cfg(test)]
 #[path = "window_focus_tests.rs"]
 mod window_focus_tests;
+#[cfg(test)]
+#[path = "native_activation_tests.rs"]
+mod native_activation_tests;
 
 #[cfg(all(test, windows))]
 #[path = "native_hover_dismiss_tests.rs"]
@@ -395,6 +398,7 @@ struct HostInner {
     maintenance_wakeup: Arc<tokio::sync::Notify>,
     chrome_input_epochs: [ChromeInputEpoch; 3],
     clipboard_escape_session: Uuid,
+    clipboard_activation_generation: u64,
     host_hwnd: isize,
     host_no_activate_dirty: bool,
     qp_hwnd: isize,
@@ -1653,6 +1657,7 @@ impl HostState {
                 maintenance_wakeup,
                 chrome_input_epochs: [ChromeInputEpoch::default(); 3],
                 clipboard_escape_session: Uuid::new_v4(),
+                clipboard_activation_generation: 0,
                 host_hwnd: 0,
                 host_no_activate_dirty: false,
                 qp_hwnd: 0,
@@ -3621,6 +3626,7 @@ impl HostState {
             // C# GET `ClipConfigDto` does not expose ClipListAppearanceMigrated
             // or the hidden per-trigger ShowWindowLocation2/3 slots.
             obj.remove("clipListAppearanceMigrated");
+            obj.remove("autoScrollToTopDefaultApplied");
             obj.remove("showWindowLocation2");
             obj.remove("showWindowLocation3");
             obj.remove("usePerTriggerShowWindowLocation");
@@ -4975,7 +4981,15 @@ impl HostState {
                 } else {
                     crate::config_file::save_values(&files)?;
                 }
-                self.inner.lock().qp_config = qp;
+                {
+                    let mut inner = self.inner.lock();
+                    // Retire stored selection as soon as memory is disabled,
+                    // even if no quick-paste session opens before re-enabling it.
+                    if !qp.remember_selection || qp.selection_memory_seconds <= 0 {
+                        inner.qp.remembered = None;
+                    }
+                    inner.qp_config = qp;
+                }
                 self.inner.lock().hotkeys = hotkeys.clone();
                 self.refresh_global_hotkeys();
                 let next_win_v = self.inner.lock().config.use_win_v_shortcut;
@@ -8613,6 +8627,36 @@ impl HostState {
             inner.chrome_input_epochs[0].window, inner.window_visible)
     }
 
+    /// Each explicit re-engagement starts a new focus observation, including
+    /// Show while already visible. Input/fold epochs serve different purposes.
+    pub fn native_clipboard_activation_stamp(&self) -> (isize, u64) {
+        let inner = self.inner.lock();
+        (inner.host_hwnd, inner.clipboard_activation_generation)
+    }
+
+    pub fn notify_native_clipboard_activation(&self, stamp: (isize, u64), active: bool) {
+        let mut inner = self.inner.lock();
+        if !inner.window_visible || stamp != (inner.host_hwnd, inner.clipboard_activation_generation) {
+            return;
+        }
+        if active {
+            Self::notify_activated_locked(&mut inner);
+        } else {
+            Self::notify_deactivated_locked(&mut inner);
+        }
+    }
+
+    /// Error delivery may race another Show on the worker thread. Validate and
+    /// retire input under the same lock as the normal Hide path.
+    pub fn hide_native_clipboard_if_current(&self, stamp: (isize, u64)) -> bool {
+        let mut inner = self.inner.lock();
+        if !inner.window_visible || stamp != (inner.host_hwnd, inner.clipboard_activation_generation) {
+            return false;
+        }
+        hide_clipboard_window_locked(&mut inner);
+        true
+    }
+
     pub fn native_clipboard_list_presented(&self) -> bool {
         let inner = self.inner.lock();
         inner.window_visible && !inner.is_collapsed && !inner.edge_tucked
@@ -9589,6 +9633,12 @@ impl HostState {
         }
     }
 
+    /// Local bookmark sources for the super menu's 书签 settings (2026-10-30).
+    pub fn bookmark_sources(&self) -> crate::bookmarks::BookmarkSources {
+        let cfg = self.inner.lock().extras.menu_global.clone();
+        crate::bookmarks::local_sources(&cfg.bookmark_browser, &cfg.bookmark_profile, &cfg.bookmark_file_path)
+    }
+
     /// The file menu's hint line names where a plain folder click goes.
     pub fn file_menu_prefers_internal_browser(&self) -> bool {
         self.inner.lock().extras.file_menu.prefer_internal_browser
@@ -9842,9 +9892,13 @@ impl HostState {
                         && crate::quicker_action::menu_action_template(item.body_text.as_deref().unwrap_or(""), &item.execute_param)
                             == Some(crate::quicker_action::MenuActionTemplate::Bookmarks))));
             if needs_bookmarks {
-                ctx.bookmarks = self.quicker_browser_call("quicker.getBrowserBookmarksTree")
-                    .ok().and_then(|value| value.as_str().and_then(crate::bookmarks::parse_rpc_tree))
-                    .or_else(crate::bookmarks::load_local_tree);
+                ctx.bookmarks = crate::bookmarks::load_local_tree(&ctx.menu_cfg.bookmark_browser, &ctx.menu_cfg.bookmark_profile, &ctx.menu_cfg.bookmark_file_path);
+                // 指定来源时不借助默认扩展读取其他浏览器。
+                if ctx.bookmarks.is_none() && ctx.menu_cfg.bookmark_browser.is_empty() && ctx.menu_cfg.bookmark_file_path.is_empty() {
+                    ctx.bookmarks = self.quicker_browser_call("quicker.getBrowserBookmarksTree")
+                        .ok().and_then(|value| value.as_str().and_then(crate::bookmarks::parse_rpc_tree))
+                        .map(|mut tree| { crate::bookmarks::flatten_single_folders(&mut tree); tree });
+                }
             }
         })
     }
@@ -12231,12 +12285,21 @@ impl HostState {
                 chrono::Utc::now().timestamp_millis() + crate::hide_policy::EXPAND_GRACE_MS;
             return;
         }
+        let live_foreground = (!crate::clipboard::is_headless())
+            .then(crate::clipboard::resolved_foreground_root_hwnd).flatten();
+        self.request_show_with_foreground(automatic, paste_target, live_foreground);
+    }
+
+    fn request_show_with_foreground(&self, automatic: bool, paste_target: Option<isize>, live_foreground: Option<isize>) {
+        // Establish the live foreground baseline before publishing the new
+        // Show. A delayed refresh from game -> QQ must not dismiss the new
+        // EdgeHide session when QQ was already foreground at invocation.
+        if let Some(fg) = live_foreground {
+            self.on_foreground_hwnd(fg);
+        }
         // The foreground may predate hook installation, or its WinEvent may still
         // be queued. Remember it before Show transfers focus to this window.
-        let foreground = paste_target.filter(|hwnd| *hwnd != 0).or_else(|| {
-            (!crate::clipboard::is_headless())
-                .then(crate::clipboard::resolved_foreground_root_hwnd).flatten()
-        });
+        let foreground = paste_target.filter(|hwnd| *hwnd != 0).or(live_foreground);
         if let Some(fg) = foreground {
             let host = self.inner.lock().host_hwnd;
             if !crate::input_target::belongs_to_host(fg)
@@ -12251,6 +12314,7 @@ impl HostState {
         {
             let mut inner = self.inner.lock();
             inner.clipboard_escape_session = Uuid::new_v4();
+            inner.clipboard_activation_generation = inner.clipboard_activation_generation.wrapping_add(1);
             inner.window_visible = true;
             inner.edge_tucked = false;
             inner.is_collapsed = false;
@@ -12334,8 +12398,12 @@ impl HostState {
 
     pub fn notify_activated(&self) {
         let mut inner = self.inner.lock();
+        Self::notify_activated_locked(&mut inner);
+    }
+
+    fn notify_activated_locked(inner: &mut HostInner) {
         inner.is_active = inner.window_visible;
-        if clipboard_is_active(&inner) {
+        if clipboard_is_active(inner) {
             inner.clipboard_deactivation_pending = false;
         }
     }
@@ -12345,15 +12413,19 @@ impl HostState {
         // Tauri reports WebView LostFocus on Windows. The native WM_ACTIVATE
         // state still wins if focus merely moved to our own root/title bar.
         let mut inner = self.inner.lock();
+        Self::notify_deactivated_locked(&mut inner);
+    }
+
+    fn notify_deactivated_locked(inner: &mut HostInner) {
         inner.is_active = false;
-        let snap = clipboard_deactivation_snapshot(&inner);
+        let snap = clipboard_deactivation_snapshot(inner);
         let decision = evaluate(HostHideTrigger::Deactivated, &snap);
         // Overlay/show grace defers this event; it does not erase it. Keep the
         // event and its decision atomic with newer clicks/show/focus requests.
         inner.clipboard_deactivation_pending = snap.visible && snap.has_fake_focus
             && snap.enable_no_focus_mode && !snap.is_active
             && decision.fake_focus_action == HostFakeFocusAction::Unchanged;
-        Self::apply_hide_decision_locked(&mut inner, &decision, HostHideTrigger::Deactivated);
+        Self::apply_hide_decision_locked(inner, &decision, HostHideTrigger::Deactivated);
     }
 
     fn retry_clipboard_deactivation(&self) {
@@ -16382,6 +16454,7 @@ fn apply_csharp_clip_config_post_init(cfg: &mut ClipConfigDto) -> bool {
     let before_loc2 = cfg.show_window_location2.clone();
     let before_loc3 = cfg.show_window_location3.clone();
     let before_per_trigger = cfg.use_per_trigger_show_window_location;
+    let auto_scroll_upgraded = apply_auto_scroll_to_top_default_on(cfg);
     sync_dismiss_from_legacy_edge_hide(cfg);
     apply_legacy_appearance_slot(cfg);
     sync_unified_show_window_location(cfg);
@@ -16391,6 +16464,18 @@ fn apply_csharp_clip_config_post_init(cfg: &mut ClipConfigDto) -> bool {
         || cfg.show_window_location2 != before_loc2
         || cfg.show_window_location3 != before_loc3
         || cfg.use_per_trigger_show_window_location != before_per_trigger
+        || auto_scroll_upgraded
+}
+
+/// 2026-10-27 the user made automatic return to top default-on. Configs saved
+/// while it defaulted off are switched on once; a later off choice is kept.
+fn apply_auto_scroll_to_top_default_on(cfg: &mut ClipConfigDto) -> bool {
+    if cfg.auto_scroll_to_top_default_applied {
+        return false;
+    }
+    cfg.auto_scroll_to_top = true;
+    cfg.auto_scroll_to_top_default_applied = true;
+    true
 }
 
 /// C# `ClipConfig.SyncDismissBehaviorFromLegacyEdgeHide`.

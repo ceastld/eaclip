@@ -41,6 +41,28 @@ fn main() {
         );
         return;
     }
+    if args.first().map(String::as_str) == Some("--check-version") {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../.tmp/update-api-check");
+        cliphost_updater::test_support::validate_fixture_root(root.parent().unwrap()).unwrap();
+        fs::create_dir_all(&root).unwrap();
+        cliphost_updater::test_support::validate_fixture_root(&root).unwrap();
+        let service = UpdateService::new(UpdateConfig {
+            current_version: args
+                .get(1)
+                .expect("--check-version requires a version")
+                .clone(),
+            executable: root.join("cliphost-app.exe"),
+            data_root: root.join("userdata"),
+            api_port: 29065,
+            allow_install: false,
+        })
+        .unwrap();
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&service.check().unwrap()).unwrap()
+        );
+        return;
+    }
     if args.first().map(String::as_str) == Some("--fixture-parent") {
         parent(&args[1..]);
         return;

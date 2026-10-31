@@ -350,6 +350,7 @@ impl FileLine {
             self.trigger.retract();
             Change::Hide
         } else {
+            self.trigger.set_delay(self.host.file_line_delay());
             self.trigger.step(Sample { now: Instant::now(), x, at_edge, in_peek_band, in_line, blocked })
         };
         match change {

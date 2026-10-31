@@ -2,7 +2,7 @@
 
 use std::time::{Duration, Instant};
 
-pub(super) const CHECK_INTERVAL: Duration = Duration::from_secs(2 * 60 * 60);
+pub(super) const CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60 * 60);
 const READINESS_POLL: Duration = Duration::from_millis(250);
 
 struct CheckSchedule {
@@ -60,15 +60,16 @@ mod tests {
     };
 
     #[test]
-    fn startup_waits_for_readiness_then_checks_every_two_hours() {
+    fn startup_waits_for_readiness_then_checks_every_five_hours() {
         let start = Instant::now();
         let mut schedule = CheckSchedule::new(CHECK_INTERVAL);
         assert!(!schedule.claim_due(start, false));
         let ready = start + Duration::from_secs(30);
         assert!(schedule.claim_due(ready, true));
         assert!(!schedule.claim_due(ready, true));
-        assert!(!schedule.claim_due(ready + Duration::from_secs(7199), true));
-        assert!(schedule.claim_due(ready + Duration::from_secs(7200), true));
+        assert!(!schedule.claim_due(ready + Duration::from_secs(2 * 60 * 60), true));
+        assert!(!schedule.claim_due(ready + Duration::from_secs(17999), true));
+        assert!(schedule.claim_due(ready + Duration::from_secs(18000), true));
     }
 
     #[test]

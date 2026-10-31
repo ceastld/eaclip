@@ -385,8 +385,8 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "AutoScrollToTop",
-            tr("闲置后自动回到顶部", "Return to top after inactivity"),
-            tr("列表无键盘、点击或滚动操作达到闲置时间后自动回到顶部。隐藏、折叠和贴边期间继续计时；编辑或弹层打开时暂缓，不清除搜索和筛选。", "Return to the top after no list keyboard, click or scroll activity for the idle period. Time continues while hidden, folded or edge-hidden. Defer while editing or a popup is open; keep search and filters."),
+            tr("自动回到顶部", "Return to top automatically"),
+            tr("隐藏后再次打开时回到顶部并清除上次选中，回车即执行第一项。固定、折叠、贴边或切到收藏时，列表无键盘、点击或滚动操作达到闲置时间后回到顶部；指针停在窗口上、窗口激活、编辑或弹层打开时不回顶。不清除搜索和筛选。", "When reopened after hiding, return to the top and clear the last selection, so Enter runs the first item. While pinned, folded, edge-hidden or showing favorites, return after no list keyboard, click or scroll activity for the idle time; never while the pointer is over the window, it is active, editing or a popup is open. Search and filters are kept."),
             tr("控制", "Behavior"),
             "checkbox",
             7,
@@ -395,7 +395,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         number_field(
             "AutoScrollToTopIdleSeconds",
             tr("闲置时间（秒）", "Idle time (seconds)"),
-            tr("启用自动回到顶部时生效，范围为 1–86400 秒。", "Applies when automatic return to top is enabled. Range: 1–86400 seconds."),
+            tr("固定、折叠、贴边或切到收藏时的闲置时间；隐藏后再次打开不受此限制。范围为 1–86400 秒。", "Idle time while pinned, folded, edge-hidden or showing favorites; reopening after hiding always returns. Range: 1–86400 seconds."),
             tr("控制", "Behavior"),
             8,
             cfg.auto_scroll_to_top_idle_seconds as i32,
@@ -964,7 +964,7 @@ mod tests {
         assert_eq!(dismiss["options"][1], "edgehide");
         let auto_scroll = fields.iter().find(|f| f["key"] == "AutoScrollToTop").unwrap();
         assert_eq!(auto_scroll["inputType"], "boolean");
-        assert_eq!(auto_scroll["value"], false);
+        assert_eq!(auto_scroll["value"], true);
         assert_eq!(auto_scroll["group"], dismiss["group"]);
         let idle = fields.iter().find(|f| f["key"] == "AutoScrollToTopIdleSeconds").unwrap();
         assert_eq!(idle["inputType"], "number");
