@@ -297,7 +297,7 @@ impl SearchInput {
         Self {
             state: TextState::default(),
             focus: cx.focus_handle(),
-            placeholder: tr("搜索剪贴板", "Search clipboard").into(),
+            placeholder: tr("搜索剪贴板", "Search…").into(),
             colors: InputColors::default(),
             height: 28.,
             font_size: 13.,
@@ -1021,6 +1021,7 @@ impl Element for InputText {
             });
         }
         let focus = self.input.read(cx).focus.clone();
+        let read_only = self.input.read(cx).read_only;
         window.handle_input(
             &focus,
             ElementInputHandler::new(bounds, self.input.clone()),
@@ -1032,7 +1033,7 @@ impl Element for InputText {
             }
             let _ = prepaint
                 .line
-                .paint(prepaint.origin, window.line_height(), window, cx);
+                .paint_with_text_mask(prepaint.origin, window.line_height(), read_only, window, cx);
             if let Some(caret) = prepaint.caret.take() {
                 window.paint_quad(caret);
             }

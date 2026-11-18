@@ -26,8 +26,8 @@ use cliphost_core::i18n::tr;
 pub(super) fn kind_label(kind: &str) -> &'static str {
     match kind {
         "TextClipItem" => tr("纯文本", "Plain text"),
-        "HtmlClipItem" => tr("HTML 富文本", "HTML rich text"),
-        "QQRichTextItem" => tr("即时通讯图文", "IM rich content"),
+        "HtmlClipItem" => tr("HTML 富文本", "HTML"),
+        "QQRichTextItem" => tr("即时通讯图文", "Chat"),
         "ImageClipItem" => tr("图片", "Image"),
         "FileClipItem" => tr("文件", "Files"),
         "LinkClipItem" => tr("链接", "Link"),
@@ -155,10 +155,10 @@ fn page(
         let (characters, lines) = text_stats(&draft.body);
         info.push(PropertyRow::new(
             "textStats",
-            tr("文本统计", "Text statistics"),
+            tr("文本统计", "Text stats"),
             format!(
                 "{characters} {} · {lines} {}",
-                tr("字符", "characters"),
+                tr("字符", "chars"),
                 tr("行", "lines")
             ),
         ));
@@ -253,7 +253,7 @@ fn page(
     if !favorite || detail.get("sourceProcessName").is_some() {
         source.push(PropertyRow::new(
             "sourceProcess",
-            tr("来源应用", "Source application"),
+            tr("来源应用", "Source app"),
             string(detail, "sourceProcessName"),
         ));
     }
@@ -311,26 +311,26 @@ fn page(
         kind: display_kind.into(),
         label: kind_label(display_kind).into(),
         summary: if draft.title.trim().is_empty() {
-            tr("未命名条目", "Untitled item").into()
+            tr("未命名条目", "Untitled").into()
         } else {
             draft.title.clone()
         },
         groups: vec![
             PropertyGroup {
                 key: "item",
-                label: tr("条目信息", "Item information").into(),
+                label: tr("条目信息", "Item info").into(),
                 rows: info,
                 disclosure: false,
             },
             PropertyGroup {
                 key: "source",
-                label: tr("来源与时间", "Source and time").into(),
+                label: tr("来源与时间", "Source & time").into(),
                 rows: source,
                 disclosure: false,
             },
             PropertyGroup {
                 key: "identifiers",
-                label: tr("标识", "Identifiers").into(),
+                label: tr("标识", "IDs").into(),
                 rows: identifiers,
                 disclosure: true,
             },
@@ -412,7 +412,7 @@ impl EditorProperties {
         };
         for row in next.groups.iter().flat_map(|group| &group.rows) {
             let display = if row.value.trim().is_empty() {
-                tr("未提供", "Not provided").to_owned()
+                tr("未提供", "Not set").to_owned()
             } else {
                 row.value.clone()
             };

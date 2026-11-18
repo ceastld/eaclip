@@ -60,7 +60,7 @@ impl LanCompanionWindow {
                     ..Default::default()
                 },
                 move |window, cx| {
-                    window.set_window_title(tr("局域网互传", "LAN transfer"));
+                    window.set_window_title(tr("局域网互传", "Transfer"));
                     if let Err(error) = crate::platform::register_probe_window(window) {
                         log::warn!("LAN companion probe registration failed: {error}");
                     }

@@ -85,7 +85,7 @@ pub(crate) fn safe_name(name: &str) -> bool {
     }
     matches!(
         name,
-        EXE | "Start-ClipHostDiagnostics.ps1" | "Start-ClipHostDiagnostics.cmd"
+        EXE | "eaclip-cli.exe" | "Start-ClipHostDiagnostics.ps1" | "Start-ClipHostDiagnostics.cmd"
     ) || {
         let n = name.to_ascii_lowercase();
         n == name
@@ -223,11 +223,66 @@ pub(crate) fn verify_payload(root: &Path, info: &Manifest) -> Result<()> {
     reject_links(root)?;
     for file in &info.files {
         verify_file(root, file)?;
-        if file.name.to_ascii_lowercase().ends_with(".dll") || file.name == EXE {
+        if file.name.to_ascii_lowercase().ends_with(".dll")
+            || file.name == EXE
+            || file.name == "eaclip-cli.exe"
+        {
             verify_x64(&root.join(&file.name))?;
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod cli_payload_tests {
+    use super::*;
+    use sha2::{Digest, Sha256};
+
+    fn add_cli(root: &Path, machine: u16) -> Manifest {
+        let mut info = crate::tests::make_package(root, "1.0.0.0", 1);
+        let mut bytes = crate::tests::fake_pe(2);
+        bytes[68..70].copy_from_slice(&machine.to_le_bytes());
+        fs::write(root.join("eaclip-cli.exe"), &bytes).unwrap();
+        info.files.push(PayloadFile {
+            name: "eaclip-cli.exe".into(),
+            sha256: format!("{:x}", Sha256::digest(&bytes)),
+            size_bytes: bytes.len() as u64,
+        });
+        info
+    }
+
+    #[test]
+    fn cli_is_optional_for_old_packages_and_only_exact_name_is_allowed() {
+        let temporary = crate::tests::temporary();
+        let old = crate::tests::make_package(temporary.path(), "1.0.0.0", 1);
+        validate_manifest(&old, "1.0.0.0", true).unwrap();
+        assert!(safe_name("eaclip-cli.exe"));
+        for name in [
+            "other.exe",
+            "eaclip-cli-copy.exe",
+            "../eaclip-cli.exe",
+            "eaclip-cli.exe:ads",
+        ] {
+            assert!(!safe_name(name));
+        }
+    }
+
+    #[test]
+    fn cli_payload_hash_is_verified_with_main_payload() {
+        let temporary = crate::tests::temporary();
+        let info = add_cli(temporary.path(), 0x8664);
+        validate_manifest(&info, "1.0.0.0", true).unwrap();
+        verify_payload(temporary.path(), &info).unwrap();
+        fs::write(temporary.path().join("eaclip-cli.exe"), b"changed").unwrap();
+        assert!(verify_payload(temporary.path(), &info).is_err());
+    }
+
+    #[test]
+    fn cli_payload_architecture_is_checked_even_with_matching_hash() {
+        let temporary = crate::tests::temporary();
+        let info = add_cli(temporary.path(), 0xaa64);
+        assert!(verify_payload(temporary.path(), &info).is_err());
+    }
 }
 
 fn verify_x64(exe: &Path) -> Result<()> {

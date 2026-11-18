@@ -33,6 +33,9 @@ pub(crate) fn next_native_session() -> u64 {
 mod list_preferences;
 use list_preferences::{preference_tooltip, preset_writer, AppearanceWrites, PresetSnapshot};
 
+#[path = "phrase_column.rs"]
+mod phrase_column;
+
 #[path = "list_settings.rs"]
 mod list_settings;
 #[path = "filter_popover.rs"]
@@ -93,8 +96,17 @@ use crate::{
     settings::{settings_page_from_route, SettingsForm, SettingsWindow},
     super_menu::SuperMenuWindow,
     toast::CopyToastOverlay,
-    file_line::FileLine,
+    file_line::{self, FileLine},
+    super_menu_dock::SuperMenuDock,
 };
+
+const CLIPBOARD_SEARCH_DELAY: Duration = Duration::from_millis(70);
+
+#[derive(Clone, Copy)]
+enum ClipboardColumn {
+    History,
+    Phrases,
+}
 
 /// Clip settings surfaced in the footer popover, in the web panel's order.
 const LIST_SETTINGS_KEYS: &[&str] = &[
@@ -281,9 +293,12 @@ pub struct ClipboardPreview {
     reopen_window: Option<gpui::WindowHandle<ReopenWindow>>,
     /// 2026-10-28 top-edge file line; idle until its setting is on.
     file_line: Option<Entity<FileLine>>,
+    super_menu_dock: Option<Entity<SuperMenuDock>>,
     file_browser_window: Option<gpui::WindowHandle<FileBrowserWindow>>,
     favorites: Option<Entity<NativeFavoritesView>>,
+    phrases: phrase_column::PhraseState,
     favorites_active: bool,
+    sidebar_favorite_dialog: bool,
     favorites_visible: bool,
     favorites_subscription: Option<Subscription>,
     fifo_panel: Option<(Entity<FifoPanel>, Subscription, u64)>,
@@ -331,6 +346,7 @@ pub struct ClipboardPreview {
     tag_editor: Option<(Entity<FilterTabsEditor>, Subscription)>,
     /// 「⋯」 category overflow and management menu.
     more_menu: bool,
+    category_more_anchor: Rc<std::cell::Cell<Option<gpui::Point<gpui::Pixels>>>>,
     /// Core lease id and the ids it was opened for.
     menu_lease: Option<(u64, Vec<String>)>,
     menu_anchor: Option<(i32, i32)>,
@@ -597,9 +613,12 @@ impl ClipboardPreview {
             ceabox_window: None,
             reopen_window: None,
             file_line: None,
+            super_menu_dock: None,
             file_browser_window: None,
             favorites: None,
+            phrases: Default::default(),
             favorites_active: false,
+            sidebar_favorite_dialog: false,
             favorites_visible: false,
             favorites_subscription: None,
             fifo_panel: None,
@@ -637,6 +656,7 @@ impl ClipboardPreview {
             advanced: AdvancedFilter::default(),
             filter_panel: None,
             more_menu: false,
+            category_more_anchor: Default::default(),
             tag_editor: None,
             menu_lease: None,
             menu_anchor: None,
@@ -666,6 +686,7 @@ impl ClipboardPreview {
             // design fixture size must not overwrite the live window afterward.
             result.window_state = host.window_state_dto();
             result.configuration = host.config_get();
+            crate::sensitive_text::configure(&result.configuration, cx);
             result.sync_window_background(cx);
             result.load_process_presets(false, window, cx);
             let actions = cx.new(|cx| {
@@ -733,6 +754,7 @@ impl ClipboardPreview {
                 native.cancel_hover();
             }
             self.native_hover_tickets.clear();
+            self.phrases.hover_tickets.clear();
         }
     }
 
@@ -772,8 +794,11 @@ impl ClipboardPreview {
             if cliphost_core::is_headless() || host.host_hwnd() == 0 {
                 return;
             }
-            if self.file_line.is_none() {
+            if !file_line::SHELVED && self.file_line.is_none() {
                 self.file_line = Some(FileLine::start(host.clone(), self.tokens.clone(), self.dark, cx));
+            }
+            if self.super_menu_dock.is_none() {
+                self.super_menu_dock = Some(SuperMenuDock::start(host.clone(), cx));
             }
             if self.interactions.borrow().is_none() {
                 match NativeInteractions::attach(
@@ -802,10 +827,10 @@ impl ClipboardPreview {
                 && self.tag_editor.is_none()
                 && self.process_editor.is_none()
                 && !self.process_open_pending
-                && !self.history_dialog
+                && !self.list_dialog_open()
                 && self.fifo_panel.is_none();
             if self.favorites_active {
-                self.history_scrollbar.cancel();
+                self.cancel_column_scrollbars();
                 if let Some(favorites) = &self.favorites {
                     favorites.update(cx, |favorites, cx| {
                         favorites.maintain_native_interactions(enabled, cx)
@@ -815,19 +840,21 @@ impl ClipboardPreview {
             }
             let stamp = host.native_clipboard_presentation_stamp();
             if self.native_stamp != Some(stamp) {
-                self.history_scrollbar.cancel();
+                self.cancel_column_scrollbars();
                 self.native_stamp = Some(stamp);
                 self.native_session = next_native_session();
                 self.native_hover_tickets.clear();
+                self.phrases.hover_tickets.clear();
                 self.native_drag_over = None;
                 self.native_dragging = false;
                 cx.notify();
             }
             let state = host.hide_snapshot();
-            let accepting =
-                enabled && state.visible && !state.is_collapsed && self.menu_lease.is_none() && self.favorite_lease.is_none();
+            let menu_open = self.menu_lease.is_some() || self.favorite_lease.is_some()
+                || self.favorites.as_ref().is_some_and(|view| view.read(cx).sidebar_menu_open());
+            let accepting = enabled && state.visible && !state.is_collapsed && !menu_open;
             if !accepting {
-                self.history_scrollbar.cancel();
+                self.cancel_column_scrollbars();
             }
             if let Some(native) = self.interactions.borrow_mut().as_mut() {
                 if let Err(error) = native.sync_session(
@@ -844,7 +871,7 @@ impl ClipboardPreview {
                         cx.notify();
                     }
                 }
-                let _ = native.set_menu_open(self.menu_lease.is_some() || self.favorite_lease.is_some());
+                let _ = native.set_menu_open(menu_open);
             }
         }
         #[cfg(not(windows))]
@@ -874,7 +901,11 @@ impl ClipboardPreview {
                 }
                 match event {
                     NativeInteractionEvent::ContentSaved { result, .. } => {
-                        match result {Ok(_)=>self.refresh(cx),Err(error)=>self.error=Some(error)}
+                        match result {
+                            Ok(result) if result.get("savedFolder").is_some() => self.phrase_drop_saved(result, cx),
+                            Ok(_) => self.refresh(cx),
+                            Err(error) => self.error=Some(error),
+                        }
                     }
                     NativeInteractionEvent::DropSaved { request, result } => {
                         if request.page_session() != self.native_session
@@ -919,7 +950,7 @@ impl ClipboardPreview {
         if self.favorites_active
             || self.exit_pending
             || self.loading
-            || self.history_dialog
+            || self.list_dialog_open()
             || drag.generation != self.page_generation
             || self.page_generation != self.generation
             || drag.session != self.native_session
@@ -992,22 +1023,10 @@ impl ClipboardPreview {
         #[cfg(windows)]
         {
             if self.favorites_active
-                || self.exit_pending
-                || self.history_dialog
-                || self.list_settings.is_some()
-                || self.filter_panel.is_some()
-                || self.more_menu
-                || self.tag_editor.is_some()
-                || self.process_editor.is_some()
-                || self.process_open_pending
-                || self.fifo_panel.is_some()
-                || self.menu_lease.is_some()
-                || self.favorite_lease.is_some()
                 || self.loading
                 || generation != self.page_generation
                 || self.generation != generation
                 || session != self.native_session
-                || self.native_dragging
                 || !self
                     .page
                     .rows
@@ -1017,35 +1036,115 @@ impl ClipboardPreview {
                 event.reject();
                 return;
             }
-            let owner = self
-                .interactions
-                .borrow()
-                .as_ref()
-                .and_then(NativeInteractions::hover_owner);
-            let Some(owner) = owner else {
-                event.reject();
-                return;
-            };
-            if let Err(error) = event.apply(owner, f64::from(window.scale_factor()), self.dark) {
-                tracing::debug!(%error, "Hover preview request unavailable");
-                cx.notify();
-            }
+            self.show_list_hover(event, window, cx);
         }
         #[cfg(not(windows))]
         let _ = (index, id, generation, session, event, window, cx);
+    }
+
+    #[cfg(windows)]
+    fn show_list_hover(
+        &self,
+        event: hover_binding::HoverEvent,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.exit_pending
+            || self.list_overlay_open()
+            || self.menu_lease.is_some()
+            || self.favorite_lease.is_some()
+            || self.favorites.as_ref().is_some_and(|view| view.read(cx).sidebar_menu_open())
+            || self.native_dragging
+            || cx.has_active_drag()
+            || self.scrollbar_drag_active(cx)
+        {
+            // A temporary overlay blocks this event without invalidating the
+            // controller that will be reused on the next paint.
+            event.suppress();
+            return;
+        }
+        let owner = self.interactions.borrow().as_ref().and_then(NativeInteractions::hover_owner);
+        let Some(owner) = owner else {
+            event.suppress();
+            return;
+        };
+        if let Err(error) = event.apply(owner, f64::from(window.scale_factor()), self.dark) {
+            tracing::debug!(%error, "Hover preview request unavailable");
+            cx.notify();
+        }
+    }
+
+    fn ensure_favorites_view(&mut self, host: Arc<HostState>, window: &mut Window, cx: &mut Context<Self>) {
+        if self.favorites.is_some() { return; }
+        let (tokens, dark) = (self.clipboard_tokens(), self.dark);
+        let entity =
+            cx.new(|cx| NativeFavoritesView::new(host.clone(), tokens, dark, window, cx));
+        let wakeup = host.chrome_command_notifier();
+        self._subscriptions.push(cx.observe(&entity, move |this, favorites, cx| {
+            if !this.favorites_active && this.phrase_enabled() {
+                this.sidebar_favorite_dialog = favorites.read(cx).sidebar_dialog_open();
+                cx.notify();
+            }
+            if this.maintenance_delay(cx).is_none_or(|delay| delay > Duration::from_millis(50)) {
+                wakeup.notify_one();
+            }
+        }));
+        let subscription = cx.subscribe_in(&entity, window, |this, _, event, window, cx| {
+            match event {
+                FavoritesEvent::AddTextInFolder(parent) => this.open_phrase_draft(parent.clone(), false, window, cx),
+                FavoritesEvent::Edit(id) => this.open_editor(id.clone(), true, cx),
+                FavoritesEvent::OpenSettings => this.open_settings_route("/main/settings", cx),
+                FavoritesEvent::SwitchPrimaryTab => this.set_clipboard_route(
+                    crate::history_keyboard::primary_tab_route(true), window, cx,
+                ),
+                FavoritesEvent::OpenListSettings => {
+                    let root = this.window;
+                    let owner = cx.weak_entity();
+                    cx.defer(move |cx| {
+                        let _ = root.update(cx, |_, window, cx| {
+                            let _ = owner.update(cx, |this, cx| {
+                                this.toggle_list_settings(window, cx)
+                            });
+                        });
+                    });
+                }
+                FavoritesEvent::OpenPanel(id) => {
+                    let id = id.clone();
+                    this.run_host(false, None, cx, move |host| {
+                        host.panel_show(&json!({"favorId":id}))
+                    });
+                }
+            }
+            cx.notify();
+        });
+        #[cfg(windows)]
+        entity.update(cx, |favorites, _| {
+            favorites.bind_native_interactions(self.interactions.clone())
+        });
+        entity.update(cx, |favorites, cx| {
+            favorites.set_config(&self.configuration, cx)
+        });
+        self.favorites_subscription = Some(subscription);
+        self.favorites = Some(entity);
+        self.refresh_clipboard_colors(cx);
     }
 
     fn set_clipboard_route(&mut self, route: &str, window: &mut Window, cx: &mut Context<Self>) {
         let Some(host) = self.model.host() else {
             return;
         };
+        if self.phrases.draft.is_some() {
+            self.close_phrase_draft(window, cx);
+            if self.phrases.draft.is_some() { return; }
+        }
         let active = route
             .split(['?', '#'])
             .next()
             .unwrap_or(route)
             .starts_with("/favorites");
         if active != self.favorites_active {
-            self.history_scrollbar.cancel();
+            self.sidebar_favorite_dialog = false;
+            self.cancel_column_scrollbars();
             self.cancel_native_hover();
             self.native_session = next_native_session();
             #[cfg(windows)]
@@ -1085,54 +1184,7 @@ impl ClipboardPreview {
         host.chrome_web_action(&json!({"kind":"clipboardHostChrome", "route":route,
             "sourceHostWindow":"clipboard", "isClipboardEditing":crate::editor::has_active_input_windows()}));
         if active {
-            if self.favorites.is_none() {
-                let (tokens, dark) = (self.clipboard_tokens(), self.dark);
-                let entity =
-                    cx.new(|cx| NativeFavoritesView::new(host.clone(), tokens, dark, window, cx));
-                let wakeup = host.chrome_command_notifier();
-                self._subscriptions.push(cx.observe(&entity, move |this, _, cx| {
-                    if this.maintenance_delay(cx).is_none_or(|delay| delay > Duration::from_millis(50)) {
-                        wakeup.notify_one();
-                    }
-                }));
-                let subscription = cx.subscribe_in(&entity, window, |this, _, event, window, cx| {
-                    match event {
-                        FavoritesEvent::Edit(id) => this.open_editor(id.clone(), true, cx),
-                        FavoritesEvent::OpenSettings => this.open_settings_route("/main/settings", cx),
-                        FavoritesEvent::SwitchPrimaryTab => this.set_clipboard_route(
-                            crate::history_keyboard::primary_tab_route(true), window, cx,
-                        ),
-                        FavoritesEvent::OpenListSettings => {
-                            let root = this.window;
-                            let owner = cx.weak_entity();
-                            cx.defer(move |cx| {
-                                let _ = root.update(cx, |_, window, cx| {
-                                    let _ = owner.update(cx, |this, cx| {
-                                        this.toggle_list_settings(window, cx)
-                                    });
-                                });
-                            });
-                        }
-                        FavoritesEvent::OpenPanel(id) => {
-                            let id = id.clone();
-                            this.run_host(false, None, cx, move |host| {
-                                host.panel_show(&json!({"favorId":id}))
-                            });
-                        }
-                    }
-                    cx.notify();
-                });
-                #[cfg(windows)]
-                entity.update(cx, |favorites, cx| {
-                    favorites.bind_native_interactions(self.interactions.clone(), cx)
-                });
-                entity.update(cx, |favorites, cx| {
-                    favorites.set_config(&self.configuration, cx)
-                });
-                self.favorites_subscription = Some(subscription);
-                self.favorites = Some(entity);
-                self.refresh_clipboard_colors(cx);
-            }
+            self.ensure_favorites_view(host.clone(), window, cx);
             if let Some(favorites) = &self.favorites {
                 favorites.update(cx, |favorites, cx| favorites.set_route(route, window, cx));
             }
@@ -1147,18 +1199,21 @@ impl ClipboardPreview {
         cx.notify();
     }
 
+    fn list_dialog_open(&self) -> bool {
+        self.history_dialog || self.phrases.draft.is_some() || self.sidebar_favorite_dialog
+    }
+
+    fn list_overlay_open(&self) -> bool {
+        self.list_settings.is_some() || self.filter_panel.is_some() || self.more_menu
+            || self.tag_editor.is_some() || self.fifo_panel.is_some() || self.list_dialog_open()
+            || self.process_editor.is_some() || self.process_open_pending
+    }
+
     fn sync_overlay_guard(&self) {
         if let Some(host) = self.model.host() {
             host.sync_native_clipboard_overlay(
                 self.process_editor.is_some() || self.process_open_pending,
-                self.list_settings.is_some()
-                    || self.filter_panel.is_some()
-                    || self.more_menu
-                    || self.tag_editor.is_some()
-                    || self.fifo_panel.is_some()
-                    || self.history_dialog
-                    || self.process_editor.is_some()
-                    || self.process_open_pending,
+                self.list_overlay_open(),
             );
         }
     }
@@ -1167,10 +1222,7 @@ impl ClipboardPreview {
         let editing = self.editor_window.is_some() || crate::editor::has_active_input_windows();
         let searching = !self.query.is_empty() || self.search.read(cx).focus_handle().is_focused(window)
             || self.search.read(cx).is_composing();
-        let overlay = self.list_settings.is_some() || self.filter_panel.is_some()
-            || self.more_menu || self.tag_editor.is_some() || self.fifo_panel.is_some()
-            || self.history_dialog || self.process_editor.is_some() || self.process_open_pending
-            || self.menu_lease.is_some() || self.favorite_lease.is_some();
+        let overlay = self.list_overlay_open() || self.menu_lease.is_some() || self.favorite_lease.is_some();
         let number_paste = self.configuration["usingNumberKeyToPaste"].as_bool().unwrap_or(true);
         let mut reason = if editing {
             Some(tr("正在编辑，数字会输入编辑器。", "Editing: numbers go to the editor."))
@@ -1492,7 +1544,7 @@ impl ClipboardPreview {
 
     fn open_history_dialog(&mut self, dialog: HistoryDialog, cx: &mut Context<Self>) {
         self.cancel_native_hover();
-        if self.favorites_active || self.exit_pending {
+        if self.favorites_active || self.exit_pending || self.phrases.draft.is_some() {
             return;
         }
         self.retire_process_editor(cx);
@@ -1526,7 +1578,7 @@ impl ClipboardPreview {
     }
 
     fn request_exit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.exit_pending {
+        if self.exit_pending || self.wait_for_phrase_save_on_exit() {
             return;
         }
         if let Some((editor, _)) = &self.tag_editor {
@@ -1772,7 +1824,7 @@ impl ClipboardPreview {
     }
 
     fn focus_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.process_editor.is_some() || self.process_open_pending || self.history_dialog {
+        if self.process_editor.is_some() || self.process_open_pending || self.list_dialog_open() {
             return;
         }
         if self.favorites_active {
@@ -1804,7 +1856,7 @@ impl ClipboardPreview {
             || self.search.read(cx).is_composing()
             || self.process_editor.is_some()
             || self.process_open_pending
-            || self.history_dialog
+            || self.list_dialog_open()
         {
             return;
         }
@@ -1814,7 +1866,7 @@ impl ClipboardPreview {
     }
 
     fn refresh(&mut self, cx: &mut Context<Self>) {
-        self.refresh_with_delay(Duration::from_millis(70), cx);
+        self.refresh_with_delay(CLIPBOARD_SEARCH_DELAY, cx);
     }
 
     fn retire_history_query(&mut self, cx: &mut Context<Self>) {
@@ -2014,6 +2066,42 @@ impl ClipboardPreview {
         }));
     }
 
+    fn column_scrollbar(&self, column: ClipboardColumn, style: ScrollbarStyle, cx: &mut Context<Self>) -> gpui::AnyElement {
+        let (id, scrollbar, list) = match column {
+            ClipboardColumn::History => ("history-scrollbar", &self.history_scrollbar, &self.list),
+            ClipboardColumn::Phrases => ("phrase-scrollbar", &self.phrases.scrollbar, &self.phrases.list),
+        };
+        let weak = cx.weak_entity();
+        let session = self.native_session;
+        scrollbar.render(id, ScrollbarTarget::List(list.clone()), session, style, Rc::new(move |_, cx| {
+            let _ = weak.update(cx, |this, cx| {
+                if this.favorites_active || this.native_session != session {
+                    return;
+                }
+                this.cancel_native_hover();
+                this.history_idle.activity(Instant::now());
+                if matches!(column, ClipboardColumn::History) {
+                    this.sync_history_top_button(cx);
+                    // Thumb jumps reach the end without a native list wheel event.
+                    if scrollbar::visible_end(&this.list).saturating_add(20) >= this.page.rows.len() {
+                        this.load_more(cx);
+                    }
+                }
+                cx.notify();
+            });
+        }))
+    }
+
+    fn cancel_column_scrollbars(&self) {
+        self.history_scrollbar.cancel();
+        self.phrases.scrollbar.cancel();
+    }
+
+    fn scrollbar_drag_active(&self, cx: &gpui::App) -> bool {
+        self.history_scrollbar.is_dragging() || self.phrases.scrollbar.is_dragging()
+            || self.favorites.as_ref().is_some_and(|favorites| favorites.read(cx).scrollbar_drag_active())
+    }
+
     fn maintenance_delay(&self, cx: &gpui::App) -> Option<Duration> {
         let host = self.model.host();
         let active = host.as_ref().is_some_and(|host| host.needs_native_ui_poll())
@@ -2026,8 +2114,7 @@ impl ClipboardPreview {
         // NativeWindow intentionally defers hide policy during HWND setup and
         // captured scrollbar drags; do not spin on an overdue FIFO deadline.
         let can_expire_fifo = self.native.as_ref().is_some_and(NativeWindow::ready_for_maintenance)
-            && !self.history_scrollbar.is_dragging()
-            && !self.favorites.as_ref().is_some_and(|favorites| favorites.read(cx).scrollbar_drag_active());
+            && !self.scrollbar_drag_active(cx);
         native_maintenance::next_delay(
             poll,
             self.content_cache.next_idle_deadline().into_iter()
@@ -2147,10 +2234,12 @@ impl ClipboardPreview {
                     .update_in(cx, |this, window, cx| {
                         cx.defer(crate::favorite_drag::maintain);
                         if this.history_content_drag.as_ref().is_some_and(|drag|!drag.active()) {
+                            crate::favorite_drag::HistoryFolderDrop::clear_offer(window);
                             let drag=this.history_content_drag.take().unwrap();
                             this.native_dragging=false;
                             this.native_suppress_click=Some(Instant::now()+Duration::from_millis(300));
                             this.drag_tab_hover=None;
+                            cx.notify();
                             if !drag.is_claimed() && this.favorites_active {
                                 this.set_clipboard_route("/clipboard",window,cx);
                             }
@@ -2278,10 +2367,7 @@ impl ClipboardPreview {
                             this.error = Some(error);
                             cx.notify();
                         }
-                        let content_drag_active = this.history_scrollbar.is_dragging()
-                            || this.favorites.as_ref().is_some_and(|favorites| {
-                                favorites.read(cx).scrollbar_drag_active()
-                            });
+                        let content_drag_active = this.scrollbar_drag_active(cx);
                         if let Some(native) = &mut this.native {
                             match platform::with_hit_test_probe(|| {
                                 native.poll(window, &host, content_drag_active)
@@ -2388,7 +2474,7 @@ impl ClipboardPreview {
                             || this.search.read(cx).is_composing()
                             || this.editor_window.is_some() || crate::editor::has_active_input_windows()
                             || this.list_settings.is_some() || this.filter_panel.is_some()
-                            || this.tag_editor.is_some() || this.more_menu || this.history_dialog
+                            || this.tag_editor.is_some() || this.more_menu || this.list_dialog_open()
                             || this.process_editor.is_some() || this.process_open_pending
                             || this.fifo_panel.is_some() || this.menu_lease.is_some()
                             || this.favorite_lease.is_some();
@@ -2469,6 +2555,7 @@ impl ClipboardPreview {
                                 this.refresh(cx);
                             }
                         }
+                        if favorites_changed { this.invalidate_phrases(cx); }
                         if favorites_changed && this.favorites_active {
                             if let Some(favorites) = &this.favorites {
                                 favorites.update(cx, |favorites, cx| {
@@ -2527,9 +2614,14 @@ impl ClipboardPreview {
                 return;
             }
         }
-        if self.history_dialog {
+        if self.list_dialog_open() {
             if task.command() == ChromeCommand::ClipboardHandleEscape {
-                if let Some(actions) = &self.history_actions {
+                if self.sidebar_favorite_dialog {
+                    if let Some(view) = &self.favorites {
+                        view.update(cx, |view, cx| view.dismiss_sidebar_dialog(window, cx));
+                    }
+                } else if self.phrases.draft.is_some() { self.close_phrase_draft(window, cx); }
+                else if let Some(actions) = &self.history_actions {
                     actions.update(cx, |actions, cx| actions.handle_escape(window, cx));
                 }
                 return;
@@ -2633,6 +2725,10 @@ impl ClipboardPreview {
                 }
             }
             ChromeCommand::DismissContextMenu(lease) => {
+                if !self.favorites_active && self.favorites.as_ref().is_some_and(|view|
+                    view.update(cx, |view, cx| view.dismiss_item_menu(lease, cx))) {
+                    return;
+                }
                 if self
                     .fifo_panel
                     .as_ref()
@@ -2869,6 +2965,9 @@ impl ClipboardPreview {
                     self.execute_selected_for_task("paste", Some(task), cx);
                 }
             }
+            ChromeCommand::ClipboardNavKey { key, .. } if self.sidebar_has_focus(window, cx) => {
+                self.sidebar_list_key(key, Some(task), window, cx);
+            }
             ChromeCommand::ClipboardNavKey { key, shift } => match key {
                 "Enter" => self.execute_selected_for_task("paste", Some(task), cx),
                 "Delete" => self.execute_selected("delete", cx),
@@ -2911,7 +3010,7 @@ impl ClipboardPreview {
     ) {
         if self.favorites_active
             || self.fifo_panel.is_some()
-            || self.history_dialog
+            || self.list_dialog_open()
             || self.process_editor.is_some()
             || self.process_open_pending
             || self.list_settings.is_some()
@@ -3082,7 +3181,7 @@ impl ClipboardPreview {
         let Some(host) = self.model.host() else {
             return;
         };
-        if self.history_dialog || self.search.read(cx).is_composing() {
+        if self.list_dialog_open() || self.search.read(cx).is_composing() {
             return;
         }
         let Some(point) = platform::cursor_position() else {
@@ -3576,7 +3675,7 @@ impl ClipboardPreview {
     }
 
     fn dismiss(&mut self, window: &mut Window) {
-        self.history_scrollbar.cancel();
+        self.cancel_column_scrollbars();
         if let Some(host) = self.model.host() {
             host.window_hide();
         } else {
@@ -3589,7 +3688,7 @@ impl ClipboardPreview {
             return;
         };
         if self.favorites_active
-            || self.history_dialog
+            || self.list_dialog_open()
             || self.process_editor.is_some()
             || self.process_open_pending
             || self.exit_pending
@@ -3653,7 +3752,7 @@ impl ClipboardPreview {
     ) {
         if self.favorites_active
             || self.fifo_panel.is_some()
-            || self.history_dialog
+            || self.list_dialog_open()
             || self.process_editor.is_some()
             || self.process_open_pending
             || self.list_settings.is_some()
@@ -3880,7 +3979,15 @@ impl ClipboardPreview {
     }
 
     fn merge_authoritative_config(&mut self, value: &Value, cx: &mut Context<Self>) {
-        self.configuration = self.appearance_writes.lock().unwrap().merge(value);
+        let configuration = self.appearance_writes.lock().unwrap().merge(value);
+        if self.configuration["maskSensitiveText"] != configuration["maskSensitiveText"]
+            || self.configuration["clipListImageHoverPreviewEnabled"]
+                != configuration["clipListImageHoverPreviewEnabled"]
+        {
+            self.cancel_native_hover();
+        }
+        self.configuration = configuration;
+        crate::sensitive_text::configure(&self.configuration, cx);
         self.sync_window_background(cx);
         if let Some((controls, _)) = &self.appearance_controls {
             controls.update(cx, |controls, cx| {
@@ -4103,7 +4210,7 @@ impl ClipboardPreview {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.favorites_active || self.exit_pending || self.history_dialog {
+        if self.favorites_active || self.exit_pending || self.list_dialog_open() {
             return;
         }
         self.close_process_editor(window, cx);
@@ -4597,7 +4704,7 @@ impl ClipboardPreview {
         cx: &mut Context<Self>,
     ) {
         if self.favorites_active
-            || self.history_dialog
+            || self.list_dialog_open()
             || self.process_editor.is_some()
             || self.process_open_pending
             || self.exit_pending
@@ -4645,7 +4752,7 @@ impl ClipboardPreview {
         cx: &mut Context<Self>,
     ) {
         if self.favorites_active
-            || self.history_dialog
+            || self.list_dialog_open()
             || self.process_editor.is_some()
             || self.process_open_pending
             || self.exit_pending
@@ -5076,12 +5183,12 @@ impl ClipboardPreview {
                     shadow_lg />
             }
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                .child(title(tr("粘贴行为", "Paste behavior")))
+                .child(title(tr("粘贴行为", "Paste mode")))
                 .child(
                     rsx! {
                         <div id={"filter-sort"} flex items_center justify_between cursor_pointer
                             text_size={px(13.0)}>
-                            {tr("粘贴后置顶", "Pin after pasting")}
+                            {tr("粘贴后置顶", "Pin after paste")}
                         </div>
                     }
                         .child(
@@ -5101,7 +5208,7 @@ impl ClipboardPreview {
                             this.set_advanced(|a| a.sort_type = if sort_on { 0 } else { 1 }, cx)
                         })),
                 )
-                .child(title(tr("按使用状态筛选", "Filter by usage")))
+                .child(title(tr("按使用状态筛选", "Usage filter")))
                 .child(div().flex().flex_wrap().gap(px(4.0)).children(usage.map(
                     |(value, label)| {
                         self.chip(
@@ -5114,7 +5221,7 @@ impl ClipboardPreview {
                         }))
                     },
                 )))
-                .child(title(tr("按创建时间筛选", "Filter by creation date")))
+                .child(title(tr("按创建时间筛选", "Date filter")))
                 .child(div().flex().flex_wrap().gap(px(4.0)).children(created.map(
                     |(value, label)| {
                         self.chip(
@@ -5293,6 +5400,7 @@ impl ClipboardPreview {
     /// entries that used to sit inside the strip.
     fn more_menu_view(
         &self,
+        anchor: gpui::Point<gpui::Pixels>,
         overflow_tabs: &[usize],
         overflow_processes: Vec<crate::process_filters::ProcessTab>,
         process_handler: crate::process_filters::ProcessTabHandler,
@@ -5313,13 +5421,25 @@ impl ClipboardPreview {
                 .hover(move |style| style.bg(hover))
         };
         let mut card = rsx! {
-            <div id={"category-more-menu"} absolute
-                top={px(l.title_bar_height + l.content_padding_y + l.toolbar_height)}
-                right={px(l.content_padding_x + 2.0)} min_w={px(156.0)} flex flex_col p={px(4.0)}
+            <div id={"category-more-menu"} min_w={px(156.0)} flex flex_col p={px(4.0)}
                 bg={self.popover_surface()} border_1 border_color={color(&t.border)}
                 rounded={px(8.0)} shadow_lg occlude />
         }
             .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation());
+        card = card
+            .child(
+                item("more-toggle-favorites".into(), self.phrase_enabled())
+                    .child(self.icon("panel-right", l.icon_size, color(&t.text_secondary)))
+                    .child(if self.phrase_enabled() {
+                        tr("隐藏收藏侧栏", "Hide sidebar")
+                    } else {
+                        tr("显示收藏侧栏", "Show sidebar")
+                    })
+                    .on_click(cx.listener(|this, _, window, cx| {
+                        this.close_more_menu(cx);
+                        this.toggle_phrase_column(window, cx);
+                    })),
+            );
         for &index in overflow_tabs {
             let tab = &self.tabs[index];
             let key = tab.key.clone();
@@ -5365,7 +5485,7 @@ impl ClipboardPreview {
             .child(
                 item("more-add-process".into(), false)
                     .child(self.icon("plus", l.icon_size, color(&t.text_secondary)))
-                    .child(tr("添加进程筛选…", "Add process filter…"))
+                    .child(tr("添加进程筛选…", "Add app filter…"))
                     .on_click(cx.listener(|this, _, window, cx| {
                         this.close_more_menu(cx);
                         this.open_process_editor(window, cx)
@@ -5374,7 +5494,7 @@ impl ClipboardPreview {
             .child(
                 item("more-customize-tabs".into(), false)
                     .child(self.icon("sliders", l.icon_size, color(&t.text_secondary)))
-                    .child(tr("自定义分类…", "Customize categories…"))
+                    .child(tr("自定义分类…", "Edit tabs…"))
                     .on_click(cx.listener(|this, _, window, cx| {
                         this.close_more_menu(cx);
                         this.open_tag_editor(window, cx)
@@ -5389,7 +5509,12 @@ impl ClipboardPreview {
                 MouseButton::Left,
                 cx.listener(|this, _, _, cx| this.close_more_menu(cx)),
             )
-            .child(card)
+            .child(gpui::anchored()
+                .anchor(gpui::Corner::TopRight)
+                .position(anchor)
+                .offset(gpui::point(px(0.), px(4.)))
+                .snap_to_window_with_margin(px(4.))
+                .child(card))
             .into_any_element()
     }
 
@@ -5431,7 +5556,7 @@ impl ClipboardPreview {
             settings.image_max_height_px as f32
         };
         let row_width =
-            f32::from(window.viewport_size().width) - 2.0 * l.content_padding_x;
+            self.history_width(window) - 2.0 * l.content_padding_x;
         // Digit/pin marks and hover actions overlay minimal row content.
         // Only the custom process/time metadata can reserve body width.
         let reserve = if minimal {
@@ -5468,44 +5593,50 @@ impl ClipboardPreview {
         };
         let mut content = rsx! {
             <div relative flex_1 min_w_0 flex flex_col gap={px(metrics.content_gap)}
+                mask_sensitive_text={true}
                 text_color={color(&t.text)}
                 font_weight={FontWeight(tokens.typography.text_weight as f32)} />
         };
-        let mut image_information = appearance::RowImageInformation::default();
-        if row.item.kind == "ImageClipItem" || row.thumbnail.is_some() {
-            let mode = if minimal { ContentMode::Minimal } else { ContentMode::Standard };
-            let (resource_mode, resource_foreground) = Self::content_resource_style(&row, mode, &t.text);
-            let projection = Self::content_projection(&row, mode);
+        let mode = if minimal { ContentMode::Minimal } else { ContentMode::Standard };
+        let projection = Self::content_projection(&row, mode);
+        let (resource_mode, foreground) = Self::content_resource_style(&row, mode, &t.text);
+        let empty = ContentResources::default();
+        let resources = projection.as_ref().and_then(|p| {
+            self.content_cache.get(self.page_generation, &id, p, resource_mode, foreground)
+        }).unwrap_or(&empty);
+        let primary_image = row.item.kind == "ImageClipItem" || row.thumbnail.is_some();
+        let prepared = resources.images.get(crate::history_image_resources::PRIMARY_IMAGE_RESOURCE)
+            .and_then(Option::as_ref);
+        let dimensions = row.thumbnail.as_ref().map(|image| (image.width, image.height))
+            .or_else(|| prepared.map(|image| (image.width as u32, image.height as u32)));
+        let mut image_info = appearance::RowImageInformation::default();
+        if primary_image {
+            image_info.preview = true;
+            image_info.width = dimensions.map(|d| d.0);
+            image_info.height = dimensions.map(|d| d.1);
+        } else if let Some(ContentProjection::Files(files)) = &projection {
+            image_info.preview = native_content::history_file_image_preview(files, resources).is_some();
+        }
+        let info = appearance::project_row_information(&row.item, appearance.layout, image_info);
+        let caption = appearance::row_information_label(info);
+        let body_width = (row_width - 2.0 * (metrics.padding_x + metrics.border_width) - reserve).max(1.0);
+        let caption_width = caption.as_ref().map(|label| {
+            (label_width(label, 10., &tokens.typography.font_family, window).ceil() + 1.)
+                .min(body_width * 0.45)
+        });
+        let available_width = (body_width - caption_width.map_or(0., |w| w + 8.)).max(1.);
+        if primary_image {
             let load_status = projection.as_ref().map(|projection| self.content_cache.load_status(
-                self.page_generation, &id, projection, resource_mode, resource_foreground,
+                self.page_generation, &id, projection, resource_mode, foreground,
             )).unwrap_or(native_content::cache::ContentLoadStatus::Missing);
-            let prepared = projection.as_ref().and_then(|projection| {
-                self.content_cache
-                    .get(self.page_generation, &id, projection, resource_mode, resource_foreground)
-                    .and_then(|resources| resources.images.get(crate::history_image_resources::PRIMARY_IMAGE_RESOURCE))
-                    .and_then(|image| image.clone())
-            });
-            let (natural_width, natural_height) = row.thumbnail.as_ref()
-                .map(|thumbnail| (thumbnail.width, thumbnail.height))
-                .or_else(|| prepared.as_ref().map(|image| (image.width as u32, image.height as u32)))
-                .unwrap_or((320, 180));
-            image_information = appearance::RowImageInformation {
-                preview: true,
-                width: Some(natural_width),
-                height: Some(natural_height),
-                size_bytes: None,
-            };
-            let available_width = f32::from(window.viewport_size().width)
-                - 2.0 * l.content_padding_x
-                - 2.0 * metrics.padding_x
-                - reserve;
+            let (natural_width, natural_height) = dimensions.unwrap_or((320, 180));
             let layout = crate::raster_layout::natural_image_layout(
                 natural_width as f32, natural_height as f32, available_width,
                 image_max_height, window.scale_factor(),
             );
             // Real history uses only prepared, budgeted images. Embedded design
             // fixtures have no Host or filesystem loader and remain embedded.
-            let source = prepared.as_ref().map(native_content::ContentImage::source)
+            let source = prepared.map(native_content::ContentImage::source)
                 .or_else(|| row.thumbnail.as_ref().filter(|thumbnail| {
                     self.model.host().is_none() && !std::path::Path::new(&thumbnail.asset).is_absolute()
                 }).map(|thumbnail| gpui::ImageSource::Resource(gpui::Resource::Embedded(
@@ -5518,7 +5649,7 @@ impl ClipboardPreview {
                 .rounded(px(l.image_radius * crate::raster_layout::image_dpi_compensation(window.scale_factor())))
                 .with_fallback(|| {
                     div()
-                        .child(tr("图片加载失败", "Image failed to load"))
+                        .child(tr("图片加载失败", "Image load failed"))
                         .into_any_element()
                 })
                 .into_any_element()
@@ -5537,7 +5668,7 @@ impl ClipboardPreview {
                     .children(message)
                     .into_any_element()
             };
-            let image = if let Some(prepared) = &prepared {
+            let image = if let Some(prepared) = prepared {
                 native_content::render_content_image(prepared, image)
             } else { image };
             #[cfg(debug_assertions)]
@@ -5557,23 +5688,7 @@ impl ClipboardPreview {
                 ),
             });
         } else {
-            let mode = if minimal {
-                ContentMode::Minimal
-            } else {
-                ContentMode::Standard
-            };
-            if let Some(projection) = Self::content_projection(&row, mode) {
-                let empty = ContentResources::default();
-                let resources = self
-                    .content_cache
-                    .get(self.page_generation, &id, &projection, mode, &t.text)
-                    .unwrap_or(&empty);
-                image_information.preview = match &projection {
-                    ContentProjection::Files(files) => native_content::history_file_image_preview(files, resources).is_some(),
-                    ContentProjection::LocalPath(path) => path.is_image && !resources.paths.get(&path.path)
-                        .is_some_and(|info| info.exists == Some(false)),
-                    _ => false,
-                };
+            if let Some(projection) = projection {
                 let owner = cx.weak_entity();
                 let generation = self.page_generation;
                 let session = self.native_session;
@@ -5628,7 +5743,7 @@ impl ClipboardPreview {
                     &projection,
                     resources,
                     ContentMetrics {
-                        width: (row_width - 2.0 * metrics.padding_x - reserve).max(1.0),
+                        width: available_width,
                         font_size: tokens.typography.font_size,
                         line_height: metrics.text_line_height,
                         max_lines: metrics.text_max_lines,
@@ -5669,7 +5784,7 @@ impl ClipboardPreview {
                 content = content.child(native_content::render_secondary_content(
                     &id,
                     &summary,
-                    (row_width - 2.0 * metrics.padding_x - reserve).max(1.0),
+                    available_width,
                     settings.density == crate::appearance::Density::Relaxed,
                     &tokens,
                     self.dark,
@@ -5681,11 +5796,11 @@ impl ClipboardPreview {
                 ));
             }
         }
-        content = content.child(appearance::render_row_information(
-            &appearance::project_row_information(&row.item, appearance.layout, image_information),
-            (row_width - 2.0 * metrics.padding_x - reserve).max(1.0),
-            &tokens, self.dark,
-        ));
+        if let Some((label, width)) = caption.zip(caption_width) {
+            content = div().min_w_0().flex().items_end().gap_x(px(8.))
+                .child(content.overflow_hidden())
+                .child(native_content::information_caption(label, t).w(px(width)).flex_none().text_right());
+        }
         let view = cx.weak_entity();
         let menu_view = view.clone();
         let action_view = view.clone();
@@ -6025,6 +6140,9 @@ impl Render for ClipboardPreview {
         });
         self.sync_history_top_button(cx);
         if let Some(host)=self.model.host() {
+            if self.history_content_drag.is_some() {
+                crate::favorite_drag::HistoryFolderDrop::clear_offer(window);
+            }
             crate::favorite_drag::register_surface(window,host,"clipboard",cx);
         }
         self.refresh_theme(window, cx);
@@ -6127,7 +6245,7 @@ impl Render for ClipboardPreview {
         let mut strip_required: Vec<bool> =
             self.tabs.iter().map(|tab| tab.key == self.category).collect();
         strip_required.extend(process_tabs.iter().map(|tab| tab.active));
-        let strip_available = viewport_width
+        let strip_available = self.history_width(window)
             - 2.0 * l.content_padding_x
             - l.icon_button_size
             - l.toolbar_gap
@@ -6146,34 +6264,12 @@ impl Render for ClipboardPreview {
         .flex_1()
         .min_h_0()
         .w_full();
-        let weak = cx.weak_entity();
-        let scrollbar_session = self.native_session;
-        let history_scrollbar = self.history_scrollbar.render(
-            "history-scrollbar",
-            ScrollbarTarget::List(self.list.clone()),
-            self.native_session,
-            ScrollbarStyle {
-                ink: color(&t.text),
-                metrics: tokens.scrollbar,
-                always_visible: self.snapshot,
-            },
-            Rc::new(move |_, cx| {
-                let _ = weak.update(cx, |this, cx| {
-                    if this.favorites_active || this.native_session != scrollbar_session {
-                        return;
-                    }
-                    this.cancel_native_hover();
-                    // Scrollbar jumps can reach an unmeasured end without a
-                    // wheel event, so preserve the existing lazy-load trigger.
-                    this.history_idle.activity(Instant::now());
-                    this.sync_history_top_button(cx);
-                    if scrollbar::visible_end(&this.list).saturating_add(20) >= this.page.rows.len() {
-                        this.load_more(cx);
-                    }
-                    cx.notify();
-                });
-            }),
-        );
+        let scrollbar_style = ScrollbarStyle {
+            ink: color(&t.text),
+            metrics: tokens.scrollbar,
+            always_visible: self.snapshot,
+        };
+        let history_scrollbar = self.column_scrollbar(ClipboardColumn::History, scrollbar_style, cx);
         let views = [
             ("clipboard", "剪贴板", "Clipboard"),
             ("favorites", "收藏", "Favorites"),
@@ -6459,10 +6555,10 @@ impl Render for ClipboardPreview {
                     l.icon_size,
                     color(if self.more_menu || self.filter_popover_open() { &t.text } else { &t.text_muted }),
                 ))
-                .tooltip(preference_tooltip(
-                    tr("更多分类与管理", "More categories").into(),
+                .when(!self.more_menu && !self.filter_popover_open(), |button| button.tooltip(preference_tooltip(
+                    tr("更多分类与列表选项", "Tabs & list options").into(),
                     t.clone(),
-                ))
+                )))
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.more_menu = !this.more_menu;
@@ -6470,6 +6566,9 @@ impl Render for ClipboardPreview {
                     cx.notify();
                 }))
         };
+        let more_anchor = self.category_more_anchor.clone();
+        let owner = cx.entity_id();
+        let follow_anchor = self.more_menu || self.filter_popover_open();
         let toolbar = rsx! {
             <div flex items_center gap={px(l.toolbar_gap)} h={px(l.toolbar_height)} px={px(2.0)}
                 flex_none>
@@ -6477,9 +6576,18 @@ impl Render for ClipboardPreview {
                 <div flex_1 />
                 {more_button}
             </div>
-        };
-        let more_menu = self.more_menu.then(|| {
+        }.on_children_prepainted(move |children, _, cx| {
+            if let Some(button) = children.last() {
+                let position = Some(gpui::point(button.right(), button.bottom()));
+                if more_anchor.replace(position) != position && follow_anchor {
+                    // Prepaint already uses this frame's layout; position the open menu on the next frame.
+                    cx.defer(move |cx| cx.notify(owner));
+                }
+            }
+        });
+        let more_menu = self.category_more_anchor.get().filter(|_| self.more_menu).map(|anchor| {
             self.more_menu_view(
+                anchor,
                 &overflow_tabs,
                 overflow_processes
                     .iter()
@@ -6501,7 +6609,7 @@ impl Render for ClipboardPreview {
             .child(
                 self.tool_button("pause", if paused { "play" } else { "pause" },
                     color(if paused { &t.warning } else { &t.text_muted }), false, t)
-                    .tooltip(preference_tooltip(if paused { tr("继续记录", "Resume capture") } else { tr("暂停记录", "Pause capture") }.into(), t.clone()))
+                    .tooltip(preference_tooltip(if paused { tr("继续记录", "Resume") } else { tr("暂停记录", "Pause") }.into(), t.clone()))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.window_action("setMonitorPaused", "isMonitorPaused", cx)
@@ -6516,7 +6624,7 @@ impl Render for ClipboardPreview {
                         rsx! {
                             <div font_weight={FontWeight::MEDIUM} text_color={color(&t.warning)}
                                 flex_none>
-                                {tr("已暂停记录 ·", "Capture paused ·")}
+                                {tr("已暂停记录 ·", "Paused ·")}
                             </div>
                         },
                     ))
@@ -6537,7 +6645,7 @@ impl Render for ClipboardPreview {
             )
             .child(
                 self.tool_button("history-clear", "delete", color(&t.text_muted), false, t)
-                    .tooltip(preference_tooltip(tr("清空非置顶", "Clear unpinned history").into(), t.clone()))
+                    .tooltip(preference_tooltip(tr("清空非置顶", "Clear unpinned").into(), t.clone()))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.open_history_dialog(HistoryDialog::Clear(Some(ClearScope::NonTop)), cx);
                     })),
@@ -6563,7 +6671,7 @@ impl Render for ClipboardPreview {
             .child(
                 self.tool_button("lan-share", "desktop", color(if lan_open { &t.text } else { &t.text_muted }), false, t)
                     .when(lan_open, |button| button.bg(neutral))
-                    .tooltip(preference_tooltip(tr("局域网互传", "LAN sharing").into(), t.clone()))
+                    .tooltip(preference_tooltip(tr("局域网互传", "Transfer").into(), t.clone()))
                     .on_click(cx.listener(|this, _, _, cx| this.open_settings_route("/main/lan", cx))),
             )
             .child(
@@ -6576,7 +6684,7 @@ impl Render for ClipboardPreview {
                 )
                 .when(self.list_settings.is_some(), |e| e.bg(neutral))
                 .tooltip(preference_tooltip(
-                    tr("列表显示设置", "List display").into(),
+                    tr("列表显示设置", "List style").into(),
                     t.clone(),
                 ))
                 .on_click(cx.listener(|this, _, window, cx| this.toggle_list_settings(window, cx))),
@@ -6587,6 +6695,22 @@ impl Render for ClipboardPreview {
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                     .on_click(cx.listener(|this, _, _, cx| this.open_settings_route("/main/settings", cx))),
             );
+        let split = !self.favorites_active && self.phrase_enabled();
+        if split || self.phrases.draft.is_some() || (self.list_settings.is_some() && self.phrase_enabled()) {
+            self.sync_phrases(cx);
+        }
+        let sidebar_dialog = self.sync_sidebar_actions(window, cx);
+        let phrase_column = if split {
+            let scrollbar = self.column_scrollbar(ClipboardColumn::Phrases, scrollbar_style, cx);
+            Some(self.phrase_column(scrollbar, cx))
+        } else {
+            self.phrases.scrollbar.cancel();
+            None
+        };
+        let phrase_editor = self.phrase_editor(window, cx);
+        // At narrow widths keep the installed host's full action strip reachable.
+        let shared_footer = split && viewport_width < 560.;
+        let mut footer = Some(footer);
         let list_settings = self
             .list_settings
             .clone()
@@ -6626,12 +6750,20 @@ impl Render for ClipboardPreview {
         let element = div()
             .capture_any_mouse_down(cx.listener(|this, _, _, _| {
                 if !this.favorites_active {
+                    this.cancel_native_hover();
                     this.history_idle.activity(Instant::now());
                 }
             }))
             .capture_key_down(cx.listener(|this,event:&gpui::KeyDownEvent,window,cx| {
                 if !this.favorites_active {
                     this.history_idle.activity(Instant::now());
+                }
+                if this.sidebar_favorite_dialog && event.keystroke.key == "escape" {
+                    if this.favorites.as_ref().is_some_and(|view|
+                        view.update(cx, |view, cx| view.dismiss_sidebar_dialog(window, cx))) {
+                        cx.stop_propagation();
+                    }
+                    return;
                 }
                 if event.keystroke.key=="escape" && crate::favorite_drag::cancel_active(window,cx) {
                     this.native_suppress_click=Some(Instant::now()+Duration::from_millis(300));
@@ -6654,7 +6786,9 @@ impl Render for ClipboardPreview {
                     }
                 }
             }))
-            .key_context(if self.favorites_active {
+            .key_context(if self.phrases.draft.is_some() || self.sidebar_favorite_dialog {
+                "ClipHistoryDialog"
+            } else if self.favorites_active || self.sidebar_has_focus(window, cx) {
                 "ClipFavorites"
             } else if self.process_editor.is_some() || self.process_open_pending {
                 "ClipProcessFilter"
@@ -6675,6 +6809,10 @@ impl Render for ClipboardPreview {
                     cx.stop_propagation(); return;
                 }
                 this.cancel_native_hover();
+                if this.phrases.draft.is_some() {
+                    if event.keystroke.key == "escape" { this.close_phrase_draft(window, cx); }
+                    cx.stop_propagation(); return;
+                }
                 if this.process_editor.is_some() || this.process_open_pending {
                     if event.keystroke.key == "escape"
                         && !event.is_held
@@ -6723,6 +6861,30 @@ impl Render for ClipboardPreview {
                     return;
                 }
                 if this.filter_panel.is_some() || this.tag_editor.is_some() {
+                    return;
+                }
+                if this.sidebar_has_focus(window, cx) {
+                    let modifiers = event.keystroke.modifiers;
+                    let key = event.keystroke.key.as_str();
+                    let command = match (key, modifiers.number_of_modifiers()) {
+                        ("c", 1) if modifiers.control => Some("Copy"),
+                        ("up", 0) => Some("Up"), ("down", 0) => Some("Down"),
+                        ("home", 0) => Some("Home"), ("end", 0) => Some("End"),
+                        ("enter", 0) => Some("Enter"), ("delete", 0) => Some("Delete"),
+                        ("tab", _) if modifiers.number_of_modifiers() == u8::from(modifiers.shift) => {
+                            this.set_clipboard_route("/favorites", window, cx);
+                            cx.stop_propagation();
+                            return;
+                        }
+                        _ => None
+                    };
+                    if let Some(command) = command {
+                        if !event.is_held || !matches!(command, "Enter" | "Delete") {
+                            this.sidebar_list_key(command, None, window, cx);
+                        }
+                        window.prevent_default();
+                        cx.stop_propagation();
+                    }
                     return;
                 }
                 let modifiers = &event.keystroke.modifiers;
@@ -6832,9 +6994,9 @@ impl Render for ClipboardPreview {
                 element.children(self.favorites.clone())
             })
             .when(!self.favorites_active, |element| {
-                element.child(
+                element.child(div().flex_1().min_h_0().flex().child(
                     rsx! {
-                        <div flex_1 min_h_0 flex flex_col px={px(l.content_padding_x)}
+                        <div flex_1 min_w_0 min_h_0 flex flex_col px={px(l.content_padding_x)}
                             py={px(l.content_padding_y)}>
                             {toolbar}
                         </div>
@@ -6857,7 +7019,7 @@ impl Render for ClipboardPreview {
                                             vec![
                                                 MenuAction::row(
                                                     "scroll-top",
-                                                    tr("回到开头", "Scroll to top"),
+                                                    tr("回到开头", "Top"),
                                                 ),
                                                 MenuAction::row(
                                                     "add-text",
@@ -6876,7 +7038,7 @@ impl Render for ClipboardPreview {
                                     element.child(
                                         rsx! {
                                             <div p_4 text_color={color(&t.text_muted)}>
-                                                {tr("暂无剪贴板记录", "No clipboard history")}
+                                                {tr("暂无剪贴板记录", "No history")}
                                             </div>
                                         },
                                     )
@@ -6901,7 +7063,7 @@ impl Render for ClipboardPreview {
                                         this.history_top_hovered = *hovered;
                                         cx.notify();
                                     }))
-                                    .tooltip(preference_tooltip(tr("回到顶部", "Back to top").into(), t.clone()))
+                                    .tooltip(preference_tooltip(tr("回到顶部", "Top").into(), t.clone()))
                                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.history_idle.activity(Instant::now());
@@ -6926,8 +7088,8 @@ impl Render for ClipboardPreview {
                             )
                         })
                         .children(history_banner)
-                        .child(footer),
-                )
+                        .when(!shared_footer, |e| e.children(footer.take())),
+                ).children(phrase_column)).when(shared_footer, |e| e.children(footer.take()))
             })
             .relative()
             .children(favorite_feedback)
@@ -6938,6 +7100,8 @@ impl Render for ClipboardPreview {
             .children(self.fifo_panel.as_ref().map(|(panel, _, _)| panel.clone()))
             .children(history_dialog)
             .children(process_editor)
+            .children(phrase_editor)
+            .children(sidebar_dialog)
             .into_any_element();
         #[cfg(debug_assertions)]
         let element =

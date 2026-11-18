@@ -877,7 +877,7 @@ fn software_view(page: &ManagementPage, t: &ThemeTokens) -> AnyElement {
     if page.loading {
         return div()
             .text_color(color(&t.text_muted))
-            .child(tr("正在读取版本信息…", "Reading version information…"))
+            .child(tr("正在读取版本信息…", "Loading version…"))
             .into_any_element();
     }
     if !page.info.is_object() {
@@ -900,11 +900,11 @@ fn software_view(page: &ManagementPage, t: &ThemeTokens) -> AnyElement {
     let rows = [
         (tr("版本", "Version"), format_value(version)),
         (
-            tr("程序集版本", "Assembly version"),
+            tr("程序集版本", "Assembly"),
             format_value(&host["assemblyVersion"]),
         ),
         (
-            tr("构建配置", "Build configuration"),
+            tr("构建配置", "Build"),
             if host["isDebugConfiguration"] == true {
                 "Debug".into()
             } else {
@@ -947,7 +947,7 @@ fn software_view(page: &ManagementPage, t: &ThemeTokens) -> AnyElement {
                 format_value(&quicker["quickerVersion"]),
             ),
             (
-                tr("RPC 协议版本", "RPC protocol version"),
+                tr("RPC 协议版本", "RPC version"),
                 format_value(&quicker["protocolVersion"]),
             ),
         ] {
@@ -1148,7 +1148,7 @@ pub(super) fn render(
 ) -> AnyElement {
     let placeholder = tr(
         "搜索命令、名称或说明…",
-        "Search commands, names or descriptions…",
+        "Search commands…",
     )
     .to_string();
     if page.help.search_placeholder.as_ref() != Some(&placeholder) {

@@ -37,6 +37,11 @@ use interaction::Interaction;
 #[path = "file_line_drop.rs"]
 mod native_drop;
 
+/// 2026-10-31: shelved in favor of the top-edge Super menu dock
+/// (`super_menu_dock`). The code and its stored settings stay; the host no
+/// longer starts it and the settings no longer offer it.
+pub const SHELVED: bool = true;
+
 const POLL: Duration = Duration::from_millis(40);
 /// While the setting is off, only notice when it turns on.
 const IDLE_POLL: Duration = Duration::from_millis(500);
@@ -981,7 +986,7 @@ impl Render for LineView {
             }
             if line.root_task.is_some() && line.slots.is_empty() {
                 band = band.child(div().absolute().left(px(LINE_PAD)).top(px(LINE_TOP + PEG_DROP + 7.0)).text_size(px(11.0))
-                    .text_color(color(&t.text_muted)).child(tr("正在读取文件菜单…", "Loading the file menu…")));
+                    .text_color(color(&t.text_muted)).child(tr("正在读取文件菜单…", "Loading menu…")));
             }
             root = root.child(band);
         }
@@ -1127,7 +1132,7 @@ fn render_sheet(entity: &Entity<FileLine>, line: &FileLine, index: usize, boxed:
                 rows = rows.child(element);
             }
             if level.has_more {
-                let label = if level.loading { tr("正在读取…", "Loading…") } else { tr("向下滚动加载更多", "Scroll down for more") };
+                let label = if level.loading { tr("正在读取…", "Loading…") } else { tr("向下滚动加载更多", "Scroll for more") };
                 rows = rows.child(note(label.into(), color(&t.text_muted)).text_size(px(11.0)));
             }
         }

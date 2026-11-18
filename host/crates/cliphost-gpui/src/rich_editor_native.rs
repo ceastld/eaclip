@@ -2356,6 +2356,7 @@ impl Element for CanvasElement {
         let colors = input.colors;
         let scroll = input.scroll_y;
         let code_background = input.code_background;
+        let read_only = input.read_only;
         let marker_height = px(input.tokens.typography.font_size + 6.);
         let visible_bounds = bounds.intersect(&window.content_mask().bounds);
         let placeholder = if input.state.text.is_empty() {
@@ -2498,9 +2499,10 @@ impl Element for CanvasElement {
                         paint_offset,
                         ..
                     } => {
-                        let _ = line.paint(
+                        let _ = line.paint_with_text_mask(
                             point(bounds.left() + piece_bounds.left(), top + *paint_offset),
                             *line_height,
+                            read_only,
                             window,
                             cx,
                         );

@@ -145,7 +145,7 @@ fn settings_nav_group(id: &str) -> usize {
 fn settings_nav_group_label(group: usize) -> Option<&'static str> {
     match group {
         2 => Some(tr("设置", "Settings")),
-        3 => Some(tr("数据与支持", "Data & support")),
+        3 => Some(tr("数据与支持", "Data & help")),
         _ => None,
     }
 }
@@ -155,18 +155,18 @@ fn main_page_search_schema(id: &str) -> Option<Value> {
     let (label, fields) = match id {
         HOME_PAGE => (tr("首页", "Home"), json!([
             {"key":"quickOpen","label":tr("快捷打开", "Quick open"),"description":"剪贴板 超级面板 超级菜单 书签 文件 窗口 收藏 clipboard panel super menu bookmarks"},
-            {"key":"windowBehavior","label":tr("窗口行为", "Window behavior"),"description":"托盘图标 关闭主界面 后台运行 缩小到托盘 退出程序 tray icon close behavior background"},
-            {"key":"runtime","label":tr("程序管理", "App controls"),"description":"从 Quicker 打开剪贴板 查看日志 复制日志 重启 退出 运行状态 log restart exit status"}
+            {"key":"windowBehavior","label":tr("窗口行为", "Window"),"description":"托盘图标 关闭主界面 后台运行 缩小到托盘 退出程序 tray icon close behavior background"},
+            {"key":"runtime","label":tr("程序管理", "App"),"description":"从 Quicker 打开剪贴板 查看日志 复制日志 重启 退出 运行状态 log restart exit status"}
         ])),
-        DEVICES_PAGE => (tr("跨设备", "Cross-device"), json!([
-            {"key":"pairing","label":tr("配对设备与连接", "Pair devices and connections"),"description":"局域网 互传 设备 配对码 连接 附近设备 手机 LAN transfer pair devices connections"},
+        DEVICES_PAGE => (tr("跨设备", "Devices"), json!([
+            {"key":"pairing","label":tr("配对设备与连接", "Pair & connect"),"description":"局域网 互传 设备 配对码 连接 附近设备 手机 LAN transfer pair devices connections"},
             {"key":"sync","label":tr("剪贴板同步", "Clipboard sync"),"description":"设备同步 文本 图片 自动同步 sync text images automatic"}
         ])),
         TEXT_ACTIONS_PAGE => (tr("文本操作", "Text actions"), json!([
-            {"key":"rules","label":tr("管理文本操作", "Manage text actions"),"description":"文本操作 规则 正则 替换 清理 格式 模板 text actions rules regex replace"}
+            {"key":"rules","label":tr("管理文本操作", "Edit text actions"),"description":"文本操作 规则 正则 替换 清理 格式 模板 text actions rules regex replace"}
         ])),
         HELP_PAGE => (tr("帮助", "Help"), json!([
-            {"key":"docs","label":tr("使用说明与命令参考", "Usage and command reference"),"description":"帮助 文档 说明 命令 快捷键 关于 赞赏 help docs usage commands shortcuts"}
+            {"key":"docs","label":tr("使用说明与命令参考", "Guides & commands"),"description":"帮助 文档 说明 命令 快捷键 关于 赞赏 help docs usage commands shortcuts"}
         ])),
         _ => return None,
     };
@@ -178,7 +178,7 @@ fn super_menu_field_section(key: &str) -> (usize, &'static str, &'static str) {
     match key {
         // Bookmark source fields sit beside 显示浏览器书签 (2026-10-30).
         "ShowSettingItem" | "ShowAdderMenuItem" | "ShowBookMarksMenu" | "BookmarkBrowser" | "BookmarkFilePath" =>
-            (1, "items", tr("显示条目", "Visible items")),
+            (1, "items", tr("显示条目", "Items")),
         "ShowWindowMenuItem" | "ExpandWindowMenu" | "Grouping" | "ShowWindowThumbnail" =>
             (2, "windows", tr("窗口菜单", "Window menu")),
         _ => (0, "general", tr("常规", "General")),
@@ -267,7 +267,16 @@ fn full_width_settings_choice(config_id: &str, key: &str) -> bool {
 }
 
 fn ordinary_settings_choice(config_id: &str, key: &str) -> bool {
-    !full_width_settings_choice(config_id, key) && !(config_id == "panel" && key == "PanelStyle")
+    !full_width_settings_choice(config_id, key)
+        && !segmented_settings_choice(config_id, key)
+        && !(config_id == "panel" && key == "PanelStyle")
+}
+
+fn segmented_settings_choice(config_id: &str, key: &str) -> bool {
+    matches!((config_id, key),
+        ("clip", "DismissBehavior" | "ClipListExecuteMode" | "ClipListLayoutDensity" | "CopyToastPlacement")
+        | ("global", "UiLanguage")
+        | ("quickPaste", "MouseWheelTrigger"))
 }
 
 fn settings_window_tokens(
@@ -362,9 +371,9 @@ fn settings_pages(host: &HostState) -> Vec<(String, String)> {
         (SYSTEM_PAGE.into(), tr("系统", "System").into()),
     );
     let after_clip = pages.iter().position(|(id, _)| id == "clip").map_or(pages.len(), |i| i + 1);
-    pages.insert(after_clip, (DEVICES_PAGE.into(), tr("跨设备", "Cross-device").into()));
+    pages.insert(after_clip, (DEVICES_PAGE.into(), tr("跨设备", "Devices").into()));
     pages.push((HELP_PAGE.into(), tr("帮助", "Help").into()));
-    pages.push((UPDATE_PAGE.into(), tr("关于与更新", "About & updates").into()));
+    pages.push((UPDATE_PAGE.into(), tr("关于与更新", "Updates").into()));
     pages.splice(0..0, [
         (HOME_PAGE.into(), tr("首页", "Home").into()),
         (TEXT_ACTIONS_PAGE.into(), tr("文本操作", "Text actions").into()),
@@ -2400,7 +2409,7 @@ impl SettingsForm {
                         }
                         self.inputs.insert(key, input);
                     }
-                    Kind::Choice if ordinary_settings_choice(&self.config_id, &key) => {
+                    Kind::Choice => {
                         self.choice_focus
                             .insert(key.clone(), cx.focus_handle().tab_stop(true));
                         self.choice_anchors.insert(key, Arc::new(Mutex::new(None)));
@@ -3919,8 +3928,14 @@ impl SettingsForm {
                                 }))
                         })).into_any_element();
                 }
-                // English option names need the bounded width of the stacked row.
-                let choice_row = if self.compact {
+                let short_choices = segmented_settings_choice(&self.config_id, &key);
+                let disabled = self.leave_locked || self.composing(cx);
+                let focus = self.choice_focus.get(&key).cloned();
+                let values: Vec<String> = items.iter().filter_map(|item|
+                    item["key"].as_str().map(str::to_owned)).collect();
+                let keyboard_key = key.clone();
+                let keyboard_current = current.clone();
+                let choice_row = if self.compact && !short_choices {
                     rsx! {
                         <div flex min_w_0 flex_wrap gap={px(4.0)} />
                     }
@@ -3928,24 +3943,49 @@ impl SettingsForm {
                     widgets::segmented(palette)
                 };
                 choice_row
+                    .id(SharedString::from(format!("choice-group-{key}")))
                     .w_full()
+                    .when_some(focus, |row, focus| row.track_focus(&focus)
+                        .focus(move |style| style.border_color(palette.focus_border))
+                        .on_mouse_down(MouseButton::Left, move |_, window, _| {
+                            if !disabled { focus.focus(window); }
+                        }))
+                    .capture_key_down(cx.listener(move |this, event: &KeyDownEvent, window, cx| {
+                        if this.leave_locked || this.composing(cx) || values.is_empty()
+                            || event.keystroke.modifiers.number_of_modifiers() != 0 {
+                            return;
+                        }
+                        let index = values.iter().position(|value| value.eq_ignore_ascii_case(&keyboard_current)).unwrap_or(0);
+                        let next = match event.keystroke.key.as_str() {
+                            "left" => (index + values.len() - 1) % values.len(),
+                            "right" => (index + 1) % values.len(),
+                            _ => return,
+                        };
+                        this.save(&keyboard_key, json!(values[next]), window, cx);
+                        window.prevent_default();
+                        cx.stop_propagation();
+                    }))
                     .when(!self.compact && !stacked, |row| row.justify_end())
                     .children(items.into_iter().map(|item| {
                         let value = item["key"].as_str().unwrap_or_default().to_string();
                         let label = item["name"].as_str().unwrap_or(&value).to_string();
                         let active = value.eq_ignore_ascii_case(&current);
+                        let description = item["des"].as_str().unwrap_or_default().to_string();
                         let key = key.clone();
                         self.chip(
                             SharedString::from(format!("choice-{key}-{value}")),
                             label,
                             active,
-                            !self.compact,
+                            !self.compact || short_choices,
                             t,
                             cx,
                         )
+                        .justify_center()
+                        .when(!description.is_empty(), |chip| chip.tooltip(settings_help(description, t.clone())))
+                        .when(disabled, |chip| chip.opacity(0.55).cursor_default())
                         .on_click(cx.listener(
                             move |this, _, window, cx| {
-                                if !active {
+                                if !active && !this.leave_locked && !this.composing(cx) {
                                     this.save(&key, json!(value), window, cx)
                                 }
                             },
@@ -4083,7 +4123,7 @@ impl SettingsForm {
                             .size(px(32.0))
                             .p_0()
                             .rounded(px(6.0))
-                            .tooltip(settings_help(tr("选色…", "Choose color…").into(), t.clone()))
+                            .tooltip(settings_help(tr("选色…", "Pick color…").into(), t.clone()))
                             .child(swatch)
                             .child(
                                 // Anchor for the popover, as for the choice trigger.
@@ -4445,7 +4485,8 @@ impl SettingsForm {
                     &self.config_id,
                     field["key"].as_str().unwrap_or_default(),
                 ))
-            || (kind(field) == Kind::Choice && displayed_language() == LanguageMode::English);
+            || (kind(field) == Kind::Choice && displayed_language() == LanguageMode::English
+                && !segmented_settings_choice(&self.config_id, field["key"].as_str().unwrap_or_default()));
         let inline_description = inline_settings_description(
             &self.config_id,
             field["key"].as_str().unwrap_or_default(),
@@ -4603,7 +4644,7 @@ impl Render for SettingsForm {
                 .child(
                     rsx! {
                         <div text_size={px(12.0)} text_color={color(&t.text_muted)}>
-                            {tr("正在保存设置…", "Saving settings…")}
+                            {tr("正在保存设置…", "Saving…")}
                         </div>
                     },
                 );
@@ -5478,7 +5519,7 @@ impl SettingsWindow {
         });
         let search_input = cx.new(|cx| {
             let mut input = SearchInput::new(window, cx);
-            input.set_placeholder(tr("搜索功能和设置…", "Search tools and settings…"), cx);
+            input.set_placeholder(tr("搜索功能和设置…", "Search settings…"), cx);
             input.set_metrics(tokens.settings.control_height - 2.0, 13.0, 10.0, cx);
             let t = tokens.theme(dark);
             input.set_colors(
@@ -5533,7 +5574,7 @@ impl SettingsWindow {
                             page.update(cx, |_, cx| cx.notify());
                         }
                         this.search_input.update(cx, |input, cx| {
-                            input.set_placeholder(tr("搜索功能和设置…", "Search tools and settings…"), cx);
+                            input.set_placeholder(tr("搜索功能和设置…", "Search settings…"), cx);
                         });
                         this.start_schema_load(window, cx);
                         cx.notify();
@@ -6967,7 +7008,7 @@ impl Render for SettingsWindow {
             flow = flow.child(
                 rsx! {
                     <div text_size={px(12.0)} text_color={color(&t.text_muted)}>
-                        {tr("正在加载设置…", "Loading settings…")}
+                        {tr("正在加载设置…", "Loading…")}
                     </div>
                 },
             );
@@ -7131,7 +7172,7 @@ impl Render for SettingsWindow {
                                     text_size={px(12.0)} text_color={color(&t.text_secondary)}
                                     cursor_pointer />
                             }.on_hover(Self::hover_listener(open_data_id, cx))
-                                .child(tr("打开数据管理", "Open data management"))
+                                .child(tr("打开数据管理", "Open data settings"))
                                 .on_click(cx.listener(|this, _, window, cx| this.navigate(DATA_PAGE, window, cx)))),
                     );
                     continue;
@@ -7162,7 +7203,7 @@ impl Render for SettingsWindow {
             flow = flow.child(rsx! {
                 <div w_full min_w_0 flex_none flex flex_col gap={px(6.0)}>
                     <div text_size={px(s.group_title_font_size)} font_weight={FontWeight::SEMIBOLD}>
-                        {tr("跨设备", "Cross-device")}
+                        {tr("跨设备", "Devices")}
                     </div>
                     <div text_size={px(s.description_font_size)} line_height={relative(1.6)}
                         text_color={color(&t.text_muted)}>
@@ -7224,7 +7265,7 @@ impl Render for SettingsWindow {
                             .h(px(s.control_height)).px(px(10.0)).flex_none().flex().items_center()
                             .rounded(px(8.0)).border_1().border_color(palette.control_border)
                             .bg(palette.control).text_size(px(12.0)).cursor_pointer()
-                            .child(tr("管理文本操作", "Manage text actions"))
+                            .child(tr("管理文本操作", "Edit text actions"))
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.super_menu_actions_expanded = true;
                                 this.navigate("textAction", window, cx);
@@ -7259,7 +7300,7 @@ impl Render for SettingsWindow {
                         "Recently closed folders appear under Open folders → Reopen in the File menu. Turning recording off keeps existing history available. Limits save automatically.",
                     )));
                 flow = flow.child(
-                    widgets::section(tr("文件夹跳转与重开", "Folder navigation and reopening"), s, t)
+                    widgets::section(tr("文件夹跳转与重开", "Browse & reopen folders"), s, t)
                         .child(widgets::card([help.into_any_element(), reopen.into_any_element()], s, palette)),
                 );
             }
@@ -7288,7 +7329,7 @@ impl Render for SettingsWindow {
         } else if categories_visible {
             tr("分类标签需点击保存", "Save category tabs explicitly").into()
         } else {
-            tr("修改后自动保存", "Changes save automatically").into()
+            tr("修改后自动保存", "Auto-saved").into()
         };
         let undo_enabled = self.can_undo(cx);
         let undo_id = SharedString::from("settings-undo");
@@ -7318,7 +7359,7 @@ impl Render for SettingsWindow {
                 .when(!undo_enabled, |button| button.opacity(0.45))
                 .when(undo_enabled, |button| button.cursor_pointer().on_hover(Self::hover_listener(undo_id, cx))
                     .on_click(cx.listener(|this, _, window, cx| this.undo_to_session_baseline(window, cx))))
-                .child(tr("撤销修改", "Undo changes"))
+                .child(tr("撤销修改", "Undo"))
                 .tooltip(settings_help(tr("恢复为进入当前分类时的配置，包含已自动保存的修改；切换分类后更新基准。", "Restore settings from when this category was opened, including saved changes. Switching categories resets the baseline.").into(), t.clone()))))
             .child(rsx! {
                 <div id={"settings-save-help"} flex_none cursor_pointer>
@@ -7498,10 +7539,12 @@ mod tests {
     fn super_menu_field_projection_preserves_every_field_and_separates_window_options() {
         let fields = cliphost_core::extra_settings::menu_global_fields(&Default::default());
         let sections = fields.iter().map(|field| super_menu_field_section(field["key"].as_str().unwrap()).1).collect::<Vec<_>>();
-        assert_eq!(sections.iter().filter(|id| **id == "general").count(), 5);
+        assert_eq!(sections.iter().filter(|id| **id == "general").count(), 7);
         assert_eq!(sections.iter().filter(|id| **id == "items").count(), 5);
         assert_eq!(sections.iter().filter(|id| **id == "windows").count(), 4);
         assert_eq!(super_menu_field_section("FutureSetting").1, "general");
+        assert_eq!(super_menu_field_section("TopEdgeDock").1, "general");
+        assert_eq!(super_menu_field_section("TopEdgeDockDelay").1, "general");
         assert_eq!(super_menu_field_section("ShowWindowMenuItem").1, "windows");
         assert_eq!(super_menu_field_section("ShowWindowThumbnail").1, "windows");
     }
@@ -7595,7 +7638,9 @@ mod tests {
 
     #[test]
     fn ordinary_enums_leave_dedicated_theme_and_panel_style_controls_intact() {
-        assert!(ordinary_settings_choice("global", "UiLanguage"));
+        assert!(!ordinary_settings_choice("global", "UiLanguage"));
+        assert!(segmented_settings_choice("clip", "DismissBehavior"));
+        assert!(segmented_settings_choice("clip", "ClipListExecuteMode"));
         assert!(ordinary_settings_choice("trigger", "ShowWindowLocation"));
         assert!(!ordinary_settings_choice("global", "UiThemeMode"));
         assert!(!ordinary_settings_choice("panel", "PanelStyle"));

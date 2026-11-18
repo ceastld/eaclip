@@ -244,9 +244,9 @@ impl SettingsForm {
         let key = field["key"].as_str().unwrap_or_default();
         let stacked = kind(field) == Kind::Choice;
         let label = match key {
-            "ClipListSeparatePinnedUi" => tr("置顶项单独分栏", "Separate pinned tab"),
-            "ClipListImagePreviewMaxHeightPx" => tr("图片预览高度", "Image preview height"),
-            "ClipListExecuteMode" => tr("粘贴触发方式", "Paste trigger"),
+            "ClipListSeparatePinnedUi" => tr("置顶项单独分栏", "Pinned tab"),
+            "ClipListImagePreviewMaxHeightPx" => tr("图片预览高度", "Image height"),
+            "ClipListExecuteMode" => tr("粘贴方式", "Paste on"),
             _ => field["label"].as_str().unwrap_or_default(),
         };
         let description = if key == "ClipListImagePreviewMaxHeightPx" {

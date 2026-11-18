@@ -162,8 +162,14 @@ fn default_log_allowed(
     while let Some(argument) = arguments.next() {
         match argument.to_str() {
             Some(
-                "--fixture" | "--inspect" | "--stress" | "--snapshot" | "--test-instance"
-                | "--headless" | "--build-info-json",
+                "--fixture"
+                | "--inspect"
+                | "--stress"
+                | "--snapshot"
+                | "--test-instance"
+                | "--script-test-instance"
+                | "--headless"
+                | "--build-info-json",
             ) => return false,
             // A search value may itself look like a mode flag. Follow the
             // actual option parser's value consumption without recording it.
@@ -356,7 +362,8 @@ mod tests {
         let root = tempfile::tempdir().unwrap();
         let (log, path) = StartupLog::create(root.path()).unwrap();
         log.file.lock().unwrap().1 = ROUTINE_LOG_LIMIT;
-        log.record("log", json!({"message":"routine warning"}), false).unwrap();
+        log.record("log", json!({"message":"routine warning"}), false)
+            .unwrap();
         log.completed().unwrap();
         let entries = read(&path);
         assert_eq!(entries.len(), 2);
@@ -434,6 +441,7 @@ mod tests {
             "--stress",
             "--snapshot",
             "--test-instance",
+            "--script-test-instance",
             "--headless",
             "--build-info-json",
         ] {

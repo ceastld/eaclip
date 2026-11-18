@@ -6,13 +6,14 @@ members = [
     "crates/cliphost-bridge",
     "crates/cliphost-http",
     "crates/cliphost-gpui",
+    "crates/cliphost-cli",
     "crates/cliphost-updater",
     "crates/cliphost-webdav",
     "src-tauri",
 ]
 
 [workspace.package]
-version = "0.32.6"
+version = "0.32.7"
 edition = "2021"
 license = "MIT"
 rust-version = "1.90"

@@ -108,7 +108,7 @@ impl MenuAction {
             "lan-share" => tr("局域网", "LAN").into(),
             "paste-plain-text" => tr("纯文本", "Plain text").into(),
             "paste-standard-text" => tr("规范粘贴", "Normalized").into(),
-            "fifo-paste" => tr("连续粘贴", "Sequential paste").into(),
+            "fifo-paste" => tr("连续粘贴", "Paste queue").into(),
             _ => self.label.clone(),
         }
     }

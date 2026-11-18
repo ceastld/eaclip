@@ -64,7 +64,7 @@ fn type_label(type_key: &str, item_type: i32) -> &'static str {
         "all" => tr("全部", "All"),
         "text" => tr("所有文本", "All text"),
         "plaintext" => tr("纯文本", "Plain text"),
-        "richtext" => tr("富文本", "Rich text"),
+        "richtext" => tr("富文本", "Rich"),
         "image" => tr("图片", "Images"),
         "file" => tr("文件", "Files"),
         "url" => tr("网址", "URLs"),
@@ -102,7 +102,7 @@ pub fn category_tab_label(
         BuiltinTabLabel::Default => ("默认", "Default"),
         BuiltinTabLabel::Text => ("文本", "Text"),
         BuiltinTabLabel::PlainText => ("纯文本", "Plain text"),
-        BuiltinTabLabel::RichText => ("富文本", "Rich text"),
+        BuiltinTabLabel::RichText => ("富文本", "Rich"),
         BuiltinTabLabel::Images => ("图片", "Images"),
         BuiltinTabLabel::Files => ("文件", "Files"),
         BuiltinTabLabel::Urls => ("网址", "URLs"),
@@ -1672,7 +1672,7 @@ impl FilterTabsEditor {
                 if self.rows.len() > 1 {
                     options.push(SettingsChoiceOption {
                         key: "remove".into(),
-                        name: tr("移除分类", "Remove category").into(),
+                        name: tr("移除分类", "Remove tab").into(),
                         des: tr("保留剪贴板内容", "Clipboard items are kept").into(),
                     });
                 }
@@ -1945,7 +1945,7 @@ impl FilterTabsEditor {
             .focus(move |style| style.bg(palette.control_hover))
             .child(self.icon("more", 15.0, color(&t.text_muted)))
             .tooltip(crate::settings::settings_help(
-                tr("更多操作", "More actions").into(),
+                tr("更多操作", "More").into(),
                 t.clone(),
             ))
             .child(self.anchor_element(row.more_anchor.clone(), key, EditorPopupKind::More))
@@ -2147,7 +2147,7 @@ impl FilterTabsEditor {
                             .track_focus(&self.preview_focus)
                             .child(self.icon("more", 15.0, color(&t.text_secondary)))
                             .tooltip(crate::settings::settings_help(
-                                tr("更多分类", "More categories").into(),
+                                tr("更多分类", "More tabs").into(),
                                 t.clone(),
                             ))
                             .child(self.anchor_element(
@@ -2212,7 +2212,7 @@ impl Render for FilterTabsEditor {
                     <div h={px(24.0)} flex items_center gap={px(6.0)}>
                         <div text_size={px(13.0)} font_weight={FontWeight::SEMIBOLD}
                             whitespace_nowrap>
-                            {tr("自定义分类", "Custom categories")}
+                            {tr("自定义分类", "Custom tabs")}
                         </div>
                     </div>
                 }
@@ -2267,10 +2267,10 @@ impl Render for FilterTabsEditor {
                         text_color={color(&t.text_muted)}>
                         <div w={px(26.0)} flex_none />
                         <div flex_1 min_w_0 pl={px(6.0)}>
-                            {tr("名称（留空自动）", "Name (empty = auto)")}
+                            {tr("名称（留空自动）", "Name (auto if blank)")}
                         </div>
                         <div w={px(type_width)} flex_none px={px(8.0)}>
-                            {tr("内容类型", "Content type")}
+                            {tr("内容类型", "Type")}
                         </div>
                         <div w={px(28.0)} flex_none />
                     </div>
@@ -2291,7 +2291,7 @@ impl Render for FilterTabsEditor {
                     })
                     .when(!editable, |add| add.opacity(0.4))
                     .child(self.icon("plus", 13.0, color(&t.text_secondary)))
-                    .child(tr("添加分类", "Add category"))
+                    .child(tr("添加分类", "Add tab"))
                     .on_click(cx.listener(|this, _, window, cx| this.add_row(window, cx))),
             );
         let notice = self.undo.as_ref().map(|undo| match undo {
@@ -2382,7 +2382,7 @@ impl Render for FilterTabsEditor {
                     .child(
                         self.button(
                             "tab-defaults".into(),
-                            tr("恢复默认", "Restore defaults"),
+                            tr("恢复默认", "Reset defaults"),
                             editable,
                             t,
                         )
@@ -2778,7 +2778,7 @@ mod tests {
             ),
             (
                 LanguageMode::English,
-                ["Default", "Pinned", "Text", "Rich text", "Images", "Files", "URLs"],
+                ["Default", "Pinned", "Text", "Rich", "Images", "Files", "URLs"],
             ),
         ] {
             let tabs = build_tabs_for_language(&Value::Null, true, language);
@@ -2819,7 +2819,7 @@ mod tests {
                     "Default",
                     "Text",
                     "Plain text",
-                    "Rich text",
+                    "Rich",
                     "Images",
                     "Files",
                     "URLs",

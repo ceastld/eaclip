@@ -189,9 +189,9 @@ fn process_names_field(
 }
 
 const DISMISS_ITEMS: &[(&str, Text, Text)] = &[
-    ("hide", Text("普通隐藏", "Hide"), Text("失去焦点后完全隐藏窗口。", "Hide the window completely when it loses focus.")),
-    ("edgehide", Text("贴边隐藏", "Hide at edge"), Text("窗口贴屏幕边缘时自动收起，鼠标移入边缘再次展开。", "Collapse at the screen edge; move the pointer to the edge to expand.")),
-    ("fold", Text("自动折叠", "Fold"), Text("失去焦点后收成标题栏，鼠标移入再展开。", "Fold to the title bar when focus is lost; hover to expand.")),
+    ("hide", Text("常规", "Normal"), Text("失去焦点后完全隐藏窗口。", "Hide the window completely when it loses focus.")),
+    ("edgehide", Text("贴边", "Edge"), Text("窗口贴屏幕边缘时自动收起，鼠标移入边缘再次展开。", "Collapse at the screen edge; move the pointer to the edge to expand.")),
+    ("fold", Text("折叠", "Fold"), Text("失去焦点后收成标题栏，鼠标移入再展开。", "Fold to the title bar when focus is lost; hover to expand.")),
 ];
 
 const TOAST_PLACEMENT_ITEMS: &[(&str, Text, Text)] = &[
@@ -201,13 +201,13 @@ const TOAST_PLACEMENT_ITEMS: &[(&str, Text, Text)] = &[
 ];
 
 const EXECUTE_MODE_ITEMS: &[(&str, Text, Text)] = &[
-    ("singleclickpaste", Text("单击粘贴", "Click to paste"), Text("单击列表项即粘贴。", "Click a list item to paste it.")),
+    ("singleclickpaste", Text("单击", "Click"), Text("单击列表项即粘贴。", "Click a list item to paste it.")),
     (
         "copythendoubleclickpaste",
-        Text("单击复制后双击粘贴", "Click to copy, double-click to paste"),
+        Text("复制＋双击", "Copy + 2×"),
         Text("第一次单击复制到剪贴板，第二次双击粘贴。", "Click to copy to the clipboard; double-click to paste."),
     ),
-    ("doubleclickonly", Text("仅双击粘贴", "Double-click to paste"), Text("仅双击列表项时粘贴。", "Paste only when a list item is double-clicked.")),
+    ("doubleclickonly", Text("双击", "2× click"), Text("仅双击列表项时粘贴。", "Paste only when a list item is double-clicked.")),
 ];
 
 const LAYOUT_DENSITY_ITEMS: &[(&str, Text, Text)] = &[
@@ -216,10 +216,10 @@ const LAYOUT_DENSITY_ITEMS: &[(&str, Text, Text)] = &[
 ];
 
 const SHOW_WINDOW_LOCATION_ITEMS: &[(&str, Text, Text)] = &[
-    ("na", Text("自动，一般是上次位置", "Auto (usually last position)"), Text("", "")),
-    ("centerscreen", Text("屏幕中心", "Screen center"), Text("", "")),
-    ("mousearound", Text("鼠标周围", "Near pointer"), Text("", "")),
-    ("mouserightbottom", Text("鼠标右下", "Below-right of pointer"), Text("", "")),
+    ("na", Text("自动，一般是上次位置", "Auto"), Text("", "")),
+    ("centerscreen", Text("屏幕中心", "Center"), Text("", "")),
+    ("mousearound", Text("鼠标周围", "Near cursor"), Text("", "")),
+    ("mouserightbottom", Text("鼠标右下", "Below cursor"), Text("", "")),
 ];
 
 const NUMBER_KEY_PASTE_DESCRIPTION: Text = Text("例如，主键盘上的数字，或者小键盘上的数字键都可以\n输入1就粘贴第1项\n输入9就粘贴第9项\n输入0就粘贴第10项", "Use number keys on the keyboard or numpad.\n1 pastes the first item.\n9 pastes the ninth item.\n0 pastes the tenth item.");
@@ -232,10 +232,10 @@ pub fn catalog() -> Value {
             { "id": "quickPaste", "label": tr("便捷粘贴", "Quick paste") },
             { "id": "clip", "label": tr("剪贴板", "Clipboard") },
             { "id": "panel", "label": tr("面板", "Panel") },
-            { "id": "user", "label": tr("资源管理器", "File Explorer") },
+            { "id": "user", "label": tr("资源管理器", "Explorer") },
             { "id": "menu_global", "label": tr("超级菜单", "Super menu") },
             { "id": "menu_file", "label": tr("文件菜单", "File menu") },
-            { "id": "dataLocation", "label": tr("数据管理", "Data management") },
+            { "id": "dataLocation", "label": tr("数据管理", "Data") },
             { "id": "textAction", "label": tr("文本操作", "Text actions") }
         ]
     })
@@ -295,9 +295,9 @@ pub fn build_form(
         "trigger" | "hotkeys" => (tr("触发", "Triggers"), trigger_fields(hotkeys, clip)),
         "global" => (tr("全局", "Global"), crate::extra_settings::global_appearance_fields(&extras.global)),
         "homeGlobal" => (tr("系统", "System"), crate::extra_settings::home_global_fields(&extras.global)),
-        "dataLocation" => (tr("数据管理", "Data management"), data_location_fields(data_root)),
+        "dataLocation" => (tr("数据管理", "Data"), data_location_fields(data_root)),
         "panel" => (tr("面板", "Panel"), crate::extra_settings::panel_fields(&extras.panel)),
-        "user" => (tr("资源管理器", "File Explorer"), crate::extra_settings::user_fields(&extras.user)),
+        "user" => (tr("资源管理器", "Explorer"), crate::extra_settings::user_fields(&extras.user)),
         "menu_global" => (tr("超级菜单", "Super menu"), crate::extra_settings::menu_global_fields(&extras.menu_global)),
         "menu_file" => (tr("文件菜单", "File menu"), crate::extra_settings::file_menu_fields(&extras.file_menu)),
         "textAction" => (tr("文本操作", "Text actions"), Vec::new()),
@@ -318,7 +318,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         {
             let mut filter = field(
                 "FilterItems",
-                tr("分类标签", "Category tabs"),
+                tr("分类标签", "Tabs"),
                 tr("剪贴板顶部分类选项（文本、图片、文件等）。可增删、改名、改类型与排序。置顶分栏由「单独显示置顶项」控制。", "Categories above the clipboard list (text, images, files, etc.). Add, remove, rename, change types or reorder them. The pinned tab is controlled by the separate pinned items option."),
                 tr("列表筛选", "List filters"),
                 "text",
@@ -331,7 +331,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         },
         process_names_field(
             "BlackList",
-            tr("黑名单", "Blocked processes"),
+            tr("黑名单", "Blocked apps"),
             tr("当前台进程为黑名单中的进程时，不收集剪贴板内容。进程名不区分大小写，可带或不带 .exe，多个用逗号或分号分隔。", "Skip clipboard capture while a listed process is in the foreground. Names are case-insensitive, with or without .exe; separate them with commas or semicolons."),
             tr("控制", "Behavior"),
             2,
@@ -340,7 +340,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         {
             let mut max_items = number_field(
                 "MaxItemSize",
-                tr("记录历史条目上限", "History item limit"),
+                tr("记录历史条目上限", "History limit"),
                 tr("仅约束非置顶历史；置顶不计入此上限。超出后大约每 10 秒自动清理较早的非置顶项；在设置中调低上限会先确认再永久删除超出部分。", "Limits unpinned history only. Older unpinned items are cleaned up about every 10 seconds. Lowering the limit asks for confirmation before permanently deleting excess items."),
                 tr("控制", "Behavior"),
                 3,
@@ -358,7 +358,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         },
         field(
             "ClearFilterWhileHide",
-            tr("隐藏窗口后清空筛选", "Clear filters when hidden"),
+            tr("隐藏窗口后清空筛选", "Clear filters on hide"),
             "",
             tr("控制", "Behavior"),
             "checkbox",
@@ -367,7 +367,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         enum_field(
             "DismissBehavior",
-            tr("窗口失焦行为", "When focus is lost"),
+            tr("隐藏方式", "Hide mode"),
             tr("失去焦点时的窗口表现：普通隐藏、贴边隐藏或自动折叠为标题栏。", "Hide, collapse at the screen edge, or fold to the title bar when focus is lost."),
             tr("控制", "Behavior"),
             5,
@@ -376,7 +376,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "EnableNoFocusMode",
-            tr("无焦点模式", "No-focus mode"),
+            tr("无焦点模式", "Keep app focus"),
             tr("开启时剪贴板窗口不抢焦点即可输入；关闭后打开窗口会激活并聚焦搜索框。", "Allow typing without taking focus. When off, opening the window activates it and focuses search."),
             tr("控制", "Behavior"),
             "checkbox",
@@ -385,7 +385,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "AutoScrollToTop",
-            tr("自动回到顶部", "Return to top automatically"),
+            tr("自动回到顶部", "Auto-return to top"),
             tr("隐藏后再次打开时回到顶部并清除上次选中，回车即执行第一项。固定、折叠、贴边或切到收藏时，列表无键盘、点击或滚动操作达到闲置时间后回到顶部；指针停在窗口上、窗口激活、编辑或弹层打开时不回顶。不清除搜索和筛选。", "When reopened after hiding, return to the top and clear the last selection, so Enter runs the first item. While pinned, folded, edge-hidden or showing favorites, return after no list keyboard, click or scroll activity for the idle time; never while the pointer is over the window, it is active, editing or a popup is open. Search and filters are kept."),
             tr("控制", "Behavior"),
             "checkbox",
@@ -394,7 +394,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         number_field(
             "AutoScrollToTopIdleSeconds",
-            tr("闲置时间（秒）", "Idle time (seconds)"),
+            tr("闲置时间（秒）", "Idle time (s)"),
             tr("固定、折叠、贴边或切到收藏时的闲置时间；隐藏后再次打开不受此限制。范围为 1–86400 秒。", "Idle time while pinned, folded, edge-hidden or showing favorites; reopening after hiding always returns. Range: 1–86400 seconds."),
             tr("控制", "Behavior"),
             8,
@@ -414,7 +414,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "AllowDuplicateCopy",
-            tr("允许重复复制", "Allow duplicate copies"),
+            tr("允许重复复制", "Allow duplicates"),
             "",
             tr("复制", "Copy"),
             "checkbox",
@@ -423,7 +423,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "ShowCopyMessage",
-            tr("剪贴板改变时提示", "Notify on clipboard changes"),
+            tr("剪贴板改变时提示", "Copy alerts"),
             tr("剪贴板改变时显示提示（需 ClipHost 在运行）。位置由下方「提示位置」控制。与「触发自定义动作」互不影响，可同时开启。", "Show a notification when the clipboard changes while ClipHost is running. The position option below controls its placement. Notifications and custom actions can both be enabled."),
             tr("复制", "Copy"),
             "checkbox",
@@ -432,7 +432,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         enum_field(
             "CopyToastPlacement",
-            tr("提示位置", "Notification position"),
+            tr("提示位置", "Alert position"),
             tr("剪贴板改变提示与宿主通知的屏幕位置。默认右下角；也可选右上或底部居中。", "Position of clipboard and host notifications. Defaults to bottom right; top right and bottom center are also available."),
             tr("复制", "Copy"),
             10,
@@ -441,7 +441,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "ClipChangedActionId",
-            tr("剪贴板改变时触发自定义动作", "Run an action on clipboard changes"),
+            tr("剪贴板改变时触发自定义动作", "Action on copy"),
             tr("填写 Quicker 自定义动作的 ID（不是动作名称）。与上方「剪贴板改变时提示」互不影响，可同时开启。优先经 Quicker 插件 RPC 调用；插件未连接时回退到 quicker:runaction 协议（需本机已安装并注册 Quicker）。", "Enter the Quicker action ID. Works independently of notifications. Uses Quicker plugin RPC, or falls back to quicker:runaction when the plugin is disconnected (requires Quicker installed and registered)."),
             tr("复制", "Copy"),
             "text",
@@ -450,7 +450,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "IgnoreWhiteSpace",
-            tr("忽略空白剪贴板内容", "Ignore blank clipboard content"),
+            tr("忽略空白剪贴板内容", "Skip blank content"),
             tr("当剪贴板内容是换行符, 制表符, 空白符等字符的时候, 忽略, 不收藏", "Skip content containing only whitespace, tabs or line breaks."),
             tr("复制", "Copy"),
             "checkbox",
@@ -459,7 +459,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "TextProcessExpresstion",
-            tr("预处理表达式", "Preprocessing expression"),
+            tr("预处理表达式", "Preprocess"),
             tr("剪贴板出现文本时先执行表达式再收藏。须以 $= 或 $$ 开头（与 Quicker 相同）；$= 内可用变量 text 表示剪贴板文本。", "Evaluate an expression before saving clipboard text. Start with $= or $$, as in Quicker; $= can use the text variable for clipboard content."),
             tr("复制", "Copy"),
             "text",
@@ -468,7 +468,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         number_field(
             "DefaultPasteDelay",
-            tr("粘贴前延迟", "Delay before paste"),
+            tr("粘贴前延迟", "Paste delay (ms)"),
             tr("执行粘贴前的等待毫秒数，可避免目标窗口未就绪。", "Wait this many milliseconds before pasting so the target window can become ready."),
             tr("粘贴", "Paste"),
             14,
@@ -479,7 +479,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         process_names_field(
             "UseShiftInsertToPasteProc",
-            tr("使用 Shift+Insert 粘贴的进程", "Use Shift+Insert in these processes"),
+            tr("使用 Shift+Insert 粘贴的进程", "Shift+Insert apps"),
             tr("从剪贴板历史来源进程中选择；与内置默认（cmd、ConsoleWindowClass 控制台等）合并生效。", "Choose from history source processes. Combined with built-in defaults such as cmd and ConsoleWindowClass consoles."),
             tr("粘贴", "Paste"),
             15,
@@ -487,7 +487,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "PasteWithNewLine",
-            tr("粘贴文本时自动换行", "Append a line break when pasting text"),
+            tr("粘贴文本时自动换行", "Append newline"),
             "",
             tr("粘贴", "Paste"),
             "checkbox",
@@ -496,7 +496,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "PlainTextPasteByDefault",
-            tr("富文本默认处理方式", "Rich text output"),
+            tr("富文本默认处理方式", "Rich text mode"),
             tr("用于复制、粘贴和拖放；仅文字去掉格式及内嵌图片，独立图片、文件、动作步骤照常。", "Used for copy, paste and drag. Text only removes formatting and embedded images; standalone images, files and action steps keep their types."),
             tr("粘贴", "Paste"),
             "checkbox",
@@ -505,7 +505,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "StandardPaste",
-            tr("默认规范粘贴", "Use standard paste by default"),
+            tr("默认规范粘贴", "Normalize paste"),
             "",
             tr("粘贴", "Paste"),
             "checkbox",
@@ -514,7 +514,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "UsingNumberKeyToPaste",
-            tr("使用数字键进行粘贴", "Paste with number keys"),
+            tr("使用数字键进行粘贴", "Number-key paste"),
             NUMBER_KEY_PASTE_DESCRIPTION.get(),
             tr("粘贴", "Paste"),
             "checkbox",
@@ -523,7 +523,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         enum_field(
             "ClipListExecuteMode",
-            tr("列表项粘贴触发方式", "List paste trigger"),
+            tr("粘贴方式", "Paste on"),
             tr("单击粘贴、单击复制后双击粘贴，或仅双击粘贴。", "Click to paste, click to copy then double-click to paste, or double-click only."),
             tr("粘贴", "Paste"),
             20,
@@ -532,7 +532,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "ClipListSeparatePinnedUi",
-            tr("单独分栏显示置顶项", "Show pinned items in a separate tab"),
+            tr("单独分栏显示置顶项", "Pinned tab"),
             tr("开启后使用「置顶」分栏；关闭后置顶项混排于各分类列表。", "Show a Pinned tab when enabled; otherwise include pinned items in each category."),
             tr("粘贴", "Paste"),
             "boolean",
@@ -541,7 +541,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "ClipListImageHoverPreviewEnabled",
-            tr("图片与视频悬停预览", "Preview images and videos on hover"),
+            tr("图片与视频悬停预览", "Hover preview"),
             tr("悬停图片、GIF 或视频文件时显示预览。GIF 自动播放，视频点击后静音播放；关闭后保留文字提示。", "Preview images, GIFs and video files on hover. GIFs animate automatically; click a video to play it muted. Text tooltips remain when disabled."),
             tr("粘贴", "Paste"),
             "boolean",
@@ -550,7 +550,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         number_field(
             "ClipListImagePreviewMaxHeightPx",
-            tr("列表图片预览最大高度", "Maximum image preview height"),
+            tr("列表图片预览最大高度", "Max image height"),
             tr("历史列表中图片缩略图的最大显示高度（像素）。", "Maximum height of image thumbnails in history, in pixels."),
             tr("粘贴", "Paste"),
             23,
@@ -561,7 +561,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         enum_field(
             "ClipListLayoutDensity",
-            tr("列表布局密度", "List density"),
+            tr("列表布局密度", "Density"),
             tr("紧凑为默认列表间距；宽松模式增大条目内边距与标题/正文区块间距，便于阅读与点击。", "Compact uses the default spacing. Relaxed adds padding and space between title and content for easier reading and clicking."),
             tr("粘贴", "Paste"),
             24,
@@ -570,7 +570,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         field(
             "DoNotRemindOnClear",
-            tr("清空时不提示", "Skip confirmation when clearing"),
+            tr("清空时不提示", "Skip clear prompt"),
             "",
             tr("常规", "General"),
             "boolean",
@@ -579,7 +579,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         ),
         number_field(
             "SplitLinesMaxCount",
-            tr("按行拆分最大行数，超过了会提示", "Confirm before splitting many lines"),
+            tr("按行拆分最大行数，超过了会提示", "Split prompt threshold"),
             tr("按行拆分为多条历史时，超过此行数将提示确认。", "Ask for confirmation when splitting text into more than this many history items."),
             tr("常规", "General"),
             26,
@@ -587,6 +587,15 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
             10,
             5000,
             10,
+        ),
+        field(
+            "MaskSensitiveText",
+            tr("遮挡疑似密码和密钥", "Mask passwords & keys"),
+            tr("在剪贴板、收藏及其内容预览中模糊遮挡疑似密码和密钥。应用其他界面和编辑框正常显示文字。", "Blur suspected passwords and keys in clipboard, favorites and their content previews. Other app views and editors display text normally."),
+            tr("常规", "General"),
+            "boolean",
+            27,
+            json!(cfg.mask_sensitive_text),
         ),
     ];
     // C# never puts ClipMonitorOn / EnableEdgeHide / UiThemeMode / FontFamilyString on this form.
@@ -618,20 +627,20 @@ fn quick_paste_fields(cfg: &QuickPasteConfig, hotkeys: &GlobalHotkeys) -> Vec<Va
         },
         enum_field(
             "MouseWheelTrigger",
-            tr("鼠标侧键 + 滚轮", "Mouse side button + wheel"),
+            tr("鼠标侧键 + 滚轮", "Side button + wheel"),
             tr("按住所选侧键并滚动滚轮，打开便捷粘贴并切换条目；松开侧键粘贴选中项，右键取消。未滚动的侧键单击在松开时执行原操作；滚轮手势由 ClipHost 接管。", "Hold the selected side button and scroll to open quick paste and select an item. Release to paste; right-click to cancel. A side-button click without scrolling keeps its original action."),
             tr("快捷键", "Shortcuts"),
             2,
             &cfg.mouse_wheel_trigger,
             &[
                 ("none", Text("关闭", "Off"), Text("保留鼠标侧键原有行为。", "Keep the mouse side button's original behavior.")),
-                ("x1", Text("鼠标侧键 X1", "Mouse side button X1"), Text("按住 X1 滚动滚轮打开或切换，松开 X1 粘贴，右键取消。", "Hold X1 and scroll to open or select; release X1 to paste; right-click to cancel.")),
-                ("x2", Text("鼠标侧键 X2", "Mouse side button X2"), Text("按住 X2 滚动滚轮打开或切换，松开 X2 粘贴，右键取消。", "Hold X2 and scroll to open or select; release X2 to paste; right-click to cancel.")),
+                ("x1", Text("鼠标侧键 X1", "X1"), Text("按住 X1 滚动滚轮打开或切换，松开 X1 粘贴，右键取消。", "Hold X1 and scroll to open or select; release X1 to paste; right-click to cancel.")),
+                ("x2", Text("鼠标侧键 X2", "X2"), Text("按住 X2 滚动滚轮打开或切换，松开 X2 粘贴，右键取消。", "Hold X2 and scroll to open or select; release X2 to paste; right-click to cancel.")),
             ],
         ),
         number_field(
             "ListLimit",
-            tr("非置顶条数", "Unpinned item count"),
+            tr("非置顶条数", "Unpinned items"),
             tr("便捷粘贴浮窗中最多显示的最近（非置顶）剪贴板条目数；置顶条目全部排在末尾且不计入此上限。", "Maximum recent unpinned items in quick paste. All pinned items appear at the end and do not count toward this limit."),
             tr("常规", "General"),
             3,
@@ -651,7 +660,7 @@ fn quick_paste_fields(cfg: &QuickPasteConfig, hotkeys: &GlobalHotkeys) -> Vec<Va
         ),
         number_field(
             "SelectionMemorySeconds",
-            tr("记忆有效期（秒）", "Memory duration (seconds)"),
+            tr("记忆有效期（秒）", "Remember for (s)"),
             tr("启用记忆选中项时，在此秒数内再次打开时应用记忆；超时后回到第一项。", "Remember the selection for this many seconds; after that, return to the first item."),
             tr("选择记忆", "Selection memory"),
             5,
@@ -662,9 +671,9 @@ fn quick_paste_fields(cfg: &QuickPasteConfig, hotkeys: &GlobalHotkeys) -> Vec<Va
         ),
         number_field(
             "BurstGapSeconds",
-            tr("爆发间隔（秒）", "Burst interval (seconds)"),
+            tr("爆发间隔（秒）", "Burst gap (s)"),
             tr("从终点往更早推断队列时，相邻两条创建时间超过该间隔则停止收入。", "Stop extending the queue backward when adjacent items were created farther apart than this interval."),
-            tr("连续粘贴", "Sequential paste"),
+            tr("连续粘贴", "Paste queue"),
             6,
             cfg.burst_gap_seconds,
             0,
@@ -675,7 +684,7 @@ fn quick_paste_fields(cfg: &QuickPasteConfig, hotkeys: &GlobalHotkeys) -> Vec<Va
             "MaxQueueLength",
             tr("队列上限", "Queue limit"),
             tr("一次连续粘贴最多包含的条目数（含终点）。", "Maximum items in one sequential paste queue, including the final item."),
-            tr("连续粘贴", "Sequential paste"),
+            tr("连续粘贴", "Paste queue"),
             7,
             cfg.max_queue_length,
             1,
@@ -684,9 +693,9 @@ fn quick_paste_fields(cfg: &QuickPasteConfig, hotkeys: &GlobalHotkeys) -> Vec<Va
         ),
         number_field(
             "SessionIdleSeconds",
-            tr("空闲超时（秒）", "Idle timeout (seconds)"),
+            tr("空闲超时（秒）", "Idle timeout (s)"),
             tr("武装后若超过该时间没有下一次粘贴，则自动取消连续粘贴。", "Cancel sequential paste if no further paste occurs within this time after arming."),
-            tr("连续粘贴", "Sequential paste"),
+            tr("连续粘贴", "Paste queue"),
             8,
             cfg.session_idle_seconds,
             10,
@@ -701,7 +710,7 @@ fn trigger_fields(hotkeys: &GlobalHotkeys, clip: &ClipConfigDto) -> Vec<Value> {
         {
             let mut hotkey = field(
                 "HotkeyClipToggle",
-                tr("显示/隐藏剪贴板窗口", "Show/hide clipboard window"),
+                tr("显示/隐藏剪贴板窗口", "Toggle clipboard"),
                 tr("全局快捷键，执行 clip toggle。留空表示禁用。", "Global shortcut for clip toggle. Leave blank to disable."),
                 tr("快捷键", "Shortcuts"),
                 "text",
@@ -739,7 +748,7 @@ fn trigger_fields(hotkeys: &GlobalHotkeys, clip: &ClipConfigDto) -> Vec<Value> {
         },
         enum_field(
             "ShowWindowLocation",
-            tr("打开剪贴板窗口时的位置", "Clipboard window position"),
+            tr("打开剪贴板窗口时的位置", "Window position"),
             tr("通过 Quicker 动作、快捷键等方式打开时，窗口出现的位置；鼠标与键盘触发共用此项。", "Window position when opened by Quicker actions or shortcuts. Shared by mouse and keyboard triggers."),
             tr("触发", "Triggers"),
             4,
@@ -748,7 +757,7 @@ fn trigger_fields(hotkeys: &GlobalHotkeys, clip: &ClipConfigDto) -> Vec<Value> {
         ),
         field(
             "UseWinVShortcut",
-            tr("使用 Win+V 打开剪贴板", "Open clipboard with Win+V"),
+            tr("使用 Win+V 打开剪贴板", "Use Win+V"),
             tr("通过注册表禁用系统 Win+V 剪贴板历史并接管该快捷键。修改后需重启 Windows 资源管理器后生效。", "Disable Windows clipboard history through the registry and use Win+V for ClipHost. Requires restarting Windows Explorer to take effect."),
             tr("触发", "Triggers"),
             "boolean",
@@ -757,7 +766,7 @@ fn trigger_fields(hotkeys: &GlobalHotkeys, clip: &ClipConfigDto) -> Vec<Value> {
         ),
         field(
             "EnableVvTabTextInstruction",
-            tr("文本指令 vv+Tab / vvv", "Text command vv+Tab / vvv"),
+            tr("文本指令 vv+Tab / vvv", "Type vv+Tab / vvv"),
             tr("在任意输入框输入 vv 后按 Tab，或连按三次 v，自动退格删除已输入字母并显示剪贴板窗口。需 ClipHost 在运行。", "Type vv then Tab, or v three times, in any text field. ClipHost removes the typed letters and opens the clipboard window. Requires ClipHost running."),
             tr("触发", "Triggers"),
             "boolean",
@@ -947,6 +956,7 @@ mod tests {
                 "ClipListLayoutDensity",
                 "DoNotRemindOnClear",
                 "SplitLinesMaxCount",
+                "MaskSensitiveText",
             ]
         );
         assert!(!keys.iter().any(|k| {

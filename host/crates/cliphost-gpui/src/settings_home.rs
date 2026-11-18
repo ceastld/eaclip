@@ -254,8 +254,8 @@ impl Render for HomeSettingsPage {
                     </div>
                 </div>
                 <div text_size={px(12.0)} text_color={palette.description}>
-                    {if version.is_empty() { tr("剪贴板监听中", "Watching the clipboard").to_string() }
-                        else { format!("{version} · {}", tr("剪贴板监听中", "Watching the clipboard")) }}
+                    {if version.is_empty() { tr("剪贴板监听中", "Capturing").to_string() }
+                        else { format!("{version} · {}", tr("剪贴板监听中", "Capturing")) }}
                 </div>
             </div>
         };
@@ -263,7 +263,7 @@ impl Render for HomeSettingsPage {
             .child(self.tile("clipboard", "clipboard", tr("剪贴板", "Clipboard"),
                 tr("查看与粘贴历史", "Browse and paste history").into(), tr("打开", "Open"), &t, palette)
                 .on_click(cx.listener(|this, _, window, cx| this.host_command("openClipboard", window, cx))))
-            .child(self.tile("devices", "laptop", tr("跨设备", "Cross-device"),
+            .child(self.tile("devices", "laptop", tr("跨设备", "Devices"),
                 tr("配对设备与同步剪贴板", "Pair devices and sync clipboard").into(), tr("设置", "Settings"), &t, palette)
                 .on_click(cx.listener(|this, _, _, cx| if !this.leave_locked { cx.emit(HomeEvent::Open(DEVICES_PAGE)) })))
             .child(self.tile("update", "refresh", tr("软件更新", "Updates"),
@@ -321,7 +321,7 @@ impl Render for HomeSettingsPage {
                 json!({"kind": "mainHostCommand", "command": "setShowTrayIcon", "show": !show_tray}), window, cx)));
         let close_choice = widgets::segmented(palette).flex_none().children([
             ("minimizeToTray", if show_tray { tr("缩小到托盘", "Minimize to tray") } else { tr("在后台运行", "Keep running") }),
-            ("exitApplication", tr("退出程序", "Exit application")),
+            ("exitApplication", tr("退出程序", "Quit")),
         ].into_iter().map(|(behavior, label)| {
             let active = background == (behavior == "minimizeToTray");
             div()
@@ -347,14 +347,14 @@ impl Render for HomeSettingsPage {
                 .into_any_element()
         };
         let behavior = widgets::card([
-            row(tr("显示托盘图标", "Show tray icon"), tray_switch.into_any_element()),
-            row(tr("关闭主界面时", "When closing the main window"), close_choice.into_any_element()),
+            row(tr("显示托盘图标", "Tray icon"), tray_switch.into_any_element()),
+            row(tr("关闭主界面时", "On close"), close_choice.into_any_element()),
         ], &s, palette);
 
         let quicker = if self.status["verbRpcListenerReady"] == true {
-            tr("可以使用", "Ready to use")
+            tr("可以使用", "Ready")
         } else {
-            tr("暂时无法打开", "Currently unavailable")
+            tr("暂时无法打开", "Unavailable")
         };
         let runtime = widgets::card([
             row(tr("从 Quicker 打开剪贴板", "Open clipboard from Quicker"),
@@ -381,8 +381,8 @@ impl Render for HomeSettingsPage {
             .child(tiles)
             .child(widgets::section(tr("快捷打开", "Quick open"), &s, &t)
                 .child(widgets::card([launch.into_any_element()], &s, palette)))
-            .child(widgets::section(tr("窗口行为", "Window behavior"), &s, &t).child(behavior))
-            .child(widgets::section(tr("程序管理", "App controls"), &s, &t).child(runtime))
+            .child(widgets::section(tr("窗口行为", "Window"), &s, &t).child(behavior))
+            .child(widgets::section(tr("程序管理", "App"), &s, &t).child(runtime))
     }
 }
 

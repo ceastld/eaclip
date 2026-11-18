@@ -298,7 +298,7 @@ fn message_status(message: &Value) -> String {
         "queued" => tr("等待发送", "Queued"),
         "sending" => tr("发送中", "Sending"),
         "delivered" => tr("已送达", "Delivered"),
-        "partial" => tr("部分送达", "Partially delivered"),
+        "partial" => tr("部分送达", "Partly sent"),
         "failed" => tr("发送失败", "Send failed"),
         "received" => tr("已接收", "Received"),
         "staged" => tr("已暂存", "Staged"),
@@ -2397,7 +2397,7 @@ impl LanManagementPage {
             }
             let input = cx.new(|cx| {
                 let mut input = SearchInput::new(window, cx);
-                input.set_placeholder(tr("6 位配对码", "6-digit pairing code"), cx);
+                input.set_placeholder(tr("6 位配对码", "Pair code (6 digits)"), cx);
                 input.set_double_click_clears(false);
                 input
             });
@@ -3117,7 +3117,7 @@ impl LanManagementPage {
             }
                 .child(self.control(
                     "overlay:preview-open",
-                    tr("用系统打开", "Open with system"),
+                    tr("用系统打开", "Open"),
                     !self.busy,
                     t,
                     window,

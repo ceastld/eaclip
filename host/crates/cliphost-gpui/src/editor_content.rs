@@ -37,7 +37,7 @@ impl EditorWindow {
                     <div text_color={color(&theme.text_muted)}>
                         {format!(
                         "{characters} {} · {lines} {}",
-                        tr("字符", "characters"),
+                        tr("字符", "chars"),
                         tr("行", "lines")
                     )}
                     </div>
@@ -120,7 +120,7 @@ impl EditorWindow {
                 vec![
                     (
                         "editor-im-rich-tab",
-                        tr("图文", "Rich content"),
+                        tr("图文", "Rich"),
                         ContentTab::Rich,
                     ),
                     (
@@ -183,7 +183,7 @@ impl EditorWindow {
             "FileClipItem" => return self.paths_content_view(cx),
             "ImageClipItem" => return self.image_content_view(window, cx),
             "TextClipItem" => {
-                content = content.child(self.content_text_field(tr("文本内容", "Text content"), cx))
+                content = content.child(self.content_text_field(tr("文本内容", "Text"), cx))
             }
             "HtmlClipItem" | "QQRichTextItem" => {
                 if self.tab == ContentTab::Rich {
@@ -198,7 +198,7 @@ impl EditorWindow {
                     let label = match self.tab {
                         ContentTab::Html => tr("HTML 源码", "HTML source"),
                         ContentTab::Qq => tr("XML 源码", "XML source"),
-                        _ => tr("纯文本内容", "Plain text content"),
+                        _ => tr("纯文本内容", "Plain text"),
                     };
                     content = content.child(self.content_text_field(label, cx));
                     if kind == "HtmlClipItem" && self.tab == ContentTab::Body {
@@ -245,9 +245,9 @@ impl EditorWindow {
                     .child(self.content_reference(
                         "play",
                         name,
-                        tr("动作引用 · 只读", "Action reference · Read only"),
+                        tr("动作引用 · 只读", "Action · Read-only"),
                     ))
-                    .child(self.content_text_field(tr("运行参数", "Execution parameters"), cx));
+                    .child(self.content_text_field(tr("运行参数", "Arguments"), cx));
             }
             "StepClipItem" if self.target.is_favorite() => {
                 let count = serde_json::from_str::<Value>(&self.draft.step_data)
@@ -274,7 +274,7 @@ impl EditorWindow {
                         "This type currently supports title edits only.",
                     )))
                     .child(self.content_text_field(
-                        tr("原始信息 · 只读", "Original data · Read only"),
+                        tr("原始信息 · 只读", "Raw data · Read-only"),
                         cx,
                     ));
             }
@@ -352,7 +352,7 @@ impl EditorWindow {
                         min_h={px(style::metric("contentEmptyMinHeight", 90.))} items_center
                         justify_center gap={px(style::metric("contentEmptyGap", 12.))}>
                         {self.content_icon("folder-open", 28.)}
-                        {self.content_note(tr("收藏夹为空", "This folder is empty"))}
+                        {self.content_note(tr("收藏夹为空", "Empty folder"))}
                     </div>
                 },
             );
@@ -361,7 +361,7 @@ impl EditorWindow {
             <div flex flex_col flex_1 min_h={px(0.)} min_w={px(0.)}
                 gap={px(style::metric("contentGap", 10.))}>
                 <div flex flex_none justify_between>
-                    {tr("收藏夹内容", "Folder contents")}
+                    {tr("收藏夹内容", "Contents")}
                     {self.content_note(format!("{count} {}", tr("项", "items")))}
                 </div>
                 {list}
@@ -465,7 +465,7 @@ impl EditorWindow {
                     if self.path_picker.is_pending() {
                         tr("选择中…", "Choosing…")
                     } else {
-                        tr("选择文件", "Choose files")
+                        tr("选择文件", "Pick files")
                     },
                     false,
                 )
@@ -480,7 +480,7 @@ impl EditorWindow {
         };
         if self.file_bulk_open {
             content = content
-                .child(self.content_text_field(tr("批量添加路径", "Add paths in bulk"), cx))
+                .child(self.content_text_field(tr("批量添加路径", "Add paths"), cx))
                 .child(
                     rsx! {
                         <div flex flex_none flex_wrap justify_between items_center
@@ -492,7 +492,7 @@ impl EditorWindow {
                         </div>
                     }
                         .child(
-                            self.button("paths-apply-bulk", tr("添加到列表", "Add to list"), false)
+                            self.button("paths-apply-bulk", tr("添加到列表", "Add"), false)
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     if this.composing(cx) {
                                         return;
@@ -522,7 +522,7 @@ impl EditorWindow {
                             min_h={px(style::metric("contentEmptyMinHeight", 90.))} items_center
                             justify_center gap={px(style::metric("contentEmptyGap", 12.))}>
                             {self.content_icon("file", 26.)}
-                            {self.content_note(tr("尚未添加文件路径", "No file paths yet"))}
+                            {self.content_note(tr("尚未添加文件路径", "No files yet"))}
                         </div>
                     },
                 );

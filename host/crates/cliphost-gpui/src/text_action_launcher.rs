@@ -263,7 +263,7 @@ impl TextActionLauncher {
             input.set_colors(colors, cx);
             input.set_metrics(30.0, 13.0, 0.0, cx);
             input.set_placeholder(
-                tr("搜索名称、用途、类型…", "Search names, purpose, types…"),
+                tr("搜索名称、用途、类型…", "Search actions…"),
                 cx,
             );
         });
@@ -504,9 +504,9 @@ impl TextActionLauncher {
         let select_action = action.clone();
         let star_action = action.clone();
         let star_tip: SharedString = if common {
-            tr("取消常用", "Remove from common")
+            tr("取消常用", "Unfavorite")
         } else {
-            tr("设为常用", "Mark as common")
+            tr("设为常用", "Favorite")
         }
         .into();
         let tip_tokens = self.tokens.clone();
@@ -615,7 +615,7 @@ impl TextActionLauncher {
                 <div flex items_center justify_between mt={px(6.0)}>
                     <div text_size={px(12.0)}>{tr("看看处理结果", "Try the result")}</div>
                     <div text_size={px(10.0)} text_color={color(&theme.text_muted)}>
-                        {tr("最多 4000 字符", "Up to 4,000 characters")}
+                        {tr("最多 4000 字符", "Up to 4,000 chars")}
                     </div>
                 </div>
             </div>
@@ -637,7 +637,7 @@ impl TextActionLauncher {
                         {tr("输出", "Output")}
                         <div text_size={px(10.0)} text_color={color(&theme.text_muted)}>
                             {if self.preview_pending { SharedString::from(tr("处理中…", "Processing…")) }
-                             else { SharedString::from(format!("{} {}", self.preview_result.as_ref().map(|value| string(value, "output").chars().count()).unwrap_or(0), tr("字符", "characters"))) }}
+                             else { SharedString::from(format!("{} {}", self.preview_result.as_ref().map(|value| string(value, "output").chars().count()).unwrap_or(0), tr("字符", "chars"))) }}
                         </div>
                     </div>
                     {self.output.clone()}
@@ -755,7 +755,7 @@ impl Render for TextActionLauncher {
             self.preview(cx)
         } else {
             let heading = if self.common_only {
-                tr("常用操作", "Common actions")
+                tr("常用操作", "Favorites")
             } else {
                 tr("全部操作", "Actions")
             };

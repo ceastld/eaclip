@@ -287,7 +287,7 @@ mod win {
                 (SHOW, "剪贴板", "Clipboard"),
                 (FAVORITES, "收藏", "Favorites"),
                 (SUPER_MENU, "超级菜单", "Super menu"),
-                (LAN_SHARE, "局域网互传", "LAN sharing"),
+                (LAN_SHARE, "局域网互传", "Transfer"),
                 (SETTINGS, "设置", "Settings"),
                 (HELP, "帮助", "Help"),
             ] {

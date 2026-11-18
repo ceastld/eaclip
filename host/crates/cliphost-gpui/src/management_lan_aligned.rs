@@ -328,7 +328,7 @@ impl LanManagementPage {
             .justify_center()
             .opacity(if send_enabled { 1. } else { 0.3 })
             .tooltip(tooltip(
-                tr("Enter 发送 · Shift+Enter 换行", "Enter to send · Shift+Enter for a new line").into(),
+                tr("Enter 发送 · Shift+Enter 换行", "Enter Send · Shift+Enter New line").into(),
                 self.tokens.clone(),
                 self.dark,
             ))
@@ -423,7 +423,7 @@ impl LanManagementPage {
         } else if pending > 0 {
             Some(format!(
                 "{pending} {}",
-                tr("条内容等待送达", "items awaiting delivery")
+                tr("条内容等待送达", "items queued")
             ))
         } else {
             None
@@ -525,7 +525,7 @@ impl Render for LanManagementPage {
         let connections = self
             .control(
                 "lan-connections",
-                if self.companion { "" } else { tr("设备与连接", "Devices and connection") },
+                if self.companion { "" } else { tr("设备与连接", "Connections") },
                 true,
                 &t,
                 window,
@@ -541,7 +541,7 @@ impl Render for LanManagementPage {
             .items_center()
             .gap(px(4.))
             .when(self.companion, |v| v.size(px(28.)).min_h(px(28.)).p(px(0.)).border_0().justify_center())
-            .tooltip(tooltip(tr("设备与连接", "Devices and connection").into(), self.tokens.clone(), self.dark))
+            .tooltip(tooltip(tr("设备与连接", "Connections").into(), self.tokens.clone(), self.dark))
             .child(self.icon("sliders", if self.companion { 16. } else { 14. }, &t));
         let toggle = self
             .control(
@@ -595,7 +595,7 @@ impl Render for LanManagementPage {
             .when(!self.embedded, |caption| caption.child(
                 rsx! {
                     <div text_size={px(12.)} font_weight={FontWeight::SEMIBOLD}>
-                        {tr("局域网互传", "LAN sharing")}
+                        {tr("局域网互传", "Transfer")}
                     </div>
                 },
             ));
@@ -610,7 +610,7 @@ impl Render for LanManagementPage {
                     .child(if running {
                         tr("互传已开启", "Sharing on")
                     } else if enabled && !error.is_empty() {
-                        tr("启动失败", "Failed to start")
+                        tr("启动失败", "Start failed")
                     } else {
                         tr("互传已关闭", "Sharing off")
                     }),
@@ -985,7 +985,7 @@ impl Render for LanManagementPage {
                 let latest = self
                     .control(
                         "lan-latest",
-                        tr("回到最新消息", "Latest messages"),
+                        tr("回到最新消息", "Latest"),
                         true,
                         &t,
                         window,
@@ -1167,13 +1167,13 @@ impl LanManagementPage {
         }
         if status != "sending" {
             let label = if status == "queued" {
-                    if self.status["running"] == true { tr("等待上线", "Waiting for device") } else { tr("已排队", "Queued") }
+                    if self.status["running"] == true { tr("等待上线", "Waiting for device…") } else { tr("已排队", "Queued") }
                 .into()
             } else if status == "canceled" {
                 tr("已取消", "Canceled")
                 .into()
             } else if status == "partial" {
-                tr("部分未送达", "Partially undelivered").into()
+                tr("部分未送达", "Partly unsent").into()
             } else {
                 message_status(message)
             };
@@ -1186,7 +1186,7 @@ impl LanManagementPage {
             state = state.child(self.control(
                 format!("lan-retry:{id}"),
                 if deliveries.len() > 1 {
-                    tr("仅重试未送达", "Retry undelivered only")
+                    tr("仅重试未送达", "Retry unsent")
                 } else {
                     tr("重试", "Retry")
                 },
@@ -1201,7 +1201,7 @@ impl LanManagementPage {
             let cancel_id = id.clone();
             state = state.child(self.control(
                 format!("lan-cancel-queued:{id}"),
-                if status == "partial" { tr("取消", "Cancel") } else { tr("取消排队", "Cancel queued send") },
+                if status == "partial" { tr("取消", "Cancel") } else { tr("取消排队", "Cancel send") },
                 !self.busy,
                 t,
                 window,
@@ -2205,7 +2205,7 @@ impl LanManagementPage {
             let peer = id.to_string();
             let keyboard_peer = peer.clone();
             let hint = if value == "auto" {
-                format!("{}（{}）", tr("自动识别", "Detect automatically"), device_label(detected))
+                format!("{}（{}）", tr("自动识别", "Auto"), device_label(detected))
             } else {
                 format!("{}{}", tr("显示为", "Show as "), device_label(value))
             };
@@ -2480,12 +2480,12 @@ impl LanManagementPage {
                     .min_h(px(if self.settings_only { 18. } else { 16. })).p(px(2.)).rounded_full().border_0()
                     .flex().items_center().when(enabled, |v| v.justify_end())
                     .bg(if enabled { color(&t.accent) } else { color(&t.border_secondary) })
-                    .tooltip(tooltip(if enabled { tr("关闭局域网互传", "Disable LAN sharing") } else { tr("开启局域网互传", "Enable LAN sharing") }.into(), self.tokens.clone(), self.dark))
+                    .tooltip(tooltip(if enabled { tr("关闭局域网互传", "Stop sharing") } else { tr("开启局域网互传", "Start sharing") }.into(), self.tokens.clone(), self.dark))
                     .child(div().size(px(if self.settings_only { 14. } else { 12. })).rounded_full().bg(color(&t.surface)));
                 let (tint, detail) = if running {
                     (Some(color(&t.accent)), tr("已开启 · 附近设备可以发现此设备", "On · Nearby devices can find this one").to_string())
                 } else if failed {
-                    (Some(color(&t.error)), format!("{} · {}", tr("启动失败", "Failed to start"), text(&self.status, "error")))
+                    (Some(color(&t.error)), format!("{} · {}", tr("启动失败", "Start failed"), text(&self.status, "error")))
                 } else {
                     (None, tr("已关闭 · 其他设备无法发现此设备", "Off · Other devices can’t find this one").to_string())
                 };
@@ -2496,7 +2496,7 @@ impl LanManagementPage {
                     Some(tint) => (tint.opacity(if failed { 0.40 } else { 0.35 }), tint.opacity(if failed { 0.06 } else { 0.07 })),
                     None => (color(&t.border), gpui::transparent_black()),
                 };
-                let mut text_column = row_text(tr("局域网互传", "LAN sharing"), detail, t);
+                let mut text_column = row_text(tr("局域网互传", "Transfer"), detail, t);
                 if failed { text_column = text_column.text_color(color(&t.error)); }
                 body = body.child(
                     div().flex_none().rounded(px(8.)).border_1().border_color(border).bg(color(&t.surface)).overflow_hidden()
@@ -2543,12 +2543,12 @@ impl LanManagementPage {
                         .text_color(color(&t.text)).child(digit),
                 );
             }
-            let mut code_block = div().p(px(12.)).flex().flex_col()
+            let code_block = div().p(px(12.)).flex().flex_col()
                 .border_t_1().border_color(color(&t.border))
                 .bg(motion::mix_hsla(color(&t.surface), color(&t.background), 0.45))
                 .child(div().mb(px(8.)).flex().justify_between().gap(px(8.)).text_size(px(11.))
                     .text_color(color(&t.text_muted))
-                    .child(tr("配对码", "Pairing code"))
+                    .child(tr("配对码", "Pair code"))
                     .child(div().text_color(if live { color(&t.text_muted) } else { color(&t.text_secondary) }).child(timer)))
                 .child(div().flex().items_center().gap(px(10.)).child(boxes));
             if let (true, Some(seconds)) = (live, seconds) {
@@ -2604,7 +2604,7 @@ impl LanManagementPage {
                 let available = enabled && online && peer["pairingAvailable"].as_bool().unwrap_or(true);
                 let pairing = self.pair_target.as_deref() == Some(id.as_str());
                 let detail = if !online { tr("离线，等待设备上线", "Offline, waiting for the device") }
-                    else if available { tr("可配对", "Available to pair") }
+                    else if available { tr("可配对", "Ready to pair") }
                     else { tr("对方尚未开启配对", "Pairing isn’t open on that device") };
                 let mut row = device_row()
                     .child(self.device_tile(device_icon(&peer), None, t))
@@ -2650,7 +2650,7 @@ impl LanManagementPage {
                 nearby_card = nearby_card.child(group);
             }
             body = body.child(
-                section(heading(tr("添加附近设备", "Add a nearby device"), None, t).children(scan), nearby_card)
+                section(heading(tr("添加附近设备", "Add nearby device"), None, t).children(scan), nearby_card)
                     .child(note(tr("找不到设备？确认两台设备在同一局域网、对方已开启互传，并允许 ClipHost 通过防火墙。",
                         "Can’t find a device? Check both are on the same LAN with sharing on, and that the firewall allows ClipHost."), 8., t)),
             );
@@ -2720,7 +2720,7 @@ impl LanManagementPage {
                 .w_full().min_h(px(40.)).px(px(12.)).rounded(px(0.)).border_0()
                 .flex().items_center().gap(px(8.)).text_size(px(12.))
                 .child(self.icon("gear", 15., t))
-                .child(div().flex_1().child(tr("高级连接设置", "Advanced connection settings")))
+                .child(div().flex_1().child(tr("高级连接设置", "Connection settings")))
                 .child(self.icon_with_color(if advanced_open { "chevron-down" } else { "chevron-right" }, 13., color(&t.text_muted)));
             // Clipped cards must not shrink inside the fixed-height scroll column.
             let mut settings = card(t).flex_none().child(summary);
@@ -2739,8 +2739,8 @@ impl LanManagementPage {
                     .text_size(px(11.)).text_color(color(&t.text_secondary)).child(label).child(input);
                 settings = settings.child(
                     div().p(px(12.)).border_t_1().border_color(color(&t.border)).flex().flex_col().gap(px(10.))
-                        .child(field(tr("本机设备名称", "This device’s name"), self.alias.clone().into_any_element()))
-                        .child(field(tr("监听端口", "Listening port"), self.port.clone().into_any_element()))
+                        .child(field(tr("本机设备名称", "Device name"), self.alias.clone().into_any_element()))
+                        .child(field(tr("监听端口", "Port"), self.port.clone().into_any_element()))
                         .child(div().text_size(px(11.)).text_color(color(&t.text_muted))
                             .child(tr("设备名称供附近设备识别。", "Nearby devices identify this one by its name.")))
                         .child(div().flex().justify_end().child(save)),
@@ -2789,9 +2789,9 @@ impl LanManagementPage {
                         div()
                             .font_weight(FontWeight::MEDIUM)
                             .child(if self.sessions {
-                                tr("选择设备", "Choose a device")
+                                tr("选择设备", "Pick device")
                             } else {
-                                tr("设备与连接", "Devices and connection")
+                                tr("设备与连接", "Connections")
                             }),
                     )
                     .child(close),

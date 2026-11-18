@@ -971,7 +971,7 @@ impl PanelWindow {
                         ..Default::default()
                     },
                     move |window, cx| {
-                        window.set_window_title(tr("超级面板", "Favorite panel"));
+                        window.set_window_title(tr("超级面板", "Panel"));
                         let view =
                             cx.new(|cx| Self::new(build_host.clone(), tokens, dark, window, cx));
                         let weak = view.downgrade();
@@ -1266,7 +1266,7 @@ impl PanelWindow {
                 0.0,
                 cx,
             );
-            input.set_placeholder(tr("搜索当前目录", "Search this folder"), cx);
+            input.set_placeholder(tr("搜索当前目录", "Search folder…"), cx);
             input
         });
         let name = cx.new(|cx| {
@@ -2521,20 +2521,20 @@ impl PanelWindow {
                 entries.extend([
                     MenuEntry::Label(tr("添加", "Add").into()),
                     MenuAction::tile("add-text", tr("文本", "Text")),
-                    MenuAction::tile("new-folder", tr("收藏夹", "Favorite folder")),
+                    MenuAction::tile("new-folder", tr("收藏夹", "Folder")),
                     MenuAction::tile("add-action-hint", tr("动作", "Action")),
                     MenuAction::tile(
                         "add-link",
-                        tr("添加当前打开网址", "Add current browser URL"),
+                        tr("添加当前打开网址", "Add current URL"),
                     ),
                     MenuAction::tile("add-files", tr("文件", "Files")),
-                    MenuAction::tile("add-directories", tr("文件夹", "Directories")),
-                    MenuAction::tile("add-batch-text", tr("批量文本", "Text line by line")),
+                    MenuAction::tile("add-directories", tr("文件夹", "Folders")),
+                    MenuAction::tile("add-batch-text", tr("批量文本", "Text lines")),
                     MenuEntry::Separator,
                     MenuAction::row("refresh", tr("刷新", "Refresh")),
                 ]);
                 if this.drag_undo.is_some() {
-                    entries.push(MenuAction::row("undo-drag", tr("撤销上次整理", "Undo last organization")));
+                    entries.push(MenuAction::row("undo-drag", tr("撤销上次整理", "Undo reorder")));
                 }
                 this.open_menu_at(Vec::new(), entries, point, cx);
             });
@@ -3367,7 +3367,7 @@ impl PanelWindow {
             });
         let mut tile = rsx! {
             <div id={row_key.clone()} relative w={px(width)} flex_none flex items_center
-                justify_center />
+                justify_center mask_sensitive_text={true} />
         }
             .min_h(px(number(appearance, "smallMinHeight", 28.0).max(
                 if style == Style::List { l.icon_button_size + 2.0 * l.file_chip_padding_y } else { 30.0 },
@@ -3694,10 +3694,10 @@ impl PanelWindow {
                     this.open_menu(
                         vec![this.root.clone()],
                         vec![
-                            MenuAction::tile("new-folder", tr("添加收藏夹", "Add favorite folder")),
+                            MenuAction::tile("new-folder", tr("添加收藏夹", "Add folder")),
                             MenuAction::tile(
                                 "new-root-folder",
-                                tr("在根节点添加收藏夹", "Add root favorite folder"),
+                                tr("在根节点添加收藏夹", "Add root folder"),
                             ),
                         ],
                         cx,
@@ -3792,11 +3792,11 @@ impl PanelWindow {
                                     MenuEntry::Separator,
                                     MenuAction::tile(
                                         "new-folder",
-                                        tr("添加收藏夹", "Add favorite folder"),
+                                        tr("添加收藏夹", "Add folder"),
                                     ),
                                     MenuAction::tile(
                                         "new-root-folder",
-                                        tr("在根节点添加收藏夹", "Add root favorite folder"),
+                                        tr("在根节点添加收藏夹", "Add root folder"),
                                     ),
                                     MenuEntry::Separator,
                                     MenuAction::danger_tile("delete", tr("移除", "Remove")),
@@ -3860,10 +3860,10 @@ impl PanelWindow {
         let t = self.tokens.theme(self.dark).clone();
         let heading = match dialog {
             Dialog::Rename { .. } => tr("编辑标题", "Edit title"),
-            Dialog::AddFolder { .. } => tr("添加收藏夹", "Add favorite folder"),
-            Dialog::AddText { batch: true, .. } => tr("批量添加文本", "Add text line by line"),
+            Dialog::AddFolder { .. } => tr("添加收藏夹", "Add folder"),
+            Dialog::AddText { batch: true, .. } => tr("批量添加文本", "Add text lines"),
             Dialog::AddText { .. } => tr("添加文本", "Add text"),
-            Dialog::Move { .. } => tr("移动到收藏夹", "Move to favorite folder"),
+            Dialog::Move { .. } => tr("移动到收藏夹", "Move to folder"),
             Dialog::Delete { .. } => tr("移除收藏夹及其内容", "Remove folders and their contents"),
         };
         let mut card = rsx! {
@@ -4053,7 +4053,7 @@ impl Render for PanelWindow {
             self.page["title"]
                 .as_str()
                 .filter(|s| !s.is_empty())
-                .unwrap_or(tr("超级面板", "Favorite panel"))
+                .unwrap_or(tr("超级面板", "Panel"))
                 .to_string()
         };
         window.set_window_title(&title);
@@ -4172,7 +4172,7 @@ impl Render for PanelWindow {
                 tr("正在执行…", "Working…")
             } else if self.loading { tr("正在加载…", "Loading…") } else { "" }))
             .when(self.drag_undo.is_some(), |footer| footer.child(
-                self.chrome_button("panel-drag-undo", "refresh", false, tr("撤销上次整理", "Undo last organization"), window, cx)
+                self.chrome_button("panel-drag-undo", "refresh", false, tr("撤销上次整理", "Undo reorder"), window, cx)
                     .on_click(cx.listener(|this, _, _, cx| this.undo_drag(cx))),
             ))
             .child(self.chrome_button("panel-add", "plus", false, tr("添加", "Add"), window, cx)
@@ -4266,7 +4266,7 @@ impl Render for PanelWindow {
                 let parent = target.parent_id.as_deref().unwrap_or("");
                 let name = self.tree["items"][parent]["title"].as_str().unwrap_or(tr("顶层", "Top level"));
                 let verb = if self.active_content_drag.as_ref().is_some_and(|drag| matches!(drag.source, DragSource::History { .. })) {
-                    tr("收藏到", "Save favorite in")
+                    tr("收藏到", "Save to")
                 } else if window.modifiers().control { tr("复制到", "Copy to") } else { tr("移动到", "Move to") };
                 format!("{verb} {name}")
             }).unwrap_or_else(|| tr("此处不能放置；Esc 取消。切回原有顺序后可调整位置", "Cannot drop here; Esc cancels. Return to original order to reorder").into());

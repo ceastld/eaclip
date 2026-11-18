@@ -23,14 +23,18 @@ pub(super) struct FilterPopoverGeometry {
 impl FilterPopoverGeometry {
     /// `preferred` is the content height; the popover never extends past the
     /// window and keeps that height definite for the scrolling body.
-    pub fn new(window_width: f32, window_height: f32, preferred: f32, tokens: &DesignTokens) -> Self {
+    pub fn new(window_width: f32, window_height: f32, preferred: f32, tokens: &DesignTokens, anchor: Option<gpui::Point<gpui::Pixels>>) -> Self {
         let l = &tokens.layout;
-        let top = l.title_bar_height + l.content_padding_y + l.toolbar_height + ANCHOR_GAP;
+        let top = anchor.map(|p| f32::from(p.y))
+            .unwrap_or(l.title_bar_height + l.content_padding_y + l.toolbar_height) + ANCHOR_GAP;
+        let width = WIDTH.min((window_width - INSET * 2.0).max(0.0));
+        let right = anchor.map(|p| window_width - f32::from(p.x)).unwrap_or(INSET)
+            .clamp(INSET, (window_width - width - INSET).max(INSET));
         let available = (window_height - top - INSET).max(0.0);
         Self {
             top,
-            right: INSET,
-            width: WIDTH.min((window_width - INSET * 2.0).max(0.0)),
+            right,
+            width,
             height: preferred.max(0.0).min(available),
         }
     }
@@ -59,6 +63,7 @@ impl ClipboardPreview {
             size.height.into(),
             preferred_height,
             &tokens,
+            self.category_more_anchor.get(),
         );
         let card = rsx! {
             <div id={SharedString::from(format!("{id}-card"))} relative size_full min_h_0 flex
@@ -139,7 +144,7 @@ impl ClipboardPreview {
         };
         let size = window.viewport_size();
         let geometry = |preferred: f32| {
-            let g = FilterPopoverGeometry::new(size.width.into(), size.height.into(), preferred, &self.clipboard_tokens());
+            let g = FilterPopoverGeometry::new(size.width.into(), size.height.into(), preferred, &self.clipboard_tokens(), self.category_more_anchor.get());
             json!({"top":g.top,"right":g.right,"width":g.width,"height":g.height,"preferred":preferred})
         };
         let categories = self.tag_editor.as_ref().map(|(editor, _)| {
@@ -249,13 +254,24 @@ mod tests {
     #[test]
     fn popover_hangs_below_category_row_and_fits_small_windows() {
         let tokens = DesignTokens::from_json(crate::preview::TOKENS_JSON).unwrap();
-        let roomy = FilterPopoverGeometry::new(380.0, 600.0, 420.0, &tokens);
+        let roomy = FilterPopoverGeometry::new(380.0, 600.0, 420.0, &tokens, None);
         assert_eq!(roomy.width, WIDTH);
         assert_eq!(roomy.height, 420.0);
         let l = &tokens.layout;
         assert!(roomy.top > l.title_bar_height + l.toolbar_height);
-        let short = FilterPopoverGeometry::new(320.0, 420.0, 900.0, &tokens);
+        let short = FilterPopoverGeometry::new(320.0, 420.0, 900.0, &tokens, None);
         assert_eq!(short.width, 320.0 - INSET * 2.0);
         assert_eq!(short.top + short.height, 420.0 - INSET);
+    }
+
+    #[test]
+    fn category_popover_follows_the_button_until_the_window_edge() {
+        let tokens = DesignTokens::from_json(crate::preview::TOKENS_JSON).unwrap();
+        for (window, button_right, expected_left) in [(820., 405., 53.), (560., 275., INSET)] {
+            let anchor = gpui::point(px(button_right), px(62.));
+            let panel = FilterPopoverGeometry::new(window, 600., 420., &tokens, Some(anchor));
+            assert_eq!(window - panel.right - panel.width, expected_left);
+            assert_eq!(panel.top, 62. + ANCHOR_GAP);
+        }
     }
 }

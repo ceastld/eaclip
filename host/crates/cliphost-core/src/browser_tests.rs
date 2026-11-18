@@ -5,6 +5,7 @@ use tokio::io::AsyncWriteExt;
 struct Peer {
     mode: AtomicUsize,
     calls: Mutex<Vec<String>>,
+    targets: Mutex<Vec<Value>>,
     entered: tokio::sync::Notify,
     release: tokio::sync::Notify,
     cancelled: tokio::sync::Notify,
@@ -15,7 +16,7 @@ async fn fixture() -> (tempfile::TempDir, HostState, Arc<Peer>, tokio::task::Joi
     let dir = tempfile::tempdir().unwrap();
     let host = HostState::open(AppPaths::from_data_root(dir.path().join("BetterClipTauri")), 28965).unwrap();
     host.favor_folder_create(&json!({"name":"Protected home"})).unwrap();
-    let peer = Arc::new(Peer { mode: AtomicUsize::new(0), calls: Mutex::new(Vec::new()),
+    let peer = Arc::new(Peer { mode: AtomicUsize::new(0), calls: Mutex::new(Vec::new()), targets: Mutex::new(Vec::new()),
         entered: tokio::sync::Notify::new(), release: tokio::sync::Notify::new(),
         cancelled: tokio::sync::Notify::new() });
     let (server, mut client) = tokio::io::duplex(65536);
@@ -33,19 +34,26 @@ async fn fixture() -> (tempfile::TempDir, HostState, Arc<Peer>, tokio::task::Joi
             if method == "quicker.ping" { reply.payload = Some(json!("pong")); }
             else {
                 control.calls.lock().push(method.into());
+                if method == "quicker.getBookmarksForTarget" { control.targets.lock().push(request.payload.clone().unwrap()); }
                 let mode = control.mode.load(Ordering::SeqCst);
                 if mode == 3 { control.entered.notify_one(); control.release.notified().await; }
                 // Withhold the response while still reading the caller's cancellation.
                 if mode == 4 { continue; }
-                if mode == 2 { reply = crate::pipe_rpc::PipeRpcMessage::error(request.id, "fixture", "browser failed"); }
+                if mode == 6 { reply = crate::pipe_rpc::PipeRpcMessage::error(request.id, "method_not_found", "Unknown method"); }
+                else if mode == 2 { reply = crate::pipe_rpc::PipeRpcMessage::error(request.id, "fixture", "browser failed"); }
                 else { reply.payload = Some(match method {
                     "quicker.evaluateExpression" => json!("true"),
                     "quicker.getCurrentBrowserTab" if mode == 1 => Value::Null,
                     "quicker.getCurrentBrowserTab" => json!({"Title":" 页面中文 ", "Url":" https://example.test/?x=1&y=中文 ", "Icon":" icon-data "}),
                     "quicker.getAllBrowserTabs" if mode == 1 => json!([]),
                     "quicker.getAllBrowserTabs" => json!((0..12).map(|i| json!({"Title":format!("Tab {i}"),"Url":format!("https://example.test/{i}"),"Icon":"tab-icon"})).chain([json!({"Url":" "})]).collect::<Vec<_>>()),
-                    "quicker.getBrowserBookmarksTree" if mode == 1 => json!(r#"[{"id":"0","children":[]}]"#),
-                    "quicker.getBrowserBookmarksTree" => json!(r#"[{"id":"0","children":[{"id":"7","title":"插件书签","url":"https://example.test/bookmark"}]}]"#),
+                    "quicker.getBookmarkConnections" if mode == 5 => json!([{"Browser":"chrome","EnvName":"work","MainProcessId":11}]),
+                    "quicker.getBookmarkConnections" => json!([
+                        {"Browser":"chrome","EnvName":"work","MainProcessId":11},
+                        {"Browser":"msedge","EnvName":"personal","MainProcessId":22},
+                        {"Browser":"msedge","EnvName":"work","MainProcessId":33}]),
+                    "quicker.getBookmarksForTarget" if mode == 1 => json!(r#"[{"id":"0","children":[]}]"#),
+                    "quicker.getBookmarksForTarget" => json!(r#"[{"id":"0","children":[{"id":"7","title":"插件书签","url":"https://example.test/bookmark"}]}]"#),
                     _ => panic!("unexpected callback: {method}"),
                 }); }
             }
@@ -241,6 +249,40 @@ async fn independent_menus_skip_bookmarks_and_favorite_expression_callbacks() {
     let _ = responding.await;
     serving.await.unwrap().unwrap();
     assert!(unrelated_calls.is_empty(), "unrelated menu callbacks: {unrelated_calls:?}");
-    assert_eq!(all_calls, ["quicker.getBrowserBookmarksTree"]);
+    assert_eq!(all_calls, ["quicker.getBookmarkConnections", "quicker.getBookmarksForTarget"]);
     assert_eq!(bookmarks["root"]["items"][0]["title"], "插件书签");
+}
+
+#[tokio::test]
+async fn bookmarks_target_selected_edge_environment_and_never_read_another_browser() {
+    let (_dir, host, peer, responding, serving) = fixture().await;
+    {
+        let mut inner = host.inner.lock();
+        inner.extras.menu_global.bookmark_browser = "msedge".into();
+        inner.extras.menu_global.bookmark_profile = "Default".into(); // File profile must not become extension environment.
+        inner.extras.menu_global.bookmark_environment = "work".into();
+    }
+    let testing = host.clone();
+    tokio::task::spawn_blocking(move || {
+        let sources = testing.bookmark_sources();
+        assert!(sources.extension);
+        assert_eq!(sources.sources[sources.current.unwrap()].profile, "work");
+        let menu = testing.menu_create_session("bookmarks");
+        assert_eq!(menu["root"]["items"][0]["title"], "插件书签");
+    }).await.unwrap();
+    assert_eq!(*peer.targets.lock(), [json!({"Browser":"msedge","EnvName":"work","MainProcessId":33})]);
+    peer.mode.store(5, Ordering::SeqCst);
+    let testing = host.clone();
+    let missing = tokio::task::spawn_blocking(move || testing.menu_create_session("bookmarks")).await.unwrap();
+    assert!(missing["root"]["items"].as_array().unwrap().is_empty());
+    assert!(missing["message"].as_str().unwrap().contains("Microsoft Edge"));
+    assert_eq!(peer.targets.lock().len(), 1, "disconnected Edge must not target connected Chrome or read local files");
+    peer.mode.store(6, Ordering::SeqCst);
+    let testing = host.clone();
+    let unsupported = tokio::task::spawn_blocking(move || testing.menu_create_session("bookmarks")).await.unwrap();
+    assert!(unsupported["message"].as_str().unwrap().contains("更新插件"));
+    assert_eq!(peer.targets.lock().len(), 1, "an old plugin cannot silently use the untargeted callback");
+    responding.abort();
+    let _ = responding.await;
+    serving.await.unwrap().unwrap();
 }

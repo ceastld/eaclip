@@ -1809,6 +1809,77 @@ pub fn show(window: &mut gpui::Window, explicit: bool, activate: bool) -> Result
         Box::new(move |hwnd| raw_show(hwnd, explicit, activate)),
     )
 }
+
+/// Clipboard presentation and foreground permission are separate outcomes.
+/// Other windows retain their stricter foreground contracts.
+pub fn show_clipboard(window: &mut gpui::Window, host: &HostState, explicit: bool, activate: bool) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let stamp = host.native_clipboard_activation_stamp();
+        let host = host.clone();
+        post_native(window, Box::new(move |hwnd| {
+            raw_show_clipboard(hwnd, &host, stamp, explicit, activate, raw_activate)
+        }))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = host;
+        show(window, explicit, activate)
+    }
+}
+
+pub fn activate_clipboard(window: &gpui::Window, host: &HostState) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let stamp = host.native_clipboard_activation_stamp();
+        let host = host.clone();
+        post_native(window, Box::new(move |hwnd| {
+            raw_activate_clipboard(hwnd, &host, stamp, raw_activate)
+        }))
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = host;
+        activate(window)
+    }
+}
+
+#[cfg(windows)]
+fn raw_show_clipboard(
+    hwnd: windows::Win32::Foundation::HWND, host: &HostState, stamp: (isize, u64),
+    explicit: bool, activate: bool,
+    try_activate: impl FnOnce(windows::Win32::Foundation::HWND) -> Result<(), String>,
+) -> Result<(), String> {
+    raw_show(hwnd, explicit, false)?;
+    if explicit && activate {
+        raw_activate_clipboard(hwnd, host, stamp, try_activate)?;
+    }
+    Ok(())
+}
+
+#[cfg(windows)]
+fn raw_activate_clipboard(
+    hwnd: windows::Win32::Foundation::HWND, host: &HostState, stamp: (isize, u64),
+    try_activate: impl FnOnce(windows::Win32::Foundation::HWND) -> Result<(), String>,
+) -> Result<(), String> {
+    match try_activate(hwnd) {
+        Ok(()) => host.notify_native_clipboard_activation(stamp, true),
+        Err(error) => {
+            // A valid, shown HWND can be refused foreground by Windows. Do not
+            // route this through NativeWindow's fatal-operation Hide cleanup.
+            if host.native_clipboard_focus_refused(stamp) {
+                log::warn!(target: "cliphost_gpui::focus", "Clipboard foreground handoff refused (hwnd={}): {error}", stamp.0);
+                if let Err(style_error) = raw_set_no_activate(hwnd, host.clipboard_no_activate()) {
+                    // Input retirement invalidates the old focus task's guard;
+                    // still retire a current HWND if restoring its style fails.
+                    host.hide_native_clipboard_if_current(stamp);
+                    return Err(style_error);
+                }
+            }
+        }
+    }
+    Ok(())
+}
 #[cfg(windows)]
 pub fn hide(window: &gpui::Window) -> Result<(), String> {
     post_native(window, Box::new(raw_hide))

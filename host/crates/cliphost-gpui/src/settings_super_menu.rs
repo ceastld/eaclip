@@ -15,7 +15,7 @@ const POSITION_EPSILON: f32 = 1.0;
 
 pub(super) fn super_menu_section_label(id: &str) -> &'static str {
     match id {
-        "items" => tr("显示条目", "Visible items"),
+        "items" => tr("显示条目", "Items"),
         "windows" => tr("窗口菜单", "Window menu"),
         "files" => tr("文件菜单", "File menu"),
         "text-actions" => tr("文本操作", "Text actions"),

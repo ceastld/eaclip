@@ -24,7 +24,7 @@ pub(super) fn entries(
         MenuAction::tile(
             "paste",
             if multi {
-                tr("按选择顺序粘贴", "Paste in selection order")
+                tr("按选择顺序粘贴", "Paste in order")
             } else {
                 tr("粘贴", "Paste")
             },
@@ -48,37 +48,37 @@ pub(super) fn entries(
     if has_text {
         entries.push(MenuAction::tile(
             "paste-plain-text",
-            tr("纯文本粘贴", "Paste as plain text"),
+            tr("纯文本粘贴", "Paste plain text"),
         ));
     }
     if multi {
         entries.push(MenuAction::tile(
             "reverse-paste",
-            tr("逆序粘贴", "Paste in reverse order"),
+            tr("逆序粘贴", "Paste reversed"),
         ));
     }
     entries.push(MenuAction::tile(
         "fifo-paste",
-        tr("连续粘贴…", "Sequential paste…"),
+        tr("连续粘贴…", "Paste queue…"),
     ));
     if locate {
         entries.push(MenuEntry::Separator);
         entries.push(MenuAction::tile(
             "reveal-file",
-            tr("定位文件", "Locate file"),
+            tr("定位文件", "Reveal file"),
         ));
         entries.push(MenuAction::tile(
             "reveal-folder",
-            tr("定位文件夹", "Locate folder"),
+            tr("定位文件夹", "Reveal folder"),
         ));
     }
     entries.push(MenuEntry::Separator);
     if single {
-        entries.push(MenuAction::row("edit", tr("编辑内容", "Edit content")));
+        entries.push(MenuAction::row("edit", tr("编辑内容", "Edit")));
     }
     entries.push(MenuAction::row(
         "lan-share",
-        tr("发送到局域网", "Send to LAN"),
+        tr("发送到局域网", "Send to device"),
     ));
     if let Some(item) = first.filter(|_| single) {
         if item.kind == "ImageClipItem" {
@@ -123,7 +123,7 @@ pub(super) fn entries(
     entries.push(MenuEntry::Separator);
     entries.push(MenuAction::row(
         "distinct",
-        tr("去除重复", "Remove duplicates"),
+        tr("去除重复", "Deduplicate"),
     ));
     entries
 }
@@ -141,7 +141,7 @@ pub(super) fn context(items: &[&ClipboardItemDto], count: usize) -> HistoryMenuC
     let (kind_label, icon) = match first.map(|item| item.kind.as_str()).unwrap_or_default() {
         "FileClipItem" => (tr("文件", "Files"), "file"),
         "ImageClipItem" => (tr("图片", "Image"), "image"),
-        "HtmlClipItem" | "QQRichTextItem" => (tr("富文本", "Rich text"), "text"),
+        "HtmlClipItem" | "QQRichTextItem" => (tr("富文本", "Rich"), "text"),
         _ => (tr("文本", "Text"), "text"),
     };
     let title = first

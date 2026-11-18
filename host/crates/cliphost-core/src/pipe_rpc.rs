@@ -170,6 +170,8 @@ pub fn dispatch(host: &HostState, method: &str, payload: &Value) -> Result<Value
             host.request_graceful_shutdown();
             Ok(Value::Null)
         }
+        crate::invocation::INFO_METHOD => host.invocation_info(),
+        crate::invocation::RUN_METHOD => host.run_bound_verb(payload),
         METHOD_RUN_VERB => {
             let line = payload
                 .get("Line")
@@ -234,6 +236,26 @@ pub fn handle_inbound(host: &HostState, incoming: &PipeRpcMessage) -> Option<Pip
         }
         _ => None,
     }
+}
+
+fn script_method_allowed(method: &str) -> bool {
+    matches!(method, METHOD_VERSION | METHOD_SHUTDOWN | crate::invocation::INFO_METHOD | crate::invocation::RUN_METHOD)
+}
+
+fn handle_script_inbound(host: &HostState, incoming: &PipeRpcMessage) -> Option<PipeRpcMessage> {
+    if incoming.type_name == TYPE_REQUEST && !script_method_allowed(incoming.method.as_deref().unwrap_or("")) {
+        return Some(PipeRpcMessage { version:PROTOCOL_VERSION, type_name:TYPE_ERROR.into(), id:incoming.id,
+            method:None, payload:None, error_code:Some("method_not_found".into()),
+            error_message:Some("Script-test endpoint only accepts explicit-root target requests.".into()) });
+    }
+    if incoming.type_name == TYPE_REQUEST && incoming.method.as_deref() == Some(crate::invocation::RUN_METHOD)
+        && !matches!(incoming.payload.as_ref().and_then(|value| value.get("command")).and_then(Value::as_str),
+            Some("clip toggle" | "clip show" | "clip hide" | "clip close")) {
+        return Some(PipeRpcMessage { version:PROTOCOL_VERSION, type_name:TYPE_ERROR.into(), id:incoming.id,
+            method:None, payload:None, error_code:Some("remote_error".into()),
+            error_message:Some("Script-test profile only accepts clipboard window commands.".into()) });
+    }
+    handle_inbound(host, incoming)
 }
 
 pub fn is_csharp_verb_pipe(name: &str) -> bool {
@@ -337,9 +359,10 @@ async fn listen_loop(
                 let connected = std::mem::replace(&mut server, next);
                 let registry = host.quicker_rpc();
                 let (callback_host, name, stop) = (host.clone(), pipe_name.clone(), stop.clone());
+                let explicit_script = name.starts_with(crate::invocation::TEST_PIPE_PREFIX);
                 sessions.spawn(async move {
                     crate::quicker_rpc::serve(connected, registry, &name, stop,
-                        Arc::new(move |request| handle_inbound(&callback_host, request))).await
+                        Arc::new(move |request| if explicit_script { handle_script_inbound(&callback_host, request) } else { handle_inbound(&callback_host, request) })).await
                 });
             }
             _ = sessions.join_next(), if !sessions.is_empty() => {},
@@ -637,5 +660,19 @@ mod tests {
             .create(&path)
             .unwrap();
         drop(server);
+    }
+}
+
+#[cfg(test)]
+mod script_endpoint_tests {
+    use super::*;
+    #[test]
+    fn script_endpoint_never_accepts_legacy_unbound_verb_or_quicker_method() {
+        assert!(!script_method_allowed(METHOD_RUN_VERB));
+        assert!(!script_method_allowed("quicker.runAction"));
+        assert!(script_method_allowed(crate::invocation::RUN_METHOD));
+        assert!(script_method_allowed(crate::invocation::INFO_METHOD));
+        assert!(script_method_allowed(METHOD_VERSION));
+        assert!(script_method_allowed(METHOD_SHUTDOWN));
     }
 }

@@ -190,8 +190,9 @@ impl NativeWindow {
                     });
                     platform::set_clipboard_geometry(window, position, size, collapsed)?;
                     if host.chrome_command_lifecycle_allowed(command) {
-                        platform::show(
+                        platform::show_clipboard(
                             window,
+                            host,
                             host.chrome_task_explicit_presentation(task),
                             host.should_activate_on_show(),
                         )?;
@@ -272,7 +273,7 @@ impl NativeWindow {
                     && focus_host.clipboard_keyboard_focus_allowed()
             });
         platform::set_no_activate(window, false)?;
-        platform::activate(window)?;
+        platform::activate_clipboard(window, host)?;
         Ok(())
     }
 

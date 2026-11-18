@@ -29,8 +29,8 @@ impl ProcessPreset {
         if custom.is_empty() {
             auto_title(
                 &self.include_exe_names,
-                tr("前台", "Foreground"),
-                tr("进程筛选", "Process filter"),
+                tr("前台", "Active app"),
+                tr("进程筛选", "App filter"),
             )
         } else {
             custom.to_string()
@@ -250,8 +250,8 @@ pub fn rename_preset(presets: &mut [ProcessPreset], id: &str, draft: &str) -> bo
     let trimmed = draft.trim();
     let automatic = auto_title(
         &preset.include_exe_names,
-        tr("前台", "Foreground"),
-        tr("进程筛选", "Process filter"),
+        tr("前台", "Active app"),
+        tr("进程筛选", "App filter"),
     );
     let next = if trimmed.is_empty() || trimmed == automatic {
         ""
@@ -1394,7 +1394,7 @@ impl ProcessFilterEditor {
         let query = Self::input(
             &tokens,
             dark,
-            tr("搜索软件名或进程名", "Search apps or processes"),
+            tr("搜索软件名或进程名", "Search apps…"),
             window,
             cx,
         );
@@ -1752,7 +1752,7 @@ impl ProcessFilterEditor {
         if self.draft.include_foreground {
             names.push(FOREGROUND_TOKEN.to_string());
         }
-        auto_title(&names, tr("前台", "Foreground"), tr("进程筛选", "Process filter"))
+        auto_title(&names, tr("前台", "Active app"), tr("进程筛选", "App filter"))
     }
 
     fn source_title(&self, exe: &str) -> String {
@@ -2188,7 +2188,7 @@ impl Render for ProcessFilterEditor {
         if self.language != language {
             self.language = language;
             self.query.update(cx, |input, cx| {
-                input.set_placeholder(tr("搜索软件名或进程名", "Search apps or processes"), cx)
+                input.set_placeholder(tr("搜索软件名或进程名", "Search apps…"), cx)
             });
             self.rename.update(cx, |input, cx| {
                 input.set_placeholder(tr("筛选名称", "Filter name"), cx)
@@ -2262,9 +2262,9 @@ impl Render for ProcessFilterEditor {
                         <div text_size={px(13.0)} font_weight={FontWeight::SEMIBOLD} flex_none
                             whitespace_nowrap>
                             {if self.editing.is_some() {
-                                tr("编辑进程筛选", "Edit process filter")
+                                tr("编辑进程筛选", "Edit app filter")
                             } else {
-                                tr("添加进程筛选", "Add process filter")
+                                tr("添加进程筛选", "Add app filter")
                             }}
                         </div>
                         <div flex_1 min_w_0 overflow_hidden text_size={px(11.5)} text_color={color(&t.text_muted)}
@@ -2334,7 +2334,7 @@ impl Render for ProcessFilterEditor {
                             .child(self.icon("desktop", 13.0, accent)),
                         )
                         .child(text_block(
-                            tr("当前前台软件", "Current foreground app").into(),
+                            tr("当前前台软件", "Active app").into(),
                             tr("切到哪个软件，就只看它复制的内容", "Follows whichever app is in front").into(),
                         ))
                         .child(check(on))
@@ -2654,8 +2654,8 @@ mod tests {
         assert_eq!(presets[1].display_name, "My foreground");
         let automatic = auto_title(
             &presets[1].include_exe_names,
-            tr("前台", "Foreground"),
-            tr("进程筛选", "Process filter"),
+            tr("前台", "Active app"),
+            tr("进程筛选", "App filter"),
         );
         assert!(rename_preset(&mut presets, "fg", &automatic));
         assert_eq!(presets[1].display_name, "");

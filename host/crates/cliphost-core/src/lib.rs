@@ -9,6 +9,7 @@ pub mod webdav_favorites;
 pub mod native_acceptance;
 
 pub mod bookmarks;
+mod quicker_bookmarks;
 pub mod browser;
 pub mod cf_html;
 pub mod ceabox;
@@ -114,6 +115,8 @@ pub mod storage_core;
 pub mod storage_v2;
 pub mod text_actions;
 pub mod text_actions_ui;
+#[path = "../../../shared/invocation.rs"]
+pub mod invocation;
 pub mod verb;
 pub mod vv_tab;
 pub mod win_v;

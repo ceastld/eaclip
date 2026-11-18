@@ -147,10 +147,10 @@ pub fn row_fallback_label(item: &Value) -> String {
             cliphost_core::trf!("[图片] ×{images}", "[Image] ×{images}")
         }
         "QQRichTextItem" if images == 1 => tr("[图片]", "[Image]").into(),
-        "QQRichTextItem" => tr("[即时通讯图文]", "[IM rich content]").into(),
+        "QQRichTextItem" => tr("[即时通讯图文]", "[Chat]").into(),
         "ImageClipItem" => tr("[图片]", "[Image]").into(),
         "FileClipItem" => tr("[文件]", "[File]").into(),
-        "HtmlClipItem" => tr("[HTML 富文本]", "[HTML rich text]").into(),
+        "HtmlClipItem" => tr("[HTML 富文本]", "[HTML]").into(),
         "LinkClipItem" => tr("[链接]", "[Link]").into(),
         "CmdClipItem" => tr("[命令]", "[Command]").into(),
         "ActionClipItem" => tr("[Quicker 动作]", "[Quicker action]").into(),

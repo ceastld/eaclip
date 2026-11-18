@@ -61,9 +61,9 @@ impl IncomingHistory {
                     event.screen_point,
                     false,
                 )?;
-                let conversation = accepted
-                    .lan_conversation
-                    .ok_or("The drop is not a LAN conversation.")?;
+                let crate::favorite_drag::NativeDropAction::Lan(conversation) = accepted.action else {
+                    return Err("The drop is not a LAN conversation.".into());
+                };
                 if !accepted.drag.claim() {
                     return Err("This history drag was already accepted or cancelled.".into());
                 }

@@ -884,7 +884,7 @@ impl Render for SettingsColorPopup {
                 .bg(mix_hsla(palette.control, palette.control_hover, hover_progress))
                 .when(!busy, |button| button.cursor_pointer())
                 .tooltip(settings_help(
-                    tr("屏幕取色", "Pick from screen").to_string(),
+                    tr("屏幕取色", "Eyedropper").to_string(),
                     self.theme.clone(),
                 ))
                 .on_hover(cx.listener(|this, hovered: &bool, _, cx| {

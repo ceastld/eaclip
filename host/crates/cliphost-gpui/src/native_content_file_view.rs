@@ -279,17 +279,11 @@ fn large_image(
         .into_any_element()
 }
 
-fn image_meta_badge(label: String, tokens: &DesignTokens, dark: bool) -> AnyElement {
-    let t = tokens.theme(dark);
-    rsx! {
-        <div absolute bottom={px(2.0)} right={px(2.0)} max_w_full px={px(6.0)} py={px(2.0)}
-            rounded={px(4.0)} border_1 border_color={color(&t.border).opacity(0.55)}
-            bg={color(&t.surface).opacity(0.58)} text_size={px(10.0)} line_height={relative(1.35)}
-            font_weight={FontWeight::NORMAL} text_color={color(&t.text)} whitespace_nowrap
-            text_ellipsis overflow_hidden>
-            {label}
-        </div>
-    }
+fn with_dimensions(content: AnyElement, dimensions: Option<String>, tokens: &DesignTokens, dark: bool) -> AnyElement {
+    let Some(meta) = dimensions else { return content };
+    div().w_full().min_w_0().flex().items_end().gap_x(px(8.))
+        .child(div().min_w_0().flex_1().overflow_hidden().child(content))
+        .child(super::information_caption(meta, tokens.theme(dark)).flex_none().max_w(relative(0.45)))
         .into_any_element()
 }
 
@@ -499,7 +493,7 @@ pub(super) fn render_files(
                 &thumbnail_wrapper,
             ));
         }
-        column = column.child(single_file_caption(
+        let name = single_file_caption(
             item_id,
             entry,
             minimal,
@@ -507,10 +501,8 @@ pub(super) fn render_files(
             tokens,
             dark,
             on_open,
-        ));
-        if let Some(meta) = image_meta(bitmap, size_bytes(resources, &entry.path)) {
-            column = column.child(image_meta_badge(meta, tokens, dark));
-        }
+        );
+        column = column.child(with_dimensions(name, image_meta(bitmap, size_bytes(resources, &entry.path)), tokens, dark));
         return column.relative().into_any_element();
     }
     render_file_chips(
@@ -627,11 +619,12 @@ pub(super) fn render_local_path(
     let mut column = rsx! {
         <div flex flex_col relative min_w_0 w_full gap={px(4.0)} />
     };
+    let mut dimensions = None;
     if projection.is_image && !is_missing {
         if let Some(bitmap) = image(resources, &projection.path) {
-            let mut preview =
+            let preview =
                 rsx! {
-                    <div relative min_w_0 max_w_full mb={px(4.0)}>
+                    <div flex flex_col items_start gap={px(2.0)} min_w_0 max_w_full mb={px(4.0)}>
                         {large_image(
                         bitmap,
                         metrics.width,
@@ -648,9 +641,7 @@ pub(super) fn render_local_path(
                 };
             // Text-image rows show original dimensions, not a local-path byte
             // size merely because the background probe happened to collect it.
-            if let Some(meta) = image_meta(Some(bitmap), None) {
-                preview = preview.child(image_meta_badge(meta, tokens, dark));
-            }
+            dimensions = image_meta(Some(bitmap), None);
             column = column.child(preview);
         }
     }
@@ -695,7 +686,7 @@ pub(super) fn render_local_path(
                 ),
         );
     } else {
-        column = column.child(text);
+        column = column.child(with_dimensions(text, dimensions, tokens, dark));
     }
     column.into_any_element()
 }

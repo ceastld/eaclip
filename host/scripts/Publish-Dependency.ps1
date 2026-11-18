@@ -153,7 +153,7 @@ function Prepare-RustDependency {
     $copied = @(foreach ($file in $info.files) {
         $name = [string]$file.name
         if ([IO.Path]::GetFileName($name) -cne $name -or $name.Contains('/') -or
-            ($name -cne 'cliphost-app.exe' -and [IO.Path]::GetExtension($name) -ine '.dll' -and
+            ($name -cne 'cliphost-app.exe' -and $name -cne 'eaclip-cli.exe' -and [IO.Path]::GetExtension($name) -ine '.dll' -and
              [IO.Path]::GetExtension($name) -ine '.pdb' -and
              $name -cnotin @('Start-ClipHostDiagnostics.ps1', 'Start-ClipHostDiagnostics.cmd'))) {
             throw "Unexpected standalone payload file: $name"

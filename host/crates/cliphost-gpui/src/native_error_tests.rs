@@ -35,7 +35,7 @@ impl Fixture {
         let task = std::iter::from_fn(|| self.host.take_chrome_task())
             .find(|task| task.command() == ChromeCommand::Show).unwrap();
         let _guard = guard_task(&self.host, task);
-        enqueue_native(self.hwnd, Box::new(|_| Err("injected foreground focus refusal".into())));
+        enqueue_native(self.hwnd, Box::new(|_| Err("injected native placement failure".into())));
         unsafe { dispatch_native(self.hwnd); }
     }
 }
@@ -61,14 +61,47 @@ fn old_show_failure_cannot_hide_a_reopened_or_reengaged_clipboard() {
 }
 
 #[test]
-fn current_show_failure_still_retires_visibility_and_input() {
+fn current_native_operation_failure_still_retires_visibility_and_input() {
     let fixture = Fixture::new();
     fixture.fail_show();
-    assert_eq!(take_error_hwnd(fixture.hwnd).as_deref(), Some("injected foreground focus refusal"));
+    assert_eq!(take_error_hwnd(fixture.hwnd).as_deref(), Some("injected native placement failure"));
     let stamp = fixture.host.native_clipboard_activation_stamp();
     assert!(fixture.host.hide_native_clipboard_if_current(stamp));
     let state = fixture.host.hide_snapshot();
     assert!(!state.visible && !state.has_fake_focus && !state.no_focus_session_active);
+}
+
+#[test]
+fn focus_refusal_after_successful_show_is_not_a_failed_presentation() {
+    let fixture = Fixture::new();
+    let host = fixture.host.clone();
+    let stamp = host.native_clipboard_activation_stamp();
+    enqueue_native(fixture.hwnd, Box::new(move |hwnd| {
+        raw_show_clipboard(hwnd, &host, stamp, true, true,
+            |_| Err("Windows did not grant foreground focus to ClipHost.".into()))
+    }));
+    unsafe { dispatch_native(fixture.hwnd); }
+    assert!(unsafe { IsWindowVisible(fixture.hwnd) }.as_bool());
+    assert!(take_error_hwnd(fixture.hwnd).is_none(), "focus refusal must not enter fatal Hide cleanup");
+    let snapshot = fixture.host.hide_snapshot();
+    assert!(snapshot.visible && !snapshot.has_fake_focus);
+    assert_eq!(fixture.host.clipboard_keyboard_mode(), cliphost_core::host::ClipboardKeyboardMode::Released);
+}
+
+#[test]
+fn focus_refusal_during_search_preserves_the_visible_window() {
+    let fixture = Fixture::new();
+    let host = fixture.host.clone();
+    let stamp = host.native_clipboard_activation_stamp();
+    raw_show(fixture.hwnd, true, false).unwrap();
+    enqueue_native(fixture.hwnd, Box::new(move |hwnd| {
+        raw_activate_clipboard(hwnd, &host, stamp, |_| Err("native focus was not confirmed".into()))
+    }));
+    unsafe { dispatch_native(fixture.hwnd); }
+    assert!(take_error_hwnd(fixture.hwnd).is_none());
+    assert!(unsafe { IsWindowVisible(fixture.hwnd) }.as_bool());
+    assert!(fixture.host.hide_snapshot().visible);
+    assert!(!fixture.host.clipboard_keyboard_focus_allowed());
 }
 
 #[test]

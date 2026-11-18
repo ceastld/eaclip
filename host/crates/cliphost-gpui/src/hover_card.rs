@@ -760,6 +760,7 @@ impl HoverCard {
     fn surface(&self, width: f32) -> gpui::Div {
         let t = self.tokens.theme(self.dark);
         div()
+            .mask_sensitive_text(true)
             .relative()
             .w(px(width))
             .max_h(px(self.layout.map_or(MAX_HEIGHT, |layout| layout.height)))
@@ -813,7 +814,7 @@ impl HoverCard {
                     .text_size(px(11.0))
                     .text_color(color(&t.text_muted))
                     .children(self.icon("image", 14.0, color(&t.text_muted)))
-                    .child(format!("{} · {} {}", tr("图文", "Text and images"), card.images, tr("张图片", "images"))),
+                    .child(format!("{} · {} {}", tr("图文", "Rich"), card.images, tr("张图片", "images"))),
             )
             .child(body)
             .child(self.region_probe(0));

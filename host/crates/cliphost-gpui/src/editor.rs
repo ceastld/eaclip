@@ -862,7 +862,7 @@ impl EditorWindow {
         cx: &mut App,
     ) -> Result<(), String> {
         if target.id().trim().is_empty() {
-            return Err(tr("未选择条目", "No item is selected").into());
+            return Err(tr("未选择条目", "No item selected").into());
         }
         let background_qa = cfg!(debug_assertions) && cliphost_core::is_headless();
         if let Some(handle) = existing {
@@ -900,7 +900,7 @@ impl EditorWindow {
                     ..Default::default()
                 },
                 move |window, cx| {
-                    window.set_window_title(tr("编辑剪贴板", "Edit clipboard item"));
+                    window.set_window_title(tr("编辑剪贴板", "Edit item"));
                     if let Err(error) = crate::platform::register_probe_window(window) {
                         log::warn!("Editor window probe registration failed: {error}");
                     }
@@ -1579,7 +1579,7 @@ impl EditorWindow {
                 input.set_colors(colors, cx);
                 input.set_metrics(style::metric("controlHeight", 30.), font_size, 8., cx);
                 input.set_padding(style::metric("controlPaddingX", 10.), style::metric("fieldGap", 4.), cx);
-                input.set_placeholder(tr("为条目添加标题", "Add an item title"), cx);
+                input.set_placeholder(tr("为条目添加标题", "Add a title"), cx);
             });
         }
         self.body_input.update(cx, |input, cx| {
@@ -2485,7 +2485,7 @@ impl Render for EditorWindow {
         };
         for (id, label, properties) in [
             ("editor-content-page", tr("内容", "Content"), false),
-            ("editor-props", tr("属性", "Properties"), true),
+            ("editor-props", tr("属性", "Info"), true),
         ] {
             let active = self.props_open == properties;
             page_tabs = page_tabs.child(
@@ -2527,7 +2527,7 @@ impl Render for EditorWindow {
         if kind == "TextClipItem" {
             let characters = style::text_stats(&self.draft.body).0;
             status_view = status_view.child(div().truncate().child(
-                format!("{characters} {}", tr("字符", "characters"))));
+                format!("{characters} {}", tr("字符", "chars"))));
         }
         let tab_name = if self.props_open { "properties" } else { match self.tab {
             ContentTab::Body => "body",

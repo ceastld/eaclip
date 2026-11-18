@@ -101,7 +101,7 @@ impl NativeHost {
     }
 
     pub fn open_with_options(options: NativeHostOptions) -> Result<Arc<Self>, String> {
-        Self::open_with_options_internal(options, false)
+        Self::open_with_options_internal(options, false, false)
     }
 
     #[cfg(debug_assertions)]
@@ -112,10 +112,19 @@ impl NativeHost {
         HostState::validate_keyboard_input_qa(&AppPaths::from_data_root(
             options.data_root.clone().ok_or("Keyboard QA requires an explicit data root.")?
         ), options.api_port)?;
-        Self::open_with_options_internal(options, true)
+        Self::open_with_options_internal(options, true, false)
     }
 
-    fn open_with_options_internal(mut options: NativeHostOptions, keyboard_qa: bool) -> Result<Arc<Self>, String> {
+    pub fn open_script_test_instance(options: NativeHostOptions) -> Result<Arc<Self>, String> {
+        validate_script_test_options(&options)?;
+        Self::open_with_options_internal(options, true, true)
+    }
+
+    fn open_with_options_internal(mut options: NativeHostOptions, keyboard_qa: bool, script_test: bool) -> Result<Arc<Self>, String> {
+        if script_test {
+            validate_script_test_options(&options)?;
+            options.data_root = Some(HostState::validate_script_test_startup_root(options.data_root.as_deref().unwrap())?);
+        }
         validate_core_copy_options(&options)?;
         #[cfg(feature = "native-acceptance")]
         if options.core_copy_acceptance {
@@ -252,7 +261,9 @@ impl NativeHost {
             host.set_clipboard_ui_runner(move |job| runner.run(job));
             Some(dispatcher)
         };
-        if options.verb_rpc {
+        if script_test {
+            host.start_script_test_rpc()?;
+        } else if options.verb_rpc {
             host.start_verb_rpc()
                 .map_err(|error| format!("Native Verb RPC startup failed: {error}"))?;
         }
@@ -614,6 +625,14 @@ fn init_tracing(logs: &Path) {
             tracing::warn!(%error, ?path, "Native host log file could not be opened");
         }
     }
+}
+
+fn validate_script_test_options(options: &NativeHostOptions) -> Result<(), String> {
+    if !cfg!(any(debug_assertions, test)) || !options.isolated || options.headless || options.verb_rpc
+        || options.core_copy_acceptance || options.data_root.is_none() {
+        return Err("Script-test RPC requires Debug, native isolated explicit-root options with shared RPC disabled.".into());
+    }
+    cliphost_core::invocation::validate_root_spelling(options.data_root.as_deref().unwrap())
 }
 
 fn validate_core_copy_options(options: &NativeHostOptions) -> Result<(), String> {
@@ -1129,5 +1148,24 @@ mod tests {
                     .is_err()
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod script_profile_tests {
+    use super::*;
+    #[test]
+    fn script_test_options_require_root_and_keep_old_shared_rpc_disabled() {
+        let root=std::env::temp_dir().join("explicit-script-profile");
+        let options=NativeHostOptions {data_root:Some(root),api_port:0,headless:false,background:true,
+            isolated:true,verb_rpc:false,core_copy_acceptance:false};
+        assert!(validate_script_test_options(&options).is_ok());
+        let mut missing=options.clone();missing.data_root=None;
+        assert!(validate_script_test_options(&missing).is_err());
+        assert!(prepare_startup_paths(&missing,||panic!("must not resolve personal root")).is_err());
+        let mut shared=options.clone();shared.verb_rpc=true;
+        assert!(validate_script_test_options(&shared).is_err());
+        let mut ordinary=options;ordinary.isolated=false;
+        assert!(validate_script_test_options(&ordinary).is_err());
     }
 }

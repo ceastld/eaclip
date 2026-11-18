@@ -95,6 +95,14 @@ pub trait Styled: Sized {
         self
     }
 
+    /// Opt this content region into the application's sensitive-text policy.
+    fn mask_sensitive_text(mut self, enabled: bool) -> Self {
+        self.text_style()
+            .get_or_insert_with(Default::default)
+            .mask_sensitive_text = Some(enabled);
+        self
+    }
+
     /// Set the text alignment of the element.
     fn text_align(mut self, align: TextAlign) -> Self {
         self.text_style()

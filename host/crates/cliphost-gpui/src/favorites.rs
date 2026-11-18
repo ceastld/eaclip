@@ -25,6 +25,9 @@ use crate::crisp_svg::svg;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
+#[path = "phrase_snapshot.rs"]
+pub(crate) mod phrase_snapshot;
+
 #[path = "favorites_ui.rs"]
 mod view_memory;
 #[path = "favorites_drag_ui.rs"]
@@ -69,7 +72,23 @@ use crate::{
 const PAGE_SIZE: usize = 100;
 /// Coalesces bursts of change events into one reload.
 const REFRESH_DEBOUNCE: Duration = Duration::from_millis(70);
-const PRIMARY_IMAGE_RESOURCE: &str = "favorite-primary-image";
+pub(crate) const PRIMARY_IMAGE_RESOURCE: &str = "favorite-primary-image";
+
+#[cfg(windows)]
+pub(crate) fn favorite_hover_plan(item: &FavorItemDto) -> crate::hover::RowHoverContent {
+    row_hover_content(
+        RowHoverSource::Favorite,
+        RowHoverInput {
+            id: &item.id,
+            kind: &item.kind,
+            title: &item.title,
+            summary: &item.summary,
+            display_text: &favorite_display_text(item),
+            file_paths: &favorite_file_source_paths(item),
+            im_rich_segments: &item.im_rich_segments,
+        },
+    )
+}
 
 #[derive(Debug, Clone)]
 pub enum FavoritesEvent {
@@ -78,6 +97,7 @@ pub enum FavoritesEvent {
     OpenPanel(String),
     /// The root opens the same shared list appearance/settings UI as history.
     OpenListSettings,
+    AddTextInFolder(String),
     OpenSettings,
     SwitchPrimaryTab,
 }
@@ -213,7 +233,7 @@ fn favorite_secondary_projection(item: &FavorItemDto) -> Option<TextProjection> 
 
 /// A private cache key includes the whole immutable DTO fingerprint as well as
 /// the shared mixed projection. The fingerprint is never rendered or emitted.
-fn favorite_resource_projection(item: &FavorItemDto) -> Option<ContentProjection> {
+pub(crate) fn favorite_resource_projection(item: &FavorItemDto) -> Option<ContentProjection> {
     if item.is_folder
         || (!matches!(category(item), Category::Image | Category::File)
             && item.im_rich_segments.is_empty())
@@ -225,31 +245,35 @@ fn favorite_resource_projection(item: &FavorItemDto) -> Option<ContentProjection
     Some(ContentProjection::Mixed(parts))
 }
 
-fn load_favorite_resources(
+pub(crate) fn load_favorite_resources(
     host: &HostState,
     item: &FavorItemDto,
     foreground: &str,
     image_height: u32,
 ) -> ContentResources {
-    let mut resources = ContentResources::default();
     if category(item) == Category::Image {
         // Decode and resize on the worker straight into the display raster;
         // rows never decode the original or an intermediate PNG.
-        resources.images.insert(
-            PRIMARY_IMAGE_RESOURCE.into(),
-            host.favor_image_bytes(&item.id)
-                .ok()
-                .and_then(|(bytes, _)| native_content::display_bitmap(&bytes, image_height)),
-        );
-    } else if category(item) == Category::File {
-        resources = native_content::load_file_list_resources(host, &favorite_file_projection(item));
+        return favorite_bitmap_resources(host, &item.id, image_height);
+    }
+    let mut resources = if category(item) == Category::File {
+        native_content::load_file_list_resources(host, &favorite_file_projection(item))
     } else {
-        resources = native_content::load_content_resources(
+        native_content::load_content_resources(
             host,
             &favorite_text_projection(item),
             foreground,
-        );
-    }
+        )
+    };
+    resources.limit_retained_bytes(native_content::CONTENT_RESOURCE_BUDGET_BYTES);
+    resources
+}
+
+pub(crate) fn favorite_bitmap_resources(host: &HostState, id: &str, height: u32) -> ContentResources {
+    let mut resources = ContentResources::default();
+    let bitmap = host.favor_image_bytes(id).ok()
+        .and_then(|(bytes, _)| native_content::display_bitmap(&bytes, height));
+    resources.images.insert(PRIMARY_IMAGE_RESOURCE.into(), bitmap);
     resources.limit_retained_bytes(native_content::CONTENT_RESOURCE_BUDGET_BYTES);
     resources
 }
@@ -323,7 +347,7 @@ fn favorite_tooltip(
     }
 }
 
-fn bitmap_element(
+pub(crate) fn bitmap_element(
     bitmap: &ContentImage,
     width: f32,
     max_height: f32,
@@ -350,7 +374,7 @@ fn bitmap_element(
             ))
             .with_fallback(|| {
                 div()
-                    .child(tr("图片加载失败", "Image failed to load"))
+                    .child(tr("图片加载失败", "Image load failed"))
                     .into_any_element()
             })
             .into_any_element(),
@@ -685,6 +709,7 @@ pub struct NativeFavoritesView {
     post_write_generation: Option<u64>,
     busy: bool,
     active: bool,
+    sidebar: Option<(Arc<phrase_snapshot::PhraseSnapshot>, Arc<Vec<String>>)>,
     error: Option<String>,
     dialog: Option<Dialog>,
     /// 「列表显示设置」 popover above the footer.
@@ -709,11 +734,8 @@ impl NativeFavoritesView {
     pub(crate) fn bind_native_interactions(
         &mut self,
         shared: SharedInteractions,
-        cx: &mut Context<Self>,
     ) {
         self.interactions = Some(shared);
-        self.retire_native_interactions();
-        self.maintain_native_interactions(true, cx);
     }
 
     fn cancel_native_hover(&mut self) {
@@ -874,26 +896,12 @@ impl NativeFavoritesView {
             .visible
             .get(index)
             .filter(|item| item.id == id && !item.is_folder)?;
-        let paths = favorite_file_source_paths(item);
-        let display = favorite_display_text(item);
-        let plan = row_hover_content(
-            RowHoverSource::Favorite,
-            RowHoverInput {
-                id,
-                kind: &item.kind,
-                title: &item.title,
-                summary: &item.summary,
-                display_text: &display,
-                file_paths: &paths,
-                im_rich_segments: &item.im_rich_segments,
-            },
-        );
         Some(self.native_hover_tickets.row(
             id,
             index,
             generation,
             session,
-            plan,
+            favorite_hover_plan(item),
             !self.image_hover_disabled,
         ))
     }
@@ -1095,7 +1103,8 @@ impl NativeFavoritesView {
             refresh_requeued: false,
             post_write_generation: None,
             busy: false,
-            active: true,
+            active: false,
+            sidebar: None,
             error: None,
             dialog: None,
             filter_collapsed: HashSet::new(),
@@ -1558,6 +1567,7 @@ impl NativeFavoritesView {
     /// folderId/parentId select a real folder without manufacturing a new root.
     pub fn set_route(&mut self, route: &str, window: &mut Window, cx: &mut Context<Self>) {
         self.cancel_scrollbar_drags();
+        self.leave_sidebar(cx);
         self.active = true;
         let params = route
             .split_once('?')
@@ -1590,6 +1600,9 @@ impl NativeFavoritesView {
         }
         if let Some(query) = params.get("query") {
             self.query = query.clone();
+        }
+        if params.get("type").is_some_and(|kind| kind == "all") {
+            self.category = Category::All;
         }
         self.sync_search(window, cx);
         if let Some(id) = params.get("itemId") {
@@ -1786,6 +1799,10 @@ impl NativeFavoritesView {
         }
     }
 
+    pub(crate) fn focus_list(&self, window: &mut Window) {
+        self.focus.focus(window);
+    }
+
     pub fn focus_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         cx.defer_in(window, |this, window, cx| {
             match NativeWindow::request_search_focus(window, &this.host) {
@@ -1904,11 +1921,7 @@ impl NativeFavoritesView {
         cx: &mut Context<Self>,
     ) -> bool {
         if let ChromeCommand::DismissContextMenu(lease) = task.command() {
-            if self.menu_lease.as_ref().is_some_and(|(id, _)| *id == lease) {
-                self.close_menu(cx);
-                return true;
-            }
-            return false;
+            return self.dismiss_item_menu(lease, cx);
         }
         if !self.active || !self.host.chrome_task_input_allowed(task) {
             return false;
@@ -2026,13 +2039,13 @@ impl NativeFavoritesView {
     }
 
     fn execute_item(&mut self, id: String, task: Option<ChromeTask>, cx: &mut Context<Self>) {
-        if self.busy || !self.active {
+        if self.busy || !self.actions_presented() {
             return;
         }
-        let Some(item) = self.visible.iter().find(|item| item.id == id).cloned() else {
+        let Some(item) = self.presented_item(&id).cloned() else {
             return;
         };
-        if !self.tree.items.contains_key(&id) {
+        if !self.action_tree().items.contains_key(&id) {
             return;
         }
         if item.is_folder {
@@ -2063,12 +2076,7 @@ impl NativeFavoritesView {
     }
 
     fn copy_item(&mut self, id: String, task: Option<ChromeTask>, cx: &mut Context<Self>) {
-        if self.busy
-            || !self.active
-            || !self
-                .visible
-                .iter()
-                .any(|item| item.id == id && !item.is_folder)
+        if self.busy || !self.actions_presented() || !self.presented_item(&id).is_some_and(|item| !item.is_folder)
         {
             return;
         }
@@ -2088,6 +2096,198 @@ impl NativeFavoritesView {
         });
     }
 
+    fn item_toolbar(
+        &self,
+        item: &FavorItemDto,
+        group: SharedString,
+        width: f32,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let weak = cx.weak_entity();
+        let generation = self.generation;
+        let key = preview_key(item);
+        let handler: HoverHandler = Rc::new(move |invocation, window, cx| {
+            let _ = weak.update(cx, |this, cx| {
+                if this.generation != generation
+                    || !this
+                        .presented_item(&invocation.item_id)
+                        .is_some_and(|item| preview_key(item) == key)
+                {
+                    return;
+                }
+                this.hover_action(invocation.item_id, invocation.command, window, cx);
+            });
+        });
+        appearance::render_hover_actions(
+            &item.id,
+            false,
+            self.execute_mode,
+            false,
+            &favorite_hover_settings(&self.appearance, item.is_folder, &self.memory.display.hover),
+            &self.tokens,
+            self.dark,
+            group.clone(),
+            width,
+            false,
+            self.menu_lease.is_some() || self.dialog.is_some(),
+            handler,
+        )
+    }
+
+    fn actions_presented(&self) -> bool {
+        self.active || self.sidebar.is_some()
+    }
+
+    // The two presentations are mutually exclusive. Use the tree that produced
+    // the clicked row, even if the full page last visited another directory.
+    fn action_tree(&self) -> &FavoriteTree {
+        self.sidebar
+            .as_ref()
+            .map_or(&self.tree, |(snapshot, _)| &snapshot.tree)
+    }
+
+    fn presented_item(&self, id: &str) -> Option<&FavorItemDto> {
+        if let Some((snapshot, rows)) = &self.sidebar {
+            if !rows.iter().any(|row| row == id) {
+                return None;
+            }
+            return snapshot.tree.items.get(id);
+        }
+        self.visible.iter().find(|item| item.id == id)
+    }
+
+    pub(crate) fn set_sidebar(
+        &mut self,
+        snapshot: Arc<phrase_snapshot::PhraseSnapshot>,
+        rows: Arc<Vec<String>>,
+        cx: &mut Context<Self>,
+    ) {
+        if self
+            .menu_lease
+            .as_ref()
+            .is_some_and(|(lease, _)| !self.host.native_context_menu_is_current(*lease))
+        {
+            self.close_menu(cx);
+        }
+        if self
+            .sidebar
+            .as_ref()
+            .is_some_and(|(old, ids)| Arc::ptr_eq(old, &snapshot) && Arc::ptr_eq(ids, &rows))
+        {
+            return;
+        }
+        if self.menu_lease.as_ref().is_some_and(|(_, id)| !rows.contains(id)) {
+            self.close_menu(cx);
+        }
+        self.sidebar = Some((snapshot, rows));
+    }
+
+    pub(crate) fn leave_sidebar(&mut self, cx: &mut Context<Self>) {
+        if self.sidebar.take().is_none() {
+            return;
+        }
+        self.generation += 1;
+        self.dialog_generation += 1;
+        if self.dialog.take().is_some() {
+            self.host.apply_window_action("setSpaModalOpen", false);
+        }
+        if self.menu_lease.is_some() {
+            self.close_menu(cx);
+        }
+        self.error = None;
+        cx.notify();
+    }
+
+    pub(crate) fn sidebar_toolbar(
+        &self,
+        id: &str,
+        group: SharedString,
+        width: f32,
+        cx: &mut Context<Self>,
+    ) -> Option<AnyElement> {
+        let (snapshot, _) = self.sidebar.as_ref()?;
+        Some(self.item_toolbar(snapshot.tree.items.get(id)?, group, width, cx))
+    }
+
+    pub(crate) fn dismiss_item_menu(&mut self, lease: u64, cx: &mut Context<Self>) -> bool {
+        if self
+            .menu_lease
+            .as_ref()
+            .is_some_and(|(current, _)| *current == lease)
+        {
+            self.close_menu(cx);
+            return true;
+        }
+        false
+    }
+
+    pub(crate) fn sidebar_menu(&mut self, id: String, cx: &mut Context<Self>) {
+        if self.sidebar.is_some() && self.presented_item(&id).is_some() && !self.busy {
+            self.row_menu(id, cx);
+        }
+    }
+
+    pub(crate) fn sidebar_focus(&self) -> FocusHandle {
+        self.focus.clone()
+    }
+
+    pub(crate) fn sidebar_menu_open(&self) -> bool {
+        self.sidebar.is_some() && self.menu_lease.is_some()
+    }
+
+    pub(crate) fn sidebar_key(
+        &mut self,
+        key: &str,
+        id: String,
+        task: Option<ChromeTask>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if self.sidebar.is_none() || self.dialog.is_some() || self.busy || self.presented_item(&id).is_none()
+        {
+            return;
+        }
+        match key {
+            "Delete" => self.delete(id, window, cx),
+            "Enter" => self.execute_item(id, task, cx),
+            "Copy" => self.copy_item(id, task, cx),
+            _ => {}
+        }
+    }
+
+    pub(crate) fn sidebar_dialog_open(&self) -> bool {
+        self.sidebar.is_some() && self.dialog.is_some()
+    }
+
+    pub(crate) fn sidebar_dialog(&mut self, cx: &mut Context<Self>) -> Option<AnyElement> {
+        self.render_dialog(cx)
+    }
+
+    pub(crate) fn dismiss_sidebar_dialog(&mut self, window: &mut Window, cx: &mut Context<Self>) -> bool {
+        if !self.sidebar_dialog_open()
+            || self.name.read(cx).is_composing()
+            || self.body.read(cx).is_composing()
+        {
+            return false;
+        }
+        self.close_dialog(window, cx);
+        true
+    }
+
+    pub(crate) fn sidebar_error(&self) -> Option<String> {
+        self.error
+            .clone()
+            .filter(|_| self.sidebar.is_some() && self.dialog.is_none())
+    }
+
+    pub(crate) fn click_item(&mut self, id: String, count: usize, cx: &mut Context<Self>) {
+        if count == 1 && self.execute_mode == 2 {
+            self.copy_item(id, None, cx);
+        } else if count == 1 && self.execute_mode == 1 || count >= 2 && matches!(self.execute_mode, 2 | 3) {
+            self.execute_item(id, None, cx);
+        }
+    }
+
     fn hover_action(
         &mut self,
         id: String,
@@ -2095,10 +2295,10 @@ impl NativeFavoritesView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.active || self.busy || self.dialog.is_some() {
+        if !self.actions_presented() || self.busy || self.dialog.is_some() {
             return;
         }
-        if !self.visible.iter().any(|item| item.id == id) {
+        if self.presented_item(&id).is_none() {
             return;
         }
         // The clicked row ID is the command target. In particular, hover Copy
@@ -2131,7 +2331,7 @@ impl NativeFavoritesView {
                 .await;
             let _ = this.update(cx, |this, cx| {
                 this.busy = false;
-                if !this.active {
+                if !this.actions_presented() {
                     return;
                 }
                 match result {
@@ -2154,7 +2354,7 @@ impl NativeFavoritesView {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.active {
+        if !self.actions_presented() {
             return;
         }
         self.cancel_native_hover();
@@ -2170,7 +2370,7 @@ impl NativeFavoritesView {
             .update(cx, |input, cx| input.set_text(String::new(), window, cx));
         let scope = (self.native_session, self.dialog_generation);
         cx.defer_in(window, move |this, window, cx| {
-            if !this.active
+            if !this.actions_presented()
                 || this.dialog.is_none()
                 || scope != (this.native_session, this.dialog_generation)
             {
@@ -2225,7 +2425,7 @@ impl NativeFavoritesView {
                 .spawn(async move { host.favor_get(&json!({"id":id})) })
                 .await;
             let _ = this.update_in(cx, |this, window, cx| {
-                if !this.active || this.dialog_generation != generation {
+                if !this.actions_presented() || this.dialog_generation != generation {
                     return;
                 }
                 match result {
@@ -2317,10 +2517,10 @@ impl NativeFavoritesView {
     }
 
     fn delete(&mut self, id: String, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(item) = self.tree.items.get(&id) else {
+        let Some(item) = self.action_tree().items.get(&id) else {
             return;
         };
-        let descendants = self.tree.descendant_ids(&id).len().saturating_sub(1);
+        let descendants = if item.is_folder { self.action_tree().descendant_ids(&id).len().saturating_sub(1) } else { 0 };
         if item.is_folder && descendants > 0 {
             self.open_dialog(
                 Dialog::Delete {
@@ -2413,7 +2613,7 @@ impl NativeFavoritesView {
                 .await;
             let _ = this.update_in(cx, |this, window, cx| {
                 this.busy = false;
-                if !this.active || this.dialog_generation != generation {
+                if !this.actions_presented() || this.dialog_generation != generation {
                     return;
                 }
                 this.set_dialog_read_only(false, cx);
@@ -2459,7 +2659,7 @@ impl NativeFavoritesView {
                 .await;
             let _ = this.update_in(cx, |this, window, cx| {
                 this.busy = false;
-                if !this.active || this.dialog_generation != generation {
+                if !this.actions_presented() || this.dialog_generation != generation {
                     return;
                 }
                 match result {
@@ -2548,15 +2748,15 @@ impl NativeFavoritesView {
     }
 
     fn row_menu(&mut self, id: String, cx: &mut Context<Self>) {
-        let Some(item) = self.tree.items.get(&id) else {
-            return;
-        };
-        if self.selected_path.last() != Some(&id) {
-            self.selected_path = self.canonical_path(&id);
+        let Some(item) = self.action_tree().items.get(&id) else { return; };
+        let is_folder = item.is_folder;
+        let has_files = !item.file_paths.is_empty();
+        if self.active {
+            if self.selected_path.last() != Some(&id) { self.selected_path = self.canonical_path(&id); }
+            self.selected = id.clone();
         }
-        self.selected = id.clone();
         let mut entries = Vec::new();
-        if !item.is_folder {
+        if !is_folder {
             entries.push(MenuAction::tile("paste", tr("粘贴", "Paste")));
             entries.push(MenuAction::tile("copy-only", tr("复制", "Copy")));
         }
@@ -2566,13 +2766,13 @@ impl NativeFavoritesView {
         ]);
         entries.push(MenuAction::row("rename", tr("重命名", "Rename")));
         entries.push(MenuAction::row("move", tr("移动到…", "Move to…")));
-        if item.is_folder {
+        if is_folder {
             entries.push(MenuAction::row(
                 "open-panel",
                 tr("在超级面板中打开", "Open in panel"),
             ));
         }
-        if !item.file_paths.is_empty() {
+        if has_files {
             entries.push(MenuAction::tile(
                 "reveal-file",
                 tr("定位文件", "Reveal file"),
@@ -2583,7 +2783,7 @@ impl NativeFavoritesView {
             ));
             entries.push(MenuAction::row("open-file", tr("打开文件", "Open file")));
         }
-        if self.has_drag_undo() {
+        if self.active && self.has_drag_undo() {
             entries.push(MenuAction::row("undo-drag", tr("撤销拖拽", "Undo drag")));
         }
         self.open_menu(id, entries, cx);
@@ -2594,18 +2794,18 @@ impl NativeFavoritesView {
         let mut entries =
             // Grouped by how often each is used; 添加动作 is rare and goes last.
             vec![
-                MenuAction::row("add-clipboard", tr("从剪贴板收藏", "Add from clipboard")),
+                MenuAction::row("add-clipboard", tr("从剪贴板收藏", "From clipboard")),
                 // One entry; the dialog's 「每行一条」 switch covers batch adding.
                 MenuAction::row("add-text", tr("添加文本", "Add text")),
                 MenuEntry::Separator,
                 MenuAction::row("add-files", tr("添加文件", "Add files")),
-                MenuAction::row("add-directories", tr("添加文件夹", "Add directories")),
+                MenuAction::row("add-directories", tr("添加文件夹", "Add folders")),
                 MenuAction::row(
                     "add-link",
-                    tr("添加当前打开网址", "Add current browser URL"),
+                    tr("添加当前打开网址", "Add current URL"),
                 ),
                 MenuEntry::Separator,
-                MenuAction::row("new-folder", tr("新建收藏夹", "New favorite folder")),
+                MenuAction::row("new-folder", tr("新建收藏夹", "New folder")),
                 MenuEntry::Separator,
                 MenuAction::row("add-action", tr("添加动作", "Add action")),
             ];
@@ -2622,7 +2822,7 @@ impl NativeFavoritesView {
         if let Some(menu) = self.menu {
             ContextMenuPopup::hide(menu, cx);
         }
-        if !self.host.release_native_context_menu(lease) || !self.active {
+        if !self.host.release_native_context_menu(lease) || !self.actions_presented() {
             return;
         }
         match key {
@@ -2655,7 +2855,7 @@ impl NativeFavoritesView {
                 cx.defer(move |cx| {
                     let _ = owner.update(cx, |_, window, cx| {
                         let _ = view.update(cx, |this, cx| {
-                            if !this.active
+                            if !this.actions_presented()
                                 || scope
                                     != (
                                         this.native_session,
@@ -2677,6 +2877,7 @@ impl NativeFavoritesView {
                                     window,
                                     cx,
                                 ),
+                                "add-text" => cx.emit(FavoritesEvent::AddTextInFolder(this.folder.clone().unwrap_or_default())),
                                 _ => this.open_dialog(
                                     Dialog::AddText {
                                         line_by_line: key == "add-batch-text",
@@ -2728,7 +2929,7 @@ impl NativeFavoritesView {
             }
             "reveal-file" | "reveal-folder" | "open-file" => {
                 let Some(path) = self
-                    .tree
+                    .action_tree()
                     .items
                     .get(&id)
                     .and_then(|item| item.file_paths.first())
@@ -2973,7 +3174,7 @@ impl NativeFavoritesView {
                     </div>
                 },
             )
-            .child(section(tr("行尾信息", "Trailing details")))
+            .child(section(tr("行尾信息", "Details")))
             .child(
                 div()
                     .flex()
@@ -2983,13 +3184,13 @@ impl NativeFavoritesView {
                             this.set_display(|display| display.show_time = !display.show_time, cx)
                         }),
                     ))
-                    .child(pill("favorite-show-count", display.show_count, tr("子项数", "Item count")).on_click(
+                    .child(pill("favorite-show-count", display.show_count, tr("子项数", "Items")).on_click(
                         cx.listener(|this, _, _, cx| {
                             this.set_display(|display| display.show_count = !display.show_count, cx)
                         }),
                     )),
             )
-            .child(section(tr("悬停按键", "Hover keys")))
+            .child(section(tr("悬停按键", "Hover buttons")))
             .child(
                 rsx! {
                     <div flex gap={px(6.0)}>
@@ -3073,8 +3274,8 @@ impl NativeFavoritesView {
         key: &str,
         cx: &mut Context<Self>,
     ) {
-        if !self.active
-            || !self.native_owner_enabled
+        if !self.actions_presented()
+            || (self.active && !self.native_owner_enabled)
             || self.loading
             || self.busy
             || self.dialog.is_some()
@@ -3086,10 +3287,7 @@ impl NativeFavoritesView {
                 .is_some_and(|until| Instant::now() < until)
             || self.generation != generation
             || self.native_session != session
-            || !self
-                .visible
-                .iter()
-                .any(|item| item.id == request.item_id && preview_key(item) == key)
+            || !self.presented_item(&request.item_id).is_some_and(|item| preview_key(item) == key)
         {
             return;
         }
@@ -3146,11 +3344,6 @@ impl NativeFavoritesView {
         cx: &mut Context<Self>,
     ) -> AnyElement {
         let theme = self.tokens.theme(self.dark);
-        let metrics = self.favorite_metrics();
-        let detailed = self.memory.display.detailed;
-        let file_projection = (!item.is_folder && category(item) == Category::File)
-            .then(|| favorite_file_projection(item));
-        let display = favorite_display_text(item);
         let resource_projection = favorite_resource_projection(item);
         let loaded = resource_projection.as_ref().and_then(|projection| {
             self.content_cache.get(
@@ -3161,6 +3354,40 @@ impl NativeFavoritesView {
                 &theme.text,
             )
         });
+        self.render_favorite_content(item, width, raster_scale, hover_binding, loaded, cx)
+    }
+
+    pub(crate) fn sidebar_content(
+        &self,
+        item: &FavorItemDto,
+        loaded: Option<&ContentResources>,
+        width: f32,
+        window: &Window,
+        binding: Option<hover_binding::HoverBinding>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        self.render_favorite_content(item, width, window.scale_factor(), binding, loaded, cx)
+    }
+
+    fn render_favorite_content(
+        &self,
+        item: &FavorItemDto,
+        width: f32,
+        raster_scale: f32,
+        hover_binding: Option<hover_binding::HoverBinding>,
+        loaded: Option<&ContentResources>,
+        cx: &mut Context<Self>,
+    ) -> AnyElement {
+        let theme = self.tokens.theme(self.dark);
+        let metrics = if self.sidebar.is_some() {
+            self.appearance.row_metrics()
+        } else {
+            self.favorite_metrics()
+        };
+        let detailed = self.sidebar.is_some() || self.memory.display.detailed;
+        let file_projection = (!item.is_folder && category(item) == Category::File)
+            .then(|| favorite_file_projection(item));
+        let display = favorite_display_text(item);
         let empty = ContentResources::default();
         let resources = loaded.unwrap_or(&empty);
         let single_image_entry = file_projection.as_ref().and_then(|projection| {
@@ -3183,7 +3410,8 @@ impl NativeFavoritesView {
         };
         let max_height = self.appearance.image_max_height_px as f32;
         let mut content = rsx! {
-            <div relative min_w_0 min_h={px(20.0)} flex flex_col gap={px(metrics.content_gap)} />
+            <div relative min_w_0 min_h={px(20.0)} flex flex_col gap={px(metrics.content_gap)}
+                mask_sensitive_text={true} />
         };
         if item.is_folder {
             content = content.child(native_content::render_content(
@@ -3211,7 +3439,7 @@ impl NativeFavoritesView {
                 let message = if loaded.is_some() {
                     tr("图片不可用", "Image unavailable")
                 } else {
-                    tr("图片加载中…", "Loading image…")
+                    tr("图片加载中…", "Loading…")
                 };
                 content.child(self.image_placeholder(item, message, loaded.is_some(), width, max_height, raster_scale))
             };
@@ -3228,7 +3456,7 @@ impl NativeFavoritesView {
                     let message = if loaded.is_some() {
                         tr("图片不可用", "Image unavailable")
                     } else {
-                        tr("图片加载中…", "Loading image…")
+                        tr("图片加载中…", "Loading…")
                     };
                     content.child(self.image_placeholder(item, message, loaded.is_some(), width, max_height, raster_scale))
                 };
@@ -3345,10 +3573,9 @@ impl NativeFavoritesView {
             .when_some(badge, |content, badge| {
                 content.child(
                     rsx! {
-                        <div absolute bottom_0 right_0 rounded={px(3.0)} px={px(3.0)}
+                        <div flex justify_end
                             text_size={px(10.0)} line_height={px(14.0)}
-                            text_color={color(&theme.text_muted)}
-                            bg={color(&theme.surface).opacity(0.9)}>
+                            text_color={color(&theme.text_muted)}>
                             {badge}
                         </div>
                     },
@@ -3429,36 +3656,8 @@ impl NativeFavoritesView {
         let metrics = self.favorite_metrics();
         let metadata = RowMetadata::new(&item.source_process_name, &item.update_time.to_rfc3339());
         let group = SharedString::from(format!("favorite-group-{occurrence}"));
-        let weak = cx.weak_entity();
         let generation = self.generation;
-        let key = preview_key(&item);
-        let handler: HoverHandler = Rc::new(move |invocation, window, cx| {
-            let _ = weak.update(cx, |this, cx| {
-                if this.generation != generation
-                    || !this
-                        .visible
-                        .iter()
-                        .any(|item| item.id == invocation.item_id && preview_key(item) == key)
-                {
-                    return;
-                }
-                this.hover_action(invocation.item_id, invocation.command, window, cx);
-            });
-        });
-        let actions = appearance::render_hover_actions(
-            &id,
-            false,
-            self.execute_mode,
-            false,
-            &favorite_hover_settings(&settings, is_folder, &self.memory.display.hover),
-            &self.tokens,
-            self.dark,
-            group.clone(),
-            self.row_width,
-            false,
-            false,
-            handler,
-        );
+        let actions = self.item_toolbar(&item, group.clone(), self.row_width, cx);
         let drag_path = self.row_path(index);
         let target_path = drag_path.clone();
         let drop_path = drag_path.clone();
@@ -3482,8 +3681,29 @@ impl NativeFavoritesView {
         #[cfg(not(windows))]
         let hover_binding: Option<hover_binding::HoverBinding> = None;
         let click_id = id.clone();
-        // Lead icon (16) + gap (8) on the left, trailing details on the right.
-        let content_width = (self.row_width - indent - 2.0 * metrics.padding_x - 24.0 - 48.0).max(1.0);
+        // Reserve only the details actually shown, using the same text
+        // measurement as history. An empty trail must not shrink the image.
+        let display = &self.memory.display;
+        let mut trail_widths = Vec::new();
+        if display.show_time {
+            trail_widths.push(crate::view::label_width(
+                &metadata.natural_time, 11.0, &self.tokens.typography.font_family, window,
+            ).ceil() + 1.0);
+        }
+        if is_folder && display.show_count {
+            let count = self.tree.child_count(&item.id).max(item.children_count.max(0) as usize);
+            trail_widths.push(crate::view::label_width(
+                &count.to_string(), 11.0, &self.tokens.typography.font_family, window,
+            ).ceil() + 1.0);
+        }
+        if is_folder && !self.memory.layout.is_tree() {
+            trail_widths.push(12.0);
+        }
+        let trail_width = trail_widths.iter().sum::<f32>()
+            + trail_widths.len().saturating_sub(1) as f32 * 6.0;
+        let content_width = (self.row_width - indent
+            - 2.0 * (metrics.padding_x + metrics.border_width) - 24.0
+            - if trail_widths.is_empty() { 0.0 } else { trail_width + 8.0 }).max(1.0);
         let content = self.row_content(
             &item,
             content_width,
@@ -3492,7 +3712,6 @@ impl NativeFavoritesView {
             cx,
         );
         let theme = self.tokens.theme(self.dark);
-        let display = &self.memory.display;
         let icon = |key: &str, size: f32| {
             svg()
                 .path(self.tokens.icons.get(key).cloned().unwrap_or_default())
@@ -3552,11 +3771,10 @@ impl NativeFavoritesView {
                     <div flex_1 min_w_0>
                         {content}
                     </div>
-                    <div min_h={px(20.0)} flex items_center>
-                        {trail}
-                    </div>
                 </div>
-            },
+            }.when(!trail_widths.is_empty(), |row| {
+                row.child(div().min_h(px(20.0)).flex().items_center().child(trail))
+            }),
         )
         // The hover bar floats over the trailing details (DESIGN 2026-10-14).
         .child(rsx! {
@@ -3651,14 +3869,7 @@ impl NativeFavoritesView {
                     this.select_folder(Some(click_id.clone()), window, cx);
                     return;
                 }
-                let count = event.click_count();
-                if count == 1 && this.execute_mode == 2 {
-                    this.copy_item(click_id.clone(), None, cx);
-                } else if count == 1 && this.execute_mode == 1
-                    || count >= 2 && matches!(this.execute_mode, 2 | 3)
-                {
-                    this.execute_item(click_id.clone(), None, cx);
-                }
+                this.click_item(click_id.clone(), event.click_count(), cx);
             }))
             .when(!self.tree.drag_revision.is_empty(), |row| {
                 row.on_drag(drag, move |drag: &ContentDrag, _, window, cx| {
@@ -3766,7 +3977,7 @@ impl NativeFavoritesView {
                         {cliphost_core::trf!("{} 项", "{} items", count)}
                     </div>
                 }
-                    .when(self.loading && !self.background_refresh, |e| e.child(tr(" · 更新中…", " · Refreshing…"))),
+                    .when(self.loading && !self.background_refresh, |e| e.child(tr(" · 更新中…", " · Updating…"))),
             )
             .child(
                 button("favorite-add", "plus", false, tr("添加", "Add"))
@@ -3785,9 +3996,9 @@ impl NativeFavoritesView {
                     if layout.is_tree() { "list" } else { "tree" },
                     false,
                     if layout.is_tree() {
-                        tr("切换为列表", "Show as list")
+                        tr("切换为列表", "List view")
                     } else {
-                        tr("切换为树状", "Show as tree")
+                        tr("切换为树状", "Tree view")
                     },
                 )
                 .on_click(cx.listener(move |this, _, _, cx| {
@@ -3801,7 +4012,7 @@ impl NativeFavoritesView {
                     })),
             )
             .child(
-                button("favorite-list-settings", "sliders", self.display_panel, tr("列表显示设置", "List display"))
+                button("favorite-list-settings", "sliders", self.display_panel, tr("列表显示设置", "List style"))
                     .when(self.display_panel, |button| button.bg(color(&t.neutral_active)))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.display_panel = !this.display_panel;
@@ -3819,14 +4030,14 @@ impl NativeFavoritesView {
         let dialog = self.dialog.as_ref()?;
         let t = self.tokens.theme(self.dark).clone();
         let heading = match dialog {
-            Dialog::CreateFolder => tr("新建收藏夹", "New favorite folder").to_string(),
+            Dialog::CreateFolder => tr("新建收藏夹", "New folder").to_string(),
             Dialog::Rename { .. } => tr("重命名", "Rename").to_string(),
             Dialog::AddText { .. } => tr("添加文本", "Add text").to_string(),
-            Dialog::Collect { .. } => tr("收藏剪贴板内容", "Collect clipboard content").to_string(),
+            Dialog::Collect { .. } => tr("收藏剪贴板内容", "Save clipboard").to_string(),
             Dialog::Delete { name, .. } => {
                 format!("{}「{}」？", tr("删除收藏夹", "Delete folder"), name)
             }
-            Dialog::Move { .. } => tr("移动到收藏夹", "Move to favorite folder").to_string(),
+            Dialog::Move { .. } => tr("移动到收藏夹", "Move to folder").to_string(),
         };
         let mut card = rsx! {
             <div w={px(360.0)} max_w_full p_4 flex flex_col gap_3 bg={color(&t.surface)}
@@ -3933,7 +4144,7 @@ impl NativeFavoritesView {
                 })
             }
             Dialog::Move { id } => {
-                let choices = self.tree.move_choices(id);
+                let choices = self.action_tree().move_choices(id);
                 if choices.is_empty() {
                     card = card.child(tr(
                         "没有可用的目标收藏夹",
@@ -4007,6 +4218,7 @@ impl NativeFavoritesView {
                 .flex()
                 .items_center()
                 .justify_center()
+                .occlude()
                 .bg(gpui::rgba(0x00000066))
                 .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
                 .child(card)

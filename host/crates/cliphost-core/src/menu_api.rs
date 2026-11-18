@@ -99,6 +99,7 @@ impl LazySessionBits {
             reopen_undo: self.reopen_undo.clone(),
             text_actions: self.text_actions.clone(),
             bookmarks: self.bookmarks.clone(),
+            bookmark_error: None,
             source_window_handle: 0,
             target_window_handle: 0,
             favor_menu: FavorMenuData::default(),
@@ -217,6 +218,7 @@ pub struct MenuBuildContext {
     pub reopen_undo: Option<Value>,
     pub text_actions: Vec<Value>,
     pub bookmarks: Option<BookmarkNode>,
+    pub bookmark_error: Option<String>,
     pub source_window_handle: i64,
     pub target_window_handle: i64,
     pub favor_menu: FavorMenuData,
@@ -240,6 +242,7 @@ impl Default for MenuBuildContext {
             reopen_undo: None,
             text_actions: Vec::new(),
             bookmarks: None,
+            bookmark_error: None,
             source_window_handle: 0,
             target_window_handle: 0,
             favor_menu: FavorMenuData::default(),
@@ -275,7 +278,7 @@ impl MenuRegistry {
                 None => (
                     Vec::new(),
                     HashMap::new(),
-                    "暂时无法获取浏览器书签，请稍后重试；若持续失败再检查扩展连接与书签权限".into(),
+                    ctx.bookmark_error.clone().unwrap_or_else(|| "无法获取浏览器书签，请检查 Quicker 扩展连接与书签权限。".into()),
                 ),
             },
             "reopen" => (

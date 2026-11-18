@@ -1584,7 +1584,7 @@ impl Render for FifoPanel {
                         rsx! {
                             <div h={px(18.0)} flex_shrink_0 line_height={px(18.0)}
                                 font_weight={FontWeight::MEDIUM}>
-                                {tr("连续粘贴（先进先出）", "Sequential paste (FIFO)")}
+                                {tr("连续粘贴（先进先出）", "Paste queue (FIFO)")}
                             </div>
                         },
                     )

@@ -259,10 +259,10 @@ pub(crate) fn update_exit_cancelled(error: &str) {
 }
 
 pub(super) fn search_schema() -> Value {
-    json!({"configLabel":tr("关于与更新", "About & updates"),"fields":[
-        {"key":"version","label":tr("版本与检查更新", "Version and check for updates"),"description":"ClipHost update 更新 升级 新版本 发行说明 release notes download 下载 重启 restart"},
-        {"key":"installPath","label":tr("程序安装位置", "Application location"),"description":"安装目录 路径 exe installation path Program Files"},
-        {"key":"dataRoot","label":tr("数据位置", "Data location"),"description":"历史 收藏 数据目录 data directory history favorites"}
+    json!({"configLabel":tr("关于与更新", "Updates"),"fields":[
+        {"key":"version","label":tr("版本与检查更新", "Version & updates"),"description":"ClipHost update 更新 升级 新版本 发行说明 release notes download 下载 重启 restart"},
+        {"key":"installPath","label":tr("程序安装位置", "App folder"),"description":"安装目录 路径 exe installation path Program Files"},
+        {"key":"dataRoot","label":tr("数据位置", "Data folder"),"description":"历史 收藏 数据目录 data directory history favorites"}
     ]})
 }
 
@@ -451,12 +451,12 @@ impl UpdateSettingsPage {
 fn phase_label(phase: UpdatePhase) -> &'static str {
     match phase {
         UpdatePhase::Idle => tr("手动检查可用的新版本。", "Check for a new version."),
-        UpdatePhase::Checking => tr("正在检查更新…", "Checking for updates…"),
-        UpdatePhase::Available => tr("发现新版本", "An update is available"),
+        UpdatePhase::Checking => tr("正在检查更新…", "Checking…"),
+        UpdatePhase::Available => tr("发现新版本", "Update available"),
         UpdatePhase::UpToDate => tr("当前已是最新版本", "You're up to date"),
-        UpdatePhase::Downloading => tr("正在下载更新…", "Downloading update…"),
-        UpdatePhase::Verifying => tr("正在校验更新包…", "Verifying update…"),
-        UpdatePhase::Ready => tr("更新已就绪", "Update is ready"),
+        UpdatePhase::Downloading => tr("正在下载更新…", "Downloading…"),
+        UpdatePhase::Verifying => tr("正在校验更新包…", "Verifying…"),
+        UpdatePhase::Ready => tr("更新已就绪", "Update ready"),
         UpdatePhase::Installing => tr("正在保存并重启更新…", "Saving and restarting to update…"),
         UpdatePhase::Error => tr(
             "更新未完成，可以重试。",
@@ -555,7 +555,7 @@ impl Render for UpdateSettingsPage {
                 if error.is_some() {
                     tr("重试检查", "Retry check")
                 } else {
-                    tr("检查更新", "Check for updates")
+                    tr("检查更新", "Check updates")
                 },
                 &self.check_focus,
                 !busy,
@@ -636,7 +636,7 @@ impl Render for UpdateSettingsPage {
             card = card.child(
                 self.button(
                     "settings-update-release-notes",
-                    tr("查看更新说明", "View release notes"),
+                    tr("查看更新说明", "Release notes"),
                     &self.release_focus,
                     !self.leave_locked,
                     false,
@@ -668,7 +668,7 @@ impl Render for UpdateSettingsPage {
         let paths = widgets::card(
             [
                 self.path_row(
-                    tr("程序安装位置", "Application location"),
+                    tr("程序安装位置", "App folder"),
                     install_path,
                     &self.install_focus,
                     "settings-update-install-folder",
@@ -677,7 +677,7 @@ impl Render for UpdateSettingsPage {
                     cx,
                 ),
                 self.path_row(
-                    tr("数据位置", "Data location"),
+                    tr("数据位置", "Data folder"),
                     self.runtime.data_root.clone(),
                     &self.data_focus,
                     "settings-update-data-folder",

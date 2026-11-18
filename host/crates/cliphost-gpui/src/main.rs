@@ -64,6 +64,7 @@ struct Options {
     api_port: u16,
     api_port_given: bool,
     test_instance: bool,
+    script_test_instance: bool,
     core_copy_acceptance: bool,
     headless: bool,
     background: bool,
@@ -101,6 +102,7 @@ impl Options {
             api_port: cliphost_core::DEFAULT_API_PORT,
             api_port_given: false,
             test_instance: false,
+            script_test_instance: false,
             core_copy_acceptance: false,
             headless: false,
             background: false,
@@ -111,7 +113,7 @@ impl Options {
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--help" | "-h" => {
-                    println!("ClipHost GPUI — native clipboard host\n\nDefault: real history/capture/paste, selected product data root, single instance.\n--background (start at sign-in without showing the clipboard)\n--fixture (isolated design preview, no host or capture)\n--theme dark|light --language system|zh-CN|en --appearance standard|simple (fixture only) --query TEXT --type all|text|image|file|top\n--width DIP --height DIP --no-focus\n--stress --snapshot --inspect (fixture only)\n--data-root PATH --api-port PORT\n--test-instance (requires explicit isolated data root, no shared RPC/LAN)\n--headless (isolated core testing only)\n--exit-after-ms N --report PATH (explicit QA diagnostics)");
+                    println!("ClipHost GPUI — native clipboard host\n\nDefault: real history/capture/paste, selected product data root, single instance.\n--background (start at sign-in without showing the clipboard)\n--fixture (isolated design preview, no host or capture)\n--theme dark|light --language system|zh-CN|en --appearance standard|simple (fixture only) --query TEXT --type all|text|image|file|top\n--width DIP --height DIP --no-focus\n--stress --snapshot --inspect (fixture only)\n--data-root PATH --api-port PORT\n--test-instance (requires explicit isolated data root, no shared RPC/LAN)\n--script-test-instance (Debug native explicit-root profile; private target-validated RPC only)\n--headless (isolated core testing only)\n--exit-after-ms N --report PATH (explicit QA diagnostics)");
                     return Ok(None);
                 }
                 "--theme" => {
@@ -186,6 +188,7 @@ impl Options {
                         .map_err(|_| "Invalid API port")?
                 }
                 "--test-instance" => options.test_instance = true,
+                "--script-test-instance" => options.script_test_instance = true,
                 "--qa-keyboard-input" => options.qa_keyboard_input = true,
                 "--core-copy-acceptance" => {
                     if !cfg!(feature = "native-acceptance") {
@@ -248,7 +251,11 @@ impl Options {
                 "--language is for --fixture; live mode uses the saved language setting.".into(),
             );
         }
-        if (options.test_instance || options.headless) && options.data_root.is_none() {
+        if options.script_test_instance && (options.test_instance || options.headless || options.fixture
+            || options.qa_keyboard_input || options.core_copy_acceptance) {
+            return Err("Script-test instance is an explicit native profile, not a test-instance RPC override.".into());
+        }
+        if (options.test_instance || options.script_test_instance || options.headless) && options.data_root.is_none() {
             return Err("Isolated testing requires --data-root".into());
         }
         if options.qa_keyboard_input && (!cfg!(debug_assertions) || !options.test_instance
@@ -378,11 +385,13 @@ fn run() -> Result<(), String> {
             api_port: options.api_port,
             headless: options.headless,
             background: options.background,
-            isolated: options.test_instance,
-            verb_rpc: !options.test_instance && !options.headless,
+            isolated: options.test_instance || options.script_test_instance,
+            verb_rpc: !options.test_instance && !options.script_test_instance && !options.headless,
             core_copy_acceptance: options.core_copy_acceptance,
         };
-        let opened = if options.qa_keyboard_input {
+        let opened = if options.script_test_instance {
+            NativeHost::open_script_test_instance(native_options)
+        } else if options.qa_keyboard_input {
             #[cfg(debug_assertions)]
             { NativeHost::open_keyboard_input_qa(native_options) }
             #[cfg(not(debug_assertions))]

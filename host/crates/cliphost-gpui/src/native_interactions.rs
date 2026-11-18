@@ -122,7 +122,8 @@ impl NativeInteractions {
             if let Some(token)=event.formats.internal_drag_token.as_deref() {
                 event.ticket.verify()?;
                 let prepared=crate::favorite_drag::accept_native(token,event.ticket.hwnd(),event.screen_point,event.control)?;
-                if prepared.lan_conversation.is_some() {
+                use crate::favorite_drag::NativeDropAction;
+                if matches!(prepared.action, NativeDropAction::Lan(_)) {
                     return Err("LAN drops must be accepted by their conversation window.".into());
                 }
                 let accepted=writes::accept()?;
@@ -134,7 +135,11 @@ impl NativeInteractions {
                 let sender=drop_sender.clone();
                 let operation_id=token.to_string();
                 runtime.spawn_blocking(move || {
-                    let result=prepared.host.favorite_drag_apply(&prepared.request);
+                    let result = match prepared.action {
+                        NativeDropAction::Favorites(request) => prepared.host.favorite_drag_apply(&request),
+                        NativeDropAction::HistoryFolder(folder) => folder.save(&prepared.host, &prepared.drag),
+                        NativeDropAction::Lan(_) => unreachable!(),
+                    };
                     accepted.finish(&result);
                     let _=sender.send(NativeInteractionEvent::ContentSaved {operation_id,result});
                 });

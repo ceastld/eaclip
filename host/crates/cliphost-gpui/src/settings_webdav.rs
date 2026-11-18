@@ -214,7 +214,7 @@ impl WebDavSettingsPage {
         if self.status.is_null() {
             tr("正在读取状态…", "Loading status…")
         } else if self.status["configured"] != true {
-            tr("未配置", "Not configured")
+            tr("未配置", "Not set")
         } else if self.action == Some("sync") || self.status["running"] == true {
             tr("正在同步…", "Syncing…")
         } else if self.status["error"]
@@ -223,9 +223,9 @@ impl WebDavSettingsPage {
         {
             tr("同步需要处理", "Sync needs attention")
         } else if self.status["enabled"] == true {
-            tr("后台已开启", "Background sync enabled")
+            tr("后台已开启", "Background sync on")
         } else {
-            tr("后台已停止", "Background sync stopped")
+            tr("后台已停止", "Background sync off")
         }
     }
 }
@@ -244,14 +244,14 @@ impl Render for WebDavSettingsPage {
                     .child(widgets::description(palette).child(format!(
                         "{} · {}",
                         if configured {
-                            tr("账号已配置", "Account configured")
+                            tr("账号已配置", "Account set")
                         } else {
-                            tr("账号未配置", "Account not configured")
+                            tr("账号未配置", "Account not set")
                         },
                         if enabled {
-                            tr("自动同步已开启", "Automatic sync enabled")
+                            tr("自动同步已开启", "Auto sync on")
                         } else {
-                            tr("自动同步已关闭", "Automatic sync disabled")
+                            tr("自动同步已关闭", "Auto sync off")
                         },
                     ))),
             )
@@ -305,7 +305,7 @@ impl Render for WebDavSettingsPage {
                         .child(self.button("sync", tr("立即同步", "Sync now"), 0, palette, cx))
                         .child(self.button(
                             "enable",
-                            tr("开启后台", "Enable background sync"),
+                            tr("开启后台", "Start background sync"),
                             1,
                             palette,
                             cx,

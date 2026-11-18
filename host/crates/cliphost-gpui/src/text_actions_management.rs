@@ -17,7 +17,7 @@ pub(super) fn initialize(
         input.set_colors(colors, cx);
         input.set_metrics(33., 12., 10., cx);
         input.set_placeholder(
-            tr("搜索名称、用途、类型…", "Search names, purposes, types…"),
+            tr("搜索名称、用途、类型…", "Search actions…"),
             cx,
         );
         input.set_double_click_clears(false);
@@ -117,11 +117,11 @@ fn cycle_focus_index(current: Option<usize>, len: usize, backwards: bool) -> Opt
 pub(super) fn kind_label(kind: &str) -> &'static str {
     match kind {
         "Internal" => tr("清理／格式化", "Clean / format"),
-        "SingleReplace" => tr("查找替换", "Find and replace"),
-        "Pair" => tr("添加前后缀", "Add prefix / suffix"),
+        "SingleReplace" => tr("查找替换", "Find & replace"),
+        "Pair" => tr("添加前后缀", "Prefix / suffix"),
         "Send" => tr("插入文本", "Insert text"),
         "ZExpression" => tr("表达式", "Expression"),
-        "QuickerAction" => tr("启动 Quicker 动作", "Launch Quicker action"),
+        "QuickerAction" => tr("启动 Quicker 动作", "Run Quicker action"),
         _ => tr("文本操作", "Text action"),
     }
 }
@@ -513,7 +513,7 @@ impl TextActionsPage {
         rsx! { <div flex flex_col gap={px(8.)} mt={px(15.)} pt={px(15.)} border_t_1 border_color={color(&t.border)} /> }
             .child(div().flex().items_center().justify_between()
                 .child(div().font_weight(FontWeight::SEMIBOLD).child(tr("看看处理结果", "Try the result")))
-                .child(self.button("text-action-preview", if self.preview_pending { tr("计算中…", "Computing…") } else { tr("预览结果", "Preview result") }, !self.preview_pending, t)
+                .child(self.button("text-action-preview", if self.preview_pending { tr("计算中…", "Computing…") } else { tr("预览结果", "Preview") }, !self.preview_pending, t)
                     .on_click(cx.listener(|this, _, window, cx| this.manager_preview(window, cx)))))
             .child(div().text_size(px(11.)).text_color(color(&t.text_muted)).child(tr("输入", "Input")))
             .children(self.preview_input.clone())
@@ -562,7 +562,7 @@ impl TextActionsPage {
                 if action["common"] == true {
                     tr("★ 已设为常用", "★ Common")
                 } else {
-                    tr("☆ 设为常用", "☆ Mark common")
+                    tr("☆ 设为常用", "☆ Favorite")
                 },
                 false,
                 enabled,
@@ -801,7 +801,7 @@ impl TextActionsPage {
         card = card.child(
             self.manager_button(
                 "create-advanced".into(),
-                tr("高级扩展  ›", "Advanced extensions  ›"),
+                tr("高级扩展  ›", "Advanced  ›"),
                 self.create_selected == 4,
                 true,
                 t,

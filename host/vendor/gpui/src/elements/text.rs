@@ -334,7 +334,7 @@ impl TextLayout {
             .line_height
             .to_pixels(font_size.into(), window.rem_size());
 
-        let mut runs = if let Some(runs) = runs {
+        let runs = if let Some(runs) = runs {
             runs
         } else {
             vec![text_style.to_run(text.len())]
@@ -377,20 +377,42 @@ impl TextLayout {
                     return text_layout.size.unwrap();
                 }
 
-                let mut line_wrapper = cx.text_system().line_wrapper(text_style.font(), font_size);
-                let text = if let Some(truncate_width) = truncate_width {
-                    line_wrapper.truncate_line(
+                let mut runs = std::borrow::Cow::Borrowed(&runs);
+                let mut measured_lines = None;
+                let text = if let (Some(width), Some(limit), Some(_)) =
+                    (wrap_width, text_style.line_clamp.filter(|n| *n > 1), truncate_width)
+                {
+                    // A hard newline or an early word wrap can use much less
+                    // than a whole line. Fit the suffix on the actual last row.
+                    measured_lines = window.text_system()
+                        .shape_text(text.clone(), font_size, &runs, Some(width), None).log_err();
+                    let end = measured_lines.as_ref().and_then(|lines| {
+                        clamped_prefix(lines, limit, width, || window.text_system().shape_line(
+                            truncation_suffix.clone(), font_size,
+                            &[text_style.to_run(truncation_suffix.len())], None,
+                        ).width)
+                    });
+                    if let Some(end) = end {
+                        measured_lines = None;
+                        let result = SharedString::from(format!("{}{truncation_suffix}", &text[..end]));
+                        crate::text_system::update_runs_after_truncation(&result, &truncation_suffix, runs.to_mut());
+                        result
+                    } else {
+                        text.clone()
+                    }
+                } else if let Some(truncate_width) = truncate_width {
+                    cx.text_system().line_wrapper(text_style.font(), font_size).truncate_line(
                         text.clone(),
                         truncate_width,
                         &truncation_suffix,
-                        &mut runs,
+                        runs.to_mut(),
                     )
                 } else {
                     text.clone()
                 };
                 let len = text.len();
 
-                let Some(lines) = window
+                let Some(lines) = measured_lines.or_else(|| window
                     .text_system()
                     .shape_text(
                         text,
@@ -399,7 +421,7 @@ impl TextLayout {
                         wrap_width,            // Wrap if we know the width.
                         text_style.line_clamp, // Limit the number of lines if line_clamp is set.
                     )
-                    .log_err()
+                    .log_err())
                 else {
                     element_state.0.borrow_mut().replace(TextLayoutInner {
                         lines: Default::default(),
@@ -456,7 +478,12 @@ impl TextLayout {
         let line_height = element_state.line_height;
         let mut line_origin = bounds.origin;
         let text_style = window.text_style();
+        // The last visible line can be shortened to an ellipsis. Classify the
+        // source line so even a short visible prefix gets its original mask.
+        let mut source_lines = cx.try_global::<crate::TextPaintMask>()
+            .filter(|_| text_style.mask_sensitive_text).map(|_| text.split('\n'));
         for line in &element_state.lines {
+            let source = source_lines.as_mut().and_then(|lines| lines.next()).unwrap_or(&line.text);
             line.paint_background(
                 line_origin,
                 line_height,
@@ -466,7 +493,8 @@ impl TextLayout {
                 cx,
             )
             .log_err();
-            line.paint(
+            line.paint_with_source(
+                source,
                 line_origin,
                 line_height,
                 text_style.text_align,
@@ -620,6 +648,36 @@ impl TextLayout {
 
         lines.join("\n")
     }
+}
+
+/// Find the end of the visible prefix using the same shaped glyph clusters and
+/// wrap boundaries used to paint the text. Offsets address the original UTF-8.
+fn clamped_prefix(lines: &[WrappedLine], mut remaining: usize, width: Pixels, suffix_width: impl FnOnce() -> Pixels) -> Option<usize> {
+    let mut offset = 0;
+    for (i, line) in lines.iter().enumerate() {
+        let rows = line.wrap_boundaries.len() + 1;
+        if remaining > rows {
+            remaining -= rows;
+            offset += line.len() + 1;
+            continue;
+        }
+        if remaining == rows && i + 1 == lines.len() {
+            return None;
+        }
+        let layout = &line.unwrapped_layout;
+        let boundary = |row: usize| {
+            let b = &line.wrap_boundaries[row];
+            &layout.runs[b.run_ix].glyphs[b.glyph_ix]
+        };
+        let (start, x) = if remaining == 1 { (0, Pixels::ZERO) } else {
+            let glyph = boundary(remaining - 2);
+            (glyph.index, glyph.position.x)
+        };
+        let end = if remaining < rows { boundary(remaining - 1).index } else { line.len() };
+        let fit = layout.index_for_x(x + (width - suffix_width()).max(Pixels::ZERO)).unwrap_or(end);
+        return Some(offset + fit.max(start).min(end));
+    }
+    None
 }
 
 /// A text element that can be interacted with.

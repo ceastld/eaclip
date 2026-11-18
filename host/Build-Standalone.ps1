@@ -3,7 +3,8 @@ param(
     [string]$OutputDirectory,
     [ValidateSet('Gpui', 'Tauri')][string]$Renderer = 'Gpui',
     [ValidateSet('x86_64-pc-windows-msvc', 'aarch64-pc-windows-msvc')][string]$Target,
-    [switch]$IncludeNativeSymbols
+    [switch]$IncludeNativeSymbols,
+    [switch]$IncludeCli
 )
 
 # Build a separate Rust desktop package. Does not install, launch, stop a host,
@@ -56,9 +57,10 @@ try {
     $application = if ($Renderer -eq 'Gpui') { 'cliphost-gpui' } else { 'cliphost-app' }
     $buildArgs = @('build', '--locked', '--release', '--package', $application, '--bin', $application, '--target', $Target)
     if ($Renderer -eq 'Tauri') { $buildArgs += @('--features', 'custom-protocol') }
+    if ($IncludeCli) { $buildArgs += @('--package', 'cliphost-cli', '--bin', 'eaclip-cli') }
     $buildArgs += '--message-format=json-render-diagnostics'
     & cargo @buildArgs `
         1> $buildLog 2> (Join-Path $run 'cargo.stderr.log')
     if ($LASTEXITCODE -ne 0) { throw "Rust build failed. See $run/cargo.stderr.log" }
-    & (Join-Path $rustRoot 'scripts/Package-Standalone.ps1') -BuildLog $buildLog -OutputDirectory $OutputDirectory -Renderer $Renderer -Target $Target -IncludeNativeSymbols:$IncludeNativeSymbols
+    & (Join-Path $rustRoot 'scripts/Package-Standalone.ps1') -BuildLog $buildLog -OutputDirectory $OutputDirectory -Renderer $Renderer -Target $Target -IncludeNativeSymbols:$IncludeNativeSymbols -IncludeCli:$IncludeCli
 } finally { Pop-Location }

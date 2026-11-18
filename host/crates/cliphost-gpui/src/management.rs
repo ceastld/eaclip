@@ -237,7 +237,7 @@ impl ManagementPage {
             input.set_placeholder(
                 tr(
                     "搜索命令、名称或说明…",
-                    "Search commands, names or descriptions…",
+                    "Search commands…",
                 ),
                 cx,
             );
@@ -820,14 +820,14 @@ impl ManagementPage {
         let mut page = rsx! {
             <div w_full min_w_0 flex_none flex flex_col gap={px(10.)}>
                 <div font_weight={FontWeight::SEMIBOLD}>
-                    {tr("数据位置", "Data location")}
+                    {tr("数据位置", "Data folder")}
                 </div>
             </div>
         }
             .child(div().text_color(color(&t.text_muted)).child(if locked {
                 tr("环境变量覆盖", "Environment override")
             } else if string(&self.paths, "sidecarOverridePath").is_empty() {
-                tr("内置默认", "Built-in default")
+                tr("内置默认", "Default")
             } else {
                 tr("自定义", "Custom")
             }))
@@ -875,7 +875,7 @@ impl ManagementPage {
                         })),
                     )
                     .child(
-                        self.button("reset-data", tr("恢复默认", "Restore default"), editable, t)
+                        self.button("reset-data", tr("恢复默认", "Reset default"), editable, t)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 if !this.data_leave_locked && !this.saving
                                     && !this.picking
@@ -889,13 +889,13 @@ impl ManagementPage {
             );
         }
         page = page.child(div().text_color(color(&t.text_muted)).child(tr("保存后可能需重启，不会自动迁移已有数据。", "A restart may be required. Existing data is kept in its current folder.")))
-            .child(div().flex().flex_wrap().gap(px(8.)).children([("dataRoot", tr("打开数据", "Open data")), ("logFolder", tr("日志", "Logs")), ("sidecarDirectory", tr("配置", "Configuration"))].into_iter().map(|(key, label)| {
+            .child(div().flex().flex_wrap().gap(px(8.)).children([("dataRoot", tr("打开数据", "Open data")), ("logFolder", tr("日志", "Logs")), ("sidecarDirectory", tr("配置", "Config"))].into_iter().map(|(key, label)| {
                 let path = string(&self.paths, key); let enabled = !path.is_empty();
                 self.button(format!("open-{key}"), label, enabled, t).on_click(cx.listener(move |this, _, window, cx| this.open_target(path.clone(), false, window, cx)))
             })).child(self.action_button("latest-log", tr("最新日志", "Latest log"), "openLog", t, cx))
                 .child(self.button("copy-log", tr("复制日志", "Copy log"), true, t).on_click(cx.listener(|this, _, window, cx| this.copy_log(window, cx)))))
             .child(div().font_weight(FontWeight::SEMIBOLD).child(tr("旧版数据", "Legacy data")))
-            .child(self.button("use-legacy-data", if active { tr("正在使用", "In use") } else { tr("使用旧数据目录", "Use legacy data directory") }, editable && !legacy.is_empty() && !active, t)
+            .child(self.button("use-legacy-data", if active { tr("正在使用", "In use") } else { tr("使用旧数据目录", "Use legacy folder") }, editable && !legacy.is_empty() && !active, t)
                 .on_click(cx.listener(|this, _, window, cx| { if !string(&this.paths, "legacyDataRoot").is_empty() && this.paths["legacyDataRootActive"] != true { this.save_location(json!({"useLegacyDataRoot": true}), window, cx); } })))
             .child(div().text_color(color(if legacy_error.is_empty() { &t.text_secondary } else { &t.error })).child(if !legacy_error.is_empty() { legacy_error } else if legacy.is_empty() { tr("未检测到旧版数据库。", "No legacy database detected.").into() } else { legacy }))
             .child(div().text_color(color(&t.text_muted)).child(if active { tr("历史、收藏和图片直接使用此目录。", "History, favorites and images use this directory directly.") } else { tr("切换后重启，直接使用原有历史、收藏和图片。当前目录的数据会保留。", "Restart to use the existing history, favorites and images directly. The current directory is retained.") }));
@@ -908,13 +908,13 @@ impl ManagementPage {
             }
                 .child(div().flex().gap(px(8.))
                     .child(self.button("cancel-reset", tr("取消", "Cancel"), !busy, t).on_click(cx.listener(|this, _, _, cx| { this.reset_confirm = false; cx.notify(); })))
-                    .child(self.button("confirm-reset", tr("恢复默认", "Restore default"), editable, t).on_click(cx.listener(|this, _, window, cx| this.save_location(json!({"dataFolder": ""}), window, cx))))));
+                    .child(self.button("confirm-reset", tr("恢复默认", "Reset default"), editable, t).on_click(cx.listener(|this, _, window, cx| this.save_location(json!({"dataFolder": ""}), window, cx))))));
         }
         page = page
             .child(
                 div()
                     .font_weight(FontWeight::SEMIBOLD)
-                    .child(tr("剪贴板维护", "Clipboard maintenance")),
+                    .child(tr("剪贴板维护", "History cleanup")),
             )
             .child(
                 div()
@@ -1006,13 +1006,13 @@ impl ManagementPage {
                 .children([("super", tr("超级菜单", "Super Menu")), ("bookmarks", tr("书签", "Bookmarks")), ("file", tr("文件", "Files")), ("window", tr("窗口", "Windows")), ("text", tr("文本", "Text")), ("favor", tr("收藏", "Favorites")), ("clipboard", tr("剪贴板菜单", "Clipboard menu"))].into_iter().map(|(menu, label)| {
                     self.button(format!("home-menu:{menu}"), label, true, t).on_click(cx.listener(move |this, _, window, cx| this.command(json!({"kind": "mainHostCommand", "command": "openMenu", "menu": menu}), window, cx)))
                 })))
-            .child(div().child(format!("Quicker RPC: {} · Verb RPC: {}", if self.status["quickerRpcConnected"] == true { tr("已连接", "Connected") } else { tr("未连接", "Disconnected") }, if self.status["verbRpcListenerReady"] == true { tr("已就绪", "Ready") } else { tr("未就绪", "Not ready") })));
+            .child(div().child(format!("Quicker RPC: {} · Verb RPC: {}", if self.status["quickerRpcConnected"] == true { tr("已连接", "Connected") } else { tr("未连接", "Offline") }, if self.status["verbRpcListenerReady"] == true { tr("已就绪", "Ready") } else { tr("未就绪", "Not ready") })));
         let show_tray = self.status["showTrayIcon"] != false;
         let background = self.status["closeBehavior"] != "ExitApplication";
-        page = page.child(div().font_weight(FontWeight::SEMIBOLD).child(tr("窗口行为", "Window behavior")))
-            .child(self.button("toggle-tray", format!("{} {}", if show_tray { "☑" } else { "☐" }, tr("显示托盘图标", "Show tray icon")), true, t)
+        page = page.child(div().font_weight(FontWeight::SEMIBOLD).child(tr("窗口行为", "Window")))
+            .child(self.button("toggle-tray", format!("{} {}", if show_tray { "☑" } else { "☐" }, tr("显示托盘图标", "Tray icon")), true, t)
                 .on_click(cx.listener(move |this, _, window, cx| this.command(json!({"kind": "mainHostCommand", "command": "setShowTrayIcon", "show": !show_tray}), window, cx))))
-            .child(div().flex().flex_wrap().gap(px(8.)).children([("minimizeToTray", if show_tray { tr("缩小到托盘", "Minimize to tray") } else { tr("关闭后在后台运行", "Keep running in the background") }), ("exitApplication", tr("退出程序", "Exit application"))].into_iter().map(|(behavior, label)| {
+            .child(div().flex().flex_wrap().gap(px(8.)).children([("minimizeToTray", if show_tray { tr("缩小到托盘", "Minimize to tray") } else { tr("关闭后在后台运行", "Keep running in the background") }), ("exitApplication", tr("退出程序", "Quit"))].into_iter().map(|(behavior, label)| {
                 self.button(format!("close:{behavior}"), label, true, t).when(background == (behavior == "minimizeToTray"), |button| button.bg(color(&t.tab_active)))
                     .on_click(cx.listener(move |this, _, window, cx| this.command(json!({"kind": "mainHostCommand", "command": "setCloseBehavior", "behavior": behavior}), window, cx)))
             }))).child(rsx! {
@@ -1086,7 +1086,7 @@ impl Render for ManagementPage {
                     .children(
                         [
                             ("home", tr("首页", "Home")),
-                            ("data", tr("数据管理", "Data management")),
+                            ("data", tr("数据管理", "Data")),
                             ("docs", tr("帮助", "Help")),
                             ("lan", tr("局域网", "LAN")),
                         ]
@@ -1190,7 +1190,7 @@ impl ManagementWindow {
                     ..Default::default()
                 },
                 move |window, cx| {
-                    window.set_window_title(tr("ClipHost 管理", "ClipHost Management"));
+                    window.set_window_title(tr("ClipHost 管理", "ClipHost"));
                     #[cfg(windows)]
                     if let Ok(hwnd) = crate::platform::hwnd(window) {
                         host.set_main_hwnd(hwnd.0 as isize);
@@ -1400,7 +1400,7 @@ impl Render for ManagementWindow {
                     .child(
                         rsx! {
                             <div text_size={px(12.)} text_color={color(&t.text_secondary)}>
-                                {tr("ClipHost 管理", "ClipHost Management")}
+                                {tr("ClipHost 管理", "ClipHost")}
                             </div>
                         },
                     )

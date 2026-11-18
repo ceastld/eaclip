@@ -22,6 +22,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
 unicode-segmentation = "=1.13.3"
+regex.workspace = true
 html5ever = "=0.38.0"
 resvg = "=0.45.1"
 raw-window-handle = "0.6"

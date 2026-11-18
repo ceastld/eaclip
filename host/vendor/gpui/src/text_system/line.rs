@@ -1,11 +1,18 @@
 use crate::{
-    App, Bounds, Half, Hsla, LineLayout, Pixels, Point, Result, SharedString, StrikethroughStyle,
+    App, Bounds, BoxShadow, Corners, Half, Hsla, LineLayout, Pixels, Point, Result, SharedString, StrikethroughStyle,
     TextAlign, UnderlineStyle, Window, WrapBoundary, WrappedLineLayout, black, fill, point, px,
     size,
 };
 use derive_more::{Deref, DerefMut};
 use smallvec::SmallVec;
+use std::ops::Range;
 use std::sync::Arc;
+
+/// Optional application paint policy. Ranges are sorted, disjoint UTF-8 byte
+/// offsets in a logical line, before wrapping or visual truncation.
+pub struct TextPaintMask(pub fn(&str) -> Vec<Range<usize>>);
+
+impl crate::Global for TextPaintMask {}
 
 /// Set the text decoration for a run of text.
 #[derive(Debug, Clone)]
@@ -67,9 +74,23 @@ impl ShapedLine {
         window: &mut Window,
         cx: &mut App,
     ) -> Result<()> {
+        self.paint_with_text_mask(origin, line_height, true, window, cx)
+    }
+
+    /// Paint with an explicit choice to apply the application text mask.
+    /// Editable controls can reveal their text without changing other surfaces.
+    pub fn paint_with_text_mask(
+        &self,
+        origin: Point<Pixels>,
+        line_height: Pixels,
+        apply_mask: bool,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Result<()> {
         paint_line(
             origin,
             &self.layout,
+            apply_mask.then_some(self.text.as_ref()),
             line_height,
             TextAlign::default(),
             None,
@@ -134,6 +155,19 @@ impl WrappedLine {
         window: &mut Window,
         cx: &mut App,
     ) -> Result<()> {
+        self.paint_with_source(&self.text, origin, line_height, align, bounds, window, cx)
+    }
+
+    pub(crate) fn paint_with_source(
+        &self,
+        source: &str,
+        origin: Point<Pixels>,
+        line_height: Pixels,
+        align: TextAlign,
+        bounds: Option<Bounds<Pixels>>,
+        window: &mut Window,
+        cx: &mut App,
+    ) -> Result<()> {
         let align_width = match bounds {
             Some(bounds) => Some(bounds.size.width),
             None => self.layout.wrap_width,
@@ -142,6 +176,7 @@ impl WrappedLine {
         paint_line(
             origin,
             &self.layout.unwrapped_layout,
+            Some(source),
             line_height,
             align,
             align_width,
@@ -188,6 +223,7 @@ impl WrappedLine {
 fn paint_line(
     origin: Point<Pixels>,
     layout: &LineLayout,
+    source: Option<&str>,
     line_height: Pixels,
     align: TextAlign,
     align_width: Option<Pixels>,
@@ -196,6 +232,9 @@ fn paint_line(
     window: &mut Window,
     cx: &mut App,
 ) -> Result<()> {
+    let masked = source.filter(|_| window.text_style().mask_sensitive_text).and_then(|source| {
+        cx.try_global::<TextPaintMask>().map(|mask| (mask.0)(source))
+    }).unwrap_or_default();
     let line_bounds = Bounds::new(
         origin,
         size(
@@ -227,6 +266,7 @@ fn paint_line(
         let mut prev_glyph_position = Point::default();
         let mut max_glyph_size = size(px(0.), px(0.));
         let mut first_glyph_x = origin.x;
+        let mut obscured: SmallVec<[(Bounds<Pixels>, Hsla); 4]> = SmallVec::new();
         for (run_ix, run) in layout.runs.iter().enumerate() {
             max_glyph_size = text_system.bounding_box(run.font_id, layout.font_size).size;
 
@@ -369,7 +409,27 @@ fn paint_line(
 
                 let content_mask = window.content_mask();
                 if max_glyph_bounds.intersects(&content_mask.bounds) {
-                    if glyph.is_emoji {
+                    let index = masked.partition_point(|range| range.end <= glyph.index);
+                    if masked.get(index).is_some_and(|range| range.start <= glyph.index) {
+                        let next_glyph = run.glyphs.get(glyph_ix + 1).or_else(|| {
+                            layout.runs[run_ix + 1..].iter().find_map(|run| run.glyphs.first())
+                        });
+                        let advance = next_glyph.map_or(layout.width, |next| next.position.x)
+                            - glyph.position.x;
+                        let height = layout.font_size * 0.48;
+                        let bounds = Bounds::new(
+                            point(glyph_origin.x, glyph_origin.y + (line_height - height).half()),
+                            size(advance.max(px(0.)), height),
+                        );
+                        if let Some((previous, _)) = obscured.last_mut()
+                            && previous.origin.y == bounds.origin.y
+                            && bounds.origin.x <= previous.right() + px(0.5)
+                        {
+                            previous.size.width = previous.right().max(bounds.right()) - previous.origin.x;
+                        } else {
+                            obscured.push((bounds, color));
+                        }
+                    } else if glyph.is_emoji {
                         window.paint_emoji(
                             glyph_origin + baseline_offset,
                             run.font_id,
@@ -387,6 +447,22 @@ fn paint_line(
                     }
                 }
             }
+        }
+
+        // Blur a continuous replacement for each visible span. The original
+        // glyphs are never painted, and varying character advances leave no
+        // gaps or individually recognizable letters beneath the soft edges.
+        for (bounds, color) in obscured {
+            window.paint_shadows(
+                bounds,
+                Corners::all(layout.font_size * 0.24),
+                &[BoxShadow {
+                    color: color.opacity(0.65),
+                    offset: point(px(0.), px(0.)),
+                    blur_radius: layout.font_size * 0.32,
+                    spread_radius: px(0.),
+                }],
+            );
         }
 
         let mut last_line_end_x = first_glyph_x + layout.width;

@@ -1032,7 +1032,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-app"
-version = "0.32.6"
+version = "0.32.7"
 dependencies = [
  "cliphost-core",
  "cliphost-http",
@@ -1055,7 +1055,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-bridge"
-version = "0.32.6"
+version = "0.32.7"
 dependencies = [
  "cliphost-core",
  "serde",
@@ -1065,8 +1065,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cliphost-cli"
+version = "0.32.7"
+dependencies = [
+ "blake3",
+ "serde",
+ "serde_json",
+ "tokio",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "cliphost-core"
-version = "0.32.6"
+version = "0.32.7"
 dependencies = [
  "base64 0.22.1",
  "blake3",
@@ -1103,7 +1114,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-gpui"
-version = "0.32.6"
+version = "0.32.7"
 dependencies = [
  "anyhow",
  "axum",
@@ -1120,6 +1131,7 @@ dependencies = [
  "image",
  "log",
  "raw-window-handle",
+ "regex",
  "resvg",
  "rusqlite",
  "serde",
@@ -1138,7 +1150,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-http"
-version = "0.32.6"
+version = "0.32.7"
 dependencies = [
  "axum",
  "chrono",
@@ -1162,7 +1174,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-updater"
-version = "0.32.6"
+version = "0.32.7"
 dependencies = [
  "reqwest",
  "rustls",
@@ -1179,7 +1191,7 @@ dependencies = [
 
 [[package]]
 name = "cliphost-webdav"
-version = "0.32.6"
+version = "0.32.7"
 dependencies = [
  "quick-xml 0.41.0",
  "reqwest",

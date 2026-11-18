@@ -141,6 +141,8 @@ pub struct ClipConfigDto {
     pub ui_language: String,
     pub clip_list_execute_mode: i32,
     pub clip_list_separate_pinned_ui: bool,
+    pub clip_list_phrase_column: bool,
+    pub clip_list_phrase_folder_id: Option<String>,
     pub auto_sort_after_paste: Option<bool>,
     pub clip_list_image_hover_preview_enabled: bool,
     pub clip_list_image_preview_max_height_px: i32,
@@ -181,6 +183,8 @@ pub struct ClipConfigDto {
     pub collect_quicker_steps: bool,
     #[serde(default, alias = "IgnoreWhiteSpace")]
     pub ignore_white_space: bool,
+    #[serde(default, alias = "MaskSensitiveText")]
+    pub mask_sensitive_text: bool,
     #[serde(default, alias = "DefaultPasteDelay")]
     pub default_paste_delay: i32,
     #[serde(default, alias = "PlainTextPasteByDefault")]
@@ -289,6 +293,8 @@ impl Default for ClipConfigDto {
             ui_language: "system".into(),
             clip_list_execute_mode: 1,
             clip_list_separate_pinned_ui: false,
+            clip_list_phrase_column: false,
+            clip_list_phrase_folder_id: None,
             auto_sort_after_paste: Some(false),
             clip_list_image_hover_preview_enabled: false,
             clip_list_image_preview_max_height_px: 160,
@@ -317,6 +323,7 @@ impl Default for ClipConfigDto {
             auto_scroll_to_top_idle_seconds: default_auto_scroll_to_top_idle_seconds(),
             collect_quicker_steps: true,
             ignore_white_space: false,
+            mask_sensitive_text: false,
             default_paste_delay: 0,
             plain_text_paste_by_default: false,
             standard_paste: false,

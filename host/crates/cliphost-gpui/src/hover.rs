@@ -371,7 +371,14 @@ impl HoverOwner {
                     sink(CardCommand::Hide { owner: binding.owner.hwnd, ticket: ticket.id(), force: true });
                 }
                 let (action, image_src, text, meta_line) = match content {
-                    Content::Text(text) => ("text", None, Some(text), None),
+                    Content::Text(text) => {
+                        let text = if inner.host.mask_sensitive_text() {
+                            crate::sensitive_text::mask_native_tooltip(text)
+                        } else {
+                            text
+                        };
+                        ("text", None, Some(text), None)
+                    }
                     Content::Image { source, meta_line } => {
                         ("image", Some(source.reference()), None, Some(meta_line))
                     }

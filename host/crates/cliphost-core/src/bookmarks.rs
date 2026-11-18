@@ -72,6 +72,68 @@ pub struct BookmarkSources {
     pub current: Option<usize>,
     /// A configured Bookmarks file overrides every discovered source.
     pub custom_file: bool,
+    /// Sources came from connected extensions, not local profile directories.
+    pub extension: bool,
+    pub error: Option<String>,
+}
+
+/// Transport-independent identity of a live browser-extension connection.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "PascalCase")]
+pub struct BookmarkConnection {
+    pub browser: String,
+    #[serde(default)]
+    pub env_name: String,
+    pub main_process_id: i32,
+}
+
+/// Quicker is the first adapter; a standalone extension can implement the same contract.
+pub trait BookmarkProvider {
+    fn connections(&self) -> Result<Vec<BookmarkConnection>, String>;
+    fn tree(&self, target: &BookmarkConnection) -> Result<BookmarkNode, String>;
+}
+
+pub fn browser_label(browser: &str) -> &str {
+    BROWSERS.iter().find(|(id, _, _)| *id == browser).map_or(browser, |(_, name, _)| name)
+}
+
+fn connected(provider: &dyn BookmarkProvider) -> Result<Vec<BookmarkConnection>, String> {
+    let mut sources = provider.connections()?;
+    sources.retain(|source| !source.browser.is_empty() && source.main_process_id > 0);
+    sources.sort_by_key(|source| (
+        BROWSERS.iter().position(|(id, _, _)| *id == source.browser).unwrap_or(BROWSERS.len()),
+        source.browser.clone(), source.env_name.clone(), source.main_process_id,
+    ));
+    Ok(sources)
+}
+
+pub fn extension_sources(provider: &dyn BookmarkProvider, browser: &str, environment: &str) -> BookmarkSources {
+    let result = connected(provider);
+    let (connections, error) = match result {
+        Ok(connections) => (connections, None),
+        Err(error) => (Vec::new(), Some(error)),
+    };
+    let mut sources = Vec::<BookmarkSource>::new();
+    for connection in connections {
+        if sources.iter().any(|s| s.browser == connection.browser && s.profile == connection.env_name) { continue; }
+        let name = browser_label(&connection.browser).to_string();
+        sources.push(BookmarkSource { label: name.clone(), name, browser: connection.browser,
+            profile: connection.env_name, count: 0, path: PathBuf::new() });
+    }
+    let current = sources.iter().position(|s| (browser.is_empty() || s.browser == browser)
+        && (environment == "*" || s.profile == environment));
+    BookmarkSources { sources, current, extension: true, error, custom_file: false }
+}
+
+pub fn load_extension_tree(provider: &dyn BookmarkProvider, browser: &str, environment: &str) -> Result<BookmarkNode, String> {
+    let connections = connected(provider)?;
+    let target = connections.iter().find(|source| (browser.is_empty() || source.browser == browser)
+        && (environment == "*" || source.env_name == environment))
+        .ok_or_else(|| format!("{}未连接 Quicker 浏览器扩展，请打开浏览器并检查扩展连接。",
+            if browser.is_empty() { "浏览器" } else { browser_label(browser) }))?;
+    let mut tree = provider.tree(target)?;
+    flatten_single_folders(&mut tree);
+    Ok(tree)
 }
 
 pub fn local_sources(browser: &str, profile: &str, custom_file: &str) -> BookmarkSources {
@@ -84,7 +146,7 @@ pub fn local_sources(browser: &str, profile: &str, custom_file: &str) -> Bookmar
         source.count = read_tree(&source.path).map_or(0, |tree| count_links(&tree));
     }
     let current = pick(&sources, browser, profile);
-    BookmarkSources { sources, current, custom_file: false }
+    BookmarkSources { sources, current, custom_file: false, ..Default::default() }
 }
 
 pub fn load_local_tree(browser: &str, profile: &str, custom_file: &str) -> Option<BookmarkNode> {
@@ -273,22 +335,26 @@ mod tests {
     #[test]
     fn bookmark_settings_round_trip_and_old_defaults() {
         let mut cfg = crate::extra_settings::MenuGlobalSettings::default();
-        crate::extra_settings::apply_menu_global(&mut cfg, &serde_json::json!({"BookmarkBrowser":"msedge", "BookmarkProfile":"Profile 1", "BookmarkFilePath":"D:/Portable/Bookmarks"}));
+        crate::extra_settings::apply_menu_global(&mut cfg, &serde_json::json!({"BookmarkBrowser":"msedge", "BookmarkProfile":"Profile 1", "BookmarkEnvironment":"work", "BookmarkFilePath":"D:/Portable/Bookmarks"}));
         let value = serde_json::to_value(&cfg).unwrap();
         let saved: crate::extra_settings::MenuGlobalSettings = serde_json::from_value(value.clone()).unwrap();
         assert_eq!(saved.bookmark_browser, "msedge");
         assert_eq!(saved.bookmark_profile, "Profile 1");
+        assert_eq!(saved.bookmark_environment, "work");
         let mut switched = saved.clone();
         crate::extra_settings::apply_menu_global(&mut switched, &serde_json::json!({"BookmarkBrowser":"chrome"}));
         assert!(switched.bookmark_profile.is_empty());
+        assert_eq!(switched.bookmark_environment, "*");
         assert_eq!(saved.bookmark_file_path, "D:/Portable/Bookmarks");
         let mut old = value;
         old.as_object_mut().unwrap().remove("BookmarkBrowser");
         old.as_object_mut().unwrap().remove("BookmarkFilePath");
         old.as_object_mut().unwrap().remove("BookmarkProfile");
+        old.as_object_mut().unwrap().remove("BookmarkEnvironment");
         let old: crate::extra_settings::MenuGlobalSettings = serde_json::from_value(old).unwrap();
         assert!(old.bookmark_browser.is_empty());
         assert!(old.bookmark_file_path.is_empty());
+        assert_eq!(old.bookmark_environment, "*");
     }
 
     #[test]

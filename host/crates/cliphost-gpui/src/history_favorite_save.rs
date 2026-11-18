@@ -19,7 +19,7 @@ pub(super) struct FavoriteFeedback {
 }
 
 impl ClipboardPreview {
-    fn show_favorite_saved(
+    pub(super) fn show_favorite_saved(
         &mut self,
         count: usize,
         path: String,
@@ -44,7 +44,7 @@ impl ClipboardPreview {
     }
 
     fn show_favorite_undone(&mut self, cx: &mut Context<Self>) {
-        let title = tr("已撤销收藏", "Favorite save undone").to_owned();
+        let title = tr("已撤销收藏", "Save undone").to_owned();
         self.show_notice(title.clone(), cx);
         self.notice_task = None;
         self.favorite_feedback = Some(FavoriteFeedback {

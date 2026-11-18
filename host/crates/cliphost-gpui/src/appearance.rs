@@ -474,8 +474,7 @@ pub mod model {
         pub image: RowImageInformation,
     }
 
-    /// Mirrors ClipboardPage's standard body badges. Text-family rows retain
-    /// their character badge even when a local-path image precedes the text.
+    /// Standard rows retain text statistics even when the text previews an image.
     pub fn project_row_information_input(
         input: RowInformationInput<'_>,
         layout: RowLayout,
@@ -554,9 +553,9 @@ pub mod model {
             if count == 0 {
                 return just_now();
             }
-            (count, "分钟", "minute")
+            (count, "分钟", "m")
         } else if abs < 86_400_000 {
-            (js_round(diff as f64 / 3_600_000.0), "小时", "hour")
+            (js_round(diff as f64 / 3_600_000.0), "小时", "h")
         } else if abs < 30 * 86_400_000 {
             let count = js_round(diff as f64 / 86_400_000.0);
             match (count, english) {
@@ -568,7 +567,7 @@ pub mod model {
                 (1, true) => return "Tomorrow".into(),
                 _ => {}
             }
-            (count, "天", "day")
+            (count, "天", "d")
         } else {
             let target = timestamp.with_timezone(&now.timezone());
             if english {
@@ -590,11 +589,10 @@ pub mod model {
         };
         let n = count.unsigned_abs();
         if english {
-            let plural = if n == 1 { "" } else { "s" };
             if count < 0 {
-                format!("{n} {unit_en}{plural} ago")
+                format!("{n}{unit_en} ago")
             } else {
-                format!("In {n} {unit_en}{plural}")
+                format!("In {n}{unit_en}")
             }
         } else if count < 0 {
             format!("{n}{unit_zh}前")
@@ -1208,55 +1206,18 @@ pub fn project_row_information(
     )
 }
 
-/// Attach as the last child of the relative *body*, below the header. The
-/// absolute badges do not reserve space, add actions or consume row clicks.
-/// Image metadata paints first and the character/file pill last, as in Web.
-pub fn render_row_information(
-    information: &RowInformation,
-    body_width: f32,
-    tokens: &DesignTokens,
-    dark: bool,
-) -> AnyElement {
-    let t = tokens.theme(dark);
-    let mut badges = div().absolute().inset_0();
-    if let Some(image) = information.image {
-        if let Some(label) = crate::native_content::files::format_image_meta(
-            image.width,
-            image.height,
-            image.size_bytes,
-        ) {
-            badges = badges.child(
-                rsx! {
-                    <div absolute right={px(2.0)} bottom={px(2.0)}
-                        max_w={px((body_width - 8.0).max(1.0))} px={px(6.0)} py={px(2.0)}
-                        rounded={px(4.0)} border_1 border_color={color(&t.border).opacity(0.55)}
-                        bg={color(&t.surface).opacity(0.58)} text_size={px(10.0)}
-                        line_height={px(13.5)} text_color={color(&t.text)} text_ellipsis
-                        overflow_hidden>
-                        {label}
-                    </div>
-                },
-            );
-        }
+pub fn row_information_label(information: RowInformation) -> Option<String> {
+    let image = information.image.and_then(|image| {
+        crate::native_content::files::format_image_meta(image.width, image.height, image.size_bytes)
+    });
+    let count = information.statistic.map(|statistic| match statistic {
+        RowStatistic::Characters(n) => format!("{n} {}", tr("字符", "chars")),
+        RowStatistic::Files(n) => format!("{n} {}", tr("个文件", "files")),
+    });
+    match (image, count) {
+        (Some(image), Some(count)) => Some(format!("{image} · {count}")),
+        (image, count) => image.or(count),
     }
-    if let Some(statistic) = information.statistic {
-        let label = match statistic {
-            RowStatistic::Characters(count) => format!("{count} {}", tr("字符", "characters")),
-            RowStatistic::Files(count) => format!("{count} {}", tr("个文件", "files")),
-        };
-        badges = badges.child(
-            rsx! {
-                <div absolute right={px(2.0)} bottom={px(1.0)} px={px(6.0)} py={px(1.0)}
-                    rounded={px(999.0)} border_1
-                    border_color={color(&t.border_secondary).opacity(0.38)}
-                    bg={color(&t.surface).opacity(0.55)} text_size={px(10.0)}
-                    line_height={px(13.0)} text_color={color(&t.text_muted).opacity(0.9)}>
-                    {label}
-                </div>
-            },
-        );
-    }
-    badges.into_any_element()
 }
 
 fn source_process(meta: &RowMetadata, icon: Option<AnyElement>, tokens: &DesignTokens, t: &ThemeTokens) -> AnyElement {

@@ -339,7 +339,7 @@ impl FavoriteSavePopup {
         self.search.update(cx, |input, cx| {
             input.set_metrics(28.0, 12.0, 0.0, cx);
             input.set_colors(colors, cx);
-            input.set_placeholder(tr("搜索文件夹或路径", "Search folders or paths"), cx);
+            input.set_placeholder(tr("搜索文件夹或路径", "Search folders…"), cx);
             input.set_double_click_clears(false);
         });
     }
@@ -1241,7 +1241,7 @@ impl Render for FavoriteSavePopup {
             body = body.child(
                 rsx! {
                     <div p={px(9.0)} text_color={color(&t.text_muted)}>
-                        {tr("正在加载收藏夹…", "Loading folders…")}
+                        {tr("正在加载收藏夹…", "Loading…")}
                     </div>
                 },
             );
@@ -1255,7 +1255,7 @@ impl Render for FavoriteSavePopup {
                 body = body.child(
                     rsx! {
                         <div p={px(9.0)} text_color={color(&t.text_muted)}>
-                            {tr("未找到文件夹", "No matching folders")}
+                            {tr("未找到文件夹", "No folders found")}
                         </div>
                     },
                 );
@@ -1265,7 +1265,7 @@ impl Render for FavoriteSavePopup {
             }
         } else {
             if parent.is_empty() && !self.choices.recent.is_empty() {
-                body = body.child(label(tr("最近使用", "Recent folders")));
+                body = body.child(label(tr("最近使用", "Recent")));
                 for folder in self.choices.recent.clone() {
                     body = body.child(self.row(folder, ChoiceMode::QuickSave, 0, window, cx));
                 }

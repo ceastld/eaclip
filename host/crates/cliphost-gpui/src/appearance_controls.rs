@@ -385,7 +385,7 @@ impl Render for AppearanceControls {
                 text_size={px(self.tokens.list_settings_popover.font_size)}
                 line_height={relative(1.5)} text_color={color(&t.text_secondary)}>
                 {slots}
-                {self.row(tr("列表密度", "List density"), density.into_any_element())}
+                {self.row(tr("列表密度", "Density"), density.into_any_element())}
             </div>
         };
 
@@ -401,7 +401,7 @@ impl Render for AppearanceControls {
                             gap={px(5.0)} cursor_pointer />
                     }
                         .child(if self.custom_expanded { "▾" } else { "▸" })
-                        .child(tr("自定义外观", "Custom appearance"))
+                        .child(tr("自定义外观", "Custom style"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             this.custom_expanded = !this.custom_expanded;
                             cx.notify();
@@ -478,7 +478,7 @@ impl Render for AppearanceControls {
                     .child(self.row(tr("行布局", "Row layout"), layout.into_any_element()))
                     .child(self.toggle(
                         "appearance-process",
-                        tr("显示来源进程", "Show source process"),
+                        tr("显示来源进程", "Source app"),
                         self.settings.custom.show_process,
                         AppearanceEdit::ShowProcess(!self.settings.custom.show_process),
                         cx,
@@ -494,7 +494,7 @@ impl Render for AppearanceControls {
                         rsx! {
                             <div flex_none text_size={px(11.0)} text_color={color(&t.text_muted)}
                                 mb={px(7.0)}>
-                                {tr("悬停按键", "Hover actions")}
+                                {tr("悬停按键", "Hover buttons")}
                             </div>
                         },
                     )

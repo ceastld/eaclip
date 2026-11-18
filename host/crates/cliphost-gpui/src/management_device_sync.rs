@@ -192,7 +192,7 @@ impl LanManagementPage {
         };
         let mut settings = rsx! {
             <div w_full min_w_0 flex_none p={px(12.)} flex flex_col gap={px(8.)}>
-                {setting_row(tr("自动同步", "Automatic sync"), Some(detail.into()), control, t)}
+                {setting_row(tr("自动同步", "Auto sync"), Some(detail.into()), control, t)}
                 <div w_full min_w_0 flex_none flex items_center gap={px(16.)}>{text_choice}{image_choice}</div>
             </div>
         };
@@ -239,7 +239,7 @@ impl LanManagementPage {
         );
         section(heading(tr("收到的文件", "Received files"), None, t), card(t).w_full().min_w_0().child(
             rsx! { <div w_full min_w_0 flex_none p={px(12.)}>
-                {setting_row(tr("加入剪贴板列表", "Add to clipboard history"),
+                {setting_row(tr("加入剪贴板列表", "Add to history"),
                     Some(tr("手动互传的文件可在列表直接打开", "Open received files directly from history").into()), control, t)}
             </div> }))
     }
@@ -256,13 +256,13 @@ impl LanManagementPage {
         } else if self.device_sync["enabled"] != true {
             (tr("已暂停", "Paused"), false)
         } else if self.status["running"] != true {
-            (tr("等待连接", "Waiting for connection"), false)
+            (tr("等待连接", "Connecting…"), false)
         } else if let Some(error) = last_error {
             sync_error_summary(error)
         } else if peer.is_some_and(|peer| peer["online"] == true) {
             (tr("已开启", "On"), false)
         } else {
-            (tr("等待设备上线", "Waiting for device"), false)
+            (tr("等待设备上线", "Waiting for device…"), false)
         };
         let row = rsx! {
             <div w_full min_w_0 flex_none min_h={px(32.)} px={px(12.)}

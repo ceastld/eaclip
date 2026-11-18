@@ -75,6 +75,7 @@ impl ClipboardPreview {
             this.save_appearance(patch.clone(), cx);
         });
         self.appearance_controls = Some((controls, subscription));
+        self.phrases.reset_picker();
         self.list_settings_appearance = true;
         self.list_settings_generation = self.list_settings_generation.wrapping_add(1);
         self.list_settings = Some(cx.new(|cx| {
@@ -155,7 +156,7 @@ impl ClipboardPreview {
             <div h={px(p.tab_height - 1.0)} flex_1 min_w_0 flex items_center gap={px(20.0)} />
         };
         for (appearance, label) in [
-            (true, tr("列表外观", "Appearance")),
+            (true, tr("列表外观", "Style")),
             (false, tr("交互行为", "Behavior")),
         ] {
             let active = self.list_settings_appearance == appearance;
@@ -228,7 +229,7 @@ impl ClipboardPreview {
                     .pt(px(p.body_padding_top))
                     .pb(px(p.body_padding_bottom))
                     .when(self.list_settings_appearance, |body| {
-                        body.children(
+                        body.child(self.phrase_settings(cx)).children(
                             self.appearance_controls
                                 .as_ref()
                                 .map(|(controls, _)| controls.clone()),
@@ -246,7 +247,7 @@ impl ClipboardPreview {
                                 <div id={"list-settings-categories"} min_h={px(29.0)} mt={px(4.0)}
                                     flex_none flex items_center justify_between cursor_pointer
                                     text_size={px(p.font_size)} text_color={color(&t.text_muted)}>
-                                    {tr("自定义分类标签", "Customize categories")}
+                                    {tr("自定义分类标签", "Edit tabs")}
                                     {self.icon("chevron-right", 14.0, color(&t.text_muted))}
                                 </div>
                             }

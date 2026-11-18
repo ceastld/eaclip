@@ -17,7 +17,7 @@ pub(super) fn shortcuts(
 ) -> Div {
     let entries = [
         (
-            tr("打开与粘贴", "Open and paste"),
+            tr("打开与粘贴", "Open & paste"),
             tr(
                 "默认按住 Alt 并按 ` 打开预览，松开 Alt 粘贴选中项。自定义快捷键时，松开其修饰键执行；没有修饰键则松开快捷键执行。已选择快捷操作时，松键执行该操作。",
                 "By default, hold Alt and press ` to preview; release Alt to paste. With a custom shortcut, release its modifier keys, or the shortcut itself if it has no modifiers. If an action is selected, release to run it.",
@@ -56,7 +56,7 @@ pub(super) fn shortcuts(
             ),
         ),
         (
-            tr("图片贴图", "Pin an image"),
+            tr("图片贴图", "Pin image"),
             tr(
                 "图片条目可点击浮窗中的“贴图”，需要先运行 Snipaste 或 PixPin。",
                 "For an image, click Pin in the overlay. Snipaste or PixPin must be running.",

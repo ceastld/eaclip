@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Gpui', 'Tauri')][string]$Renderer = 'Gpui',
     [ValidateSet('', 'x86_64-pc-windows-msvc', 'aarch64-pc-windows-msvc')][string]$Target = '',
-    [switch]$IncludeNativeSymbols
+    [switch]$IncludeNativeSymbols,
+    [switch]$IncludeCli
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,6 +24,11 @@ $artifacts = @($records | Where-Object {
 })
 if ($artifacts.Count -ne 1) { throw "Expected one desktop executable; see $BuildLog" }
 $artifact = $artifacts[0]
+$cliArtifact = $null
+if ($IncludeCli) {
+    . (Join-Path $PSScriptRoot 'StandaloneCliPayload.ps1')
+    $cliArtifact = Get-ClipHostStandaloneCliArtifact -Records $records -ApplicationExecutable $artifact.executable
+}
 if ($artifact.features -contains 'native-acceptance') {
     throw 'Native acceptance builds are isolated test fixtures, not standalone application packages.'
 }
@@ -33,6 +39,7 @@ if ($artifact.profile.opt_level -eq '0' -or $artifact.profile.test -or
 
 $source = [IO.File]::OpenRead([IO.Path]::GetFullPath($artifact.executable))
 $symbols = $null
+$cliPayload = $null
 $runtimeSources = [Collections.Generic.List[object]]::new()
 $excludedRuntimeFiles = [Collections.Generic.List[object]]::new()
 try {
@@ -44,6 +51,9 @@ try {
     . (Join-Path $PSScriptRoot 'Read-NativeSymbols.ps1')
     $image = Read-ClipHostPortableExecutable -Stream $source
     $architecture = $image.architecture
+    if ($cliArtifact) {
+        $cliPayload = Open-ClipHostStandaloneCliPayload -CliExecutable $cliArtifact.executable -ApplicationExecutable $artifact.executable -Architecture $architecture
+    }
     # Portable self-updates become the installed manifest too. Keep Quicker's
     # package identity and independent compatibility floor in every new package.
     $packageCompatibility = [ordered]@{}
@@ -111,6 +121,11 @@ try {
     $source.Position = 0
     $destination = [IO.File]::Open($exe, [IO.FileMode]::CreateNew)
     try { $source.CopyTo($destination) } finally { $destination.Dispose() }
+    if ($cliPayload) {
+        $cliPayload.stream.Position = 0
+        $destination = [IO.File]::Open((Join-Path $OutputDirectory 'eaclip-cli.exe'), [IO.FileMode]::CreateNew)
+        try { $cliPayload.stream.CopyTo($destination) } finally { $destination.Dispose() }
+    }
     if ($symbols) {
         # Preserve the RSDS basename even though the portable EXE is renamed.
         $symbols.Position = 0
@@ -123,6 +138,7 @@ try {
     }
 } finally {
     if ($symbols) { $symbols.Dispose() }
+    if ($cliPayload) { $cliPayload.stream.Dispose() }
     foreach ($runtimeSource in $runtimeSources) { $runtimeSource.stream.Dispose() }
     $source.Dispose()
 }
@@ -150,6 +166,7 @@ $standaloneInfo = [ordered]@{
 }
 foreach ($key in $packageCompatibility.Keys) { $standaloneInfo[$key] = $packageCompatibility[$key] }
 $standaloneInfo | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $OutputDirectory 'build-info.json') -Encoding utf8NoBOM
+$cliInstructions = if ($IncludeCli) { '脚本入口 eaclip-cli.exe 已包含在此目录及 files 校验清单中；与主程序一同保留。' } else { '' }
 $rendererRequirements = if ($Renderer -eq 'Gpui') {
     'Native GPUI rendering; WebView2, frontend assets and a frontend server are not required.'
 } else {
@@ -174,6 +191,7 @@ Architecture: $architecture ($($image.target)). Use the package matching your Wi
 Extract the entire folder and run cliphost-app.exe. Keep the included VC runtime DLLs beside it.
 Node.js, Rust and a running Vite server are not required.
 $rendererRequirements
+$cliInstructions
 
 Data: reuse the saved Rust location. On first update, detect and remember an existing C# / WPF data folder,
 including Documents\Quicker\Ceastld; otherwise use %LocalAppData%\BetterClipTauri.

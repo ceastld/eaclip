@@ -354,6 +354,9 @@ pub struct MenuGlobalSettings {
     /// Profile directory (`Default`, `Profile 1`) within `bookmark_browser`.
     #[serde(default)]
     pub bookmark_profile: String,
+    /// Extension environment name; independent of the local profile directory.
+    #[serde(default = "default_bookmark_environment")]
+    pub bookmark_environment: String,
     #[serde(default)]
     pub bookmark_file_path: String,
     pub grouping: bool,
@@ -361,7 +364,22 @@ pub struct MenuGlobalSettings {
     /// Small window thumbnail atop the window actions submenu (2026-10-23, off by default).
     #[serde(default)]
     pub show_window_thumbnail: bool,
+    /// 2026-10-31 top-edge Super menu dock (replaces the file line); a global
+    /// edge trigger, so off by default.
+    #[serde(default)]
+    pub top_edge_dock: bool,
+    /// Milliseconds the pointer rests at the top edge before the dock appears.
+    #[serde(default = "default_top_edge_dock_delay")]
+    pub top_edge_dock_delay: i32,
 }
+
+/// 2026-10-31: 200 ms felt sluggish for the dock; 120 ms still ignores a
+/// pointer sliding along the edge.
+fn default_top_edge_dock_delay() -> i32 {
+    120
+}
+
+fn default_bookmark_environment() -> String { "*".into() }
 
 impl Default for MenuGlobalSettings {
     fn default() -> Self {
@@ -377,10 +395,13 @@ impl Default for MenuGlobalSettings {
             show_book_marks_menu: false,
             bookmark_browser: String::new(),
             bookmark_profile: String::new(),
+            bookmark_environment: default_bookmark_environment(),
             bookmark_file_path: String::new(),
             grouping: false,
             quick_load_submenu: false,
             show_window_thumbnail: false,
+            top_edge_dock: false,
+            top_edge_dock_delay: default_top_edge_dock_delay(),
         }
     }
 }
@@ -514,9 +535,9 @@ pub fn global_appearance_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
         {
             let mut field = enum_f(
                 "UiThemeMode",
-                tr("界面主题", "Interface theme"),
+                tr("界面主题", "Theme"),
                 tr("应用与宿主界面使用的主题；修改背景色或前景色后会自动切换为「自定义」。", "Theme for the app and host interface. Changing background or foreground colors switches to Custom."),
-                tr("外观", "Appearance"),
+                tr("外观", "Style"),
                 1,
                 &cfg.ui_theme_mode,
                 &[("auto", Text("跟随系统", "System")), ("light", Text("浅色", "Light")), ("dark", Text("深色", "Dark")), ("custom", Text("自定义", "Custom"))],
@@ -540,9 +561,9 @@ pub fn global_appearance_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
         {
             let mut field = f(
                 "WindowBackgroundColor",
-                tr("背景色", "Background color"),
+                tr("背景色", "Background"),
                 tr("WPF 颜色格式：#AARRGGBB 或 #RRGGBB（无 Alpha 时视为 FF）。", "Color format: #AARRGGBB or #RRGGBB (FF alpha if omitted)."),
-                tr("外观", "Appearance"),
+                tr("外观", "Style"),
                 "text",
                 2,
                 json!(cfg.window_background_color),
@@ -553,9 +574,9 @@ pub fn global_appearance_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
         {
             let mut field = f(
                 "FontForegroundColor",
-                tr("前景色", "Foreground color"),
+                tr("前景色", "Foreground"),
                 tr("WPF 颜色格式：#AARRGGBB 或 #RRGGBB（无 Alpha 时视为 FF）。", "Color format: #AARRGGBB or #RRGGBB (FF alpha if omitted)."),
-                tr("外观", "Appearance"),
+                tr("外观", "Style"),
                 "text",
                 3,
                 json!(cfg.font_foreground_color),
@@ -566,9 +587,9 @@ pub fn global_appearance_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
         {
             let mut field = f(
                 "WindowBackgroundImagePath",
-                tr("窗口背景图", "Window background image"),
+                tr("窗口背景图", "Background image"),
                 tr("ClipHost 剪贴板/面板 WebView 页面全屏背景图（由前端 CSS 渲染）；留空表示仅使用背景色。", "Background image for clipboard and panel web pages, rendered by CSS. Leave blank to use only the background color."),
-                tr("外观", "Appearance"),
+                tr("外观", "Style"),
                 "text",
                 4,
                 json!(cfg.window_background_image_path),
@@ -582,7 +603,7 @@ pub fn global_appearance_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
                 "WindowBackgroundBlend",
                 tr("背景混合比例", "Background blend"),
                 tr("有背景图时生效：0 偏主题色（背景较淡），100 偏背景图（更透出图片）。", "With a background image: 0 favors the theme color; 100 favors the image."),
-                tr("外观", "Appearance"),
+                tr("外观", "Style"),
                 5,
                 json!(cfg.window_background_blend),
                 0.0,
@@ -595,9 +616,9 @@ pub fn global_appearance_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
         },
         f(
             "WindowBackgroundFrostedGlass",
-            tr("背景毛玻璃", "Frosted glass background"),
+            tr("背景毛玻璃", "Frosted glass"),
             tr("有背景图时生效：开启后对窗口外壳使用毛玻璃模糊；关闭则仅半透明混合，性能更好、边缘也更干净。", "With a background image, blur the window surface. Turn off for simple translucent blending, better performance and cleaner edges."),
-            tr("外观", "Appearance"),
+            tr("外观", "Style"),
             "boolean",
             6,
             json!(cfg.window_background_frosted_glass),
@@ -605,9 +626,9 @@ pub fn global_appearance_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
         {
             let mut field = f(
                 "UiLanguage",
-                tr("界面语言", "Interface language"),
+                tr("界面语言", "Language"),
                 tr("默认跟随 Windows 显示语言；已打开的窗口立即切换。", "Follows the Windows display language by default; open windows switch immediately."),
-                tr("外观", "Appearance"),
+                tr("外观", "Style"),
                 "enum",
                 7,
                 json!(LanguageMode::from_wire(&cfg.ui_language).wire_name()),
@@ -626,7 +647,7 @@ pub fn home_global_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
     vec![
         f(
             "LaunchAtStartup",
-            tr("开机自启", "Launch at sign-in"),
+            tr("开机自启", "Start at login"),
             tr("启用后将在当前用户登录 Windows 时自动启动 BetterClip。", "Start BetterClip when the current user signs in to Windows."),
             tr("系统", "System"),
             "boolean",
@@ -635,7 +656,7 @@ pub fn home_global_fields(cfg: &GlobalAppConfig) -> Vec<Value> {
         ),
         f(
             "RunAsAdministrator",
-            tr("以管理员身份运行", "Run as administrator"),
+            tr("以管理员身份运行", "Run as admin"),
             tr("启用后冷启动将尝试管理员权限；更改后可按提示重启。DEBUG 构建默认不自动提权，需设置环境变量 CEA_CLIPHOST_ALLOW_DEBUG_ELEVATION=1 或使用 Release。", "Request administrator rights on cold start. Restart when prompted after changing. Debug builds need CEA_CLIPHOST_ALLOW_DEBUG_ELEVATION=1; Release builds support automatic elevation."),
             tr("系统", "System"),
             "boolean",
@@ -649,16 +670,16 @@ pub fn panel_fields(cfg: &PanelSettings) -> Vec<Value> {
     vec![
         enum_f(
             "ShowWindowLocation1",
-            tr("打开超级面板时的位置", "Super panel position"),
+            tr("打开超级面板时的位置", "Panel position"),
             tr("通过 Quicker 动作、快捷键等方式打开时，窗口出现的位置；鼠标与键盘触发共用此项。", "Window position when opened by Quicker actions or shortcuts. Shared by mouse and keyboard triggers."),
             tr("触发", "Triggers"),
             1,
             &cfg.show_window_location1,
             &[
-                ("NA", Text("自动，一般是上次位置", "Auto (usually last position)")),
-                ("CenterScreen", Text("屏幕中心", "Screen center")),
-                ("MouseAround", Text("鼠标周围", "Near pointer")),
-                ("MouseRightBottom", Text("鼠标右下", "Below-right of pointer")),
+                ("NA", Text("自动，一般是上次位置", "Auto")),
+                ("CenterScreen", Text("屏幕中心", "Center")),
+                ("MouseAround", Text("鼠标周围", "Near cursor")),
+                ("MouseRightBottom", Text("鼠标右下", "Below cursor")),
             ],
         ),
         enum_f(
@@ -683,7 +704,7 @@ pub fn panel_fields(cfg: &PanelSettings) -> Vec<Value> {
             "PanelStyle",
             tr("面板样式", "Panel style"),
             "",
-            tr("外观", "Appearance"),
+            tr("外观", "Style"),
             4,
             &cfg.panel_style,
             &[
@@ -700,9 +721,9 @@ pub fn user_fields(cfg: &UserSettings) -> Vec<Value> {
     vec![
         f(
             "SaveReOpenHistory",
-            tr("记录资源管理器历史", "Keep File Explorer history"),
+            tr("记录资源管理器历史", "Record folder history"),
             tr("关闭文件夹窗口或标签页后记录该目录；修改立即生效。关闭后停止新增，已有记录仍可在「重开」菜单中使用。", "Record folders when their File Explorer window or tab closes. Changes apply immediately. Turning this off stops new records while keeping existing history available in Reopen."),
-            tr("资源管理器", "File Explorer"),
+            tr("资源管理器", "Explorer"),
             "boolean",
             1,
             json!(cfg.save_re_open_history),
@@ -711,7 +732,7 @@ pub fn user_fields(cfg: &UserSettings) -> Vec<Value> {
             "ReOpenHistoryLimit",
             tr("历史记录上限", "History limit"),
             tr("最多保存的目录数，重复目录更新到最近位置。调小后不会立即删除已有历史，下一次记录目录时清理超出部分。", "Maximum saved folders. Repeated folders move to the most recent position. Reducing the limit keeps existing history until the next folder is recorded."),
-            tr("资源管理器", "File Explorer"),
+            tr("资源管理器", "Explorer"),
             2,
             json!(cfg.re_open_history_limit),
             1.0,
@@ -722,7 +743,7 @@ pub fn user_fields(cfg: &UserSettings) -> Vec<Value> {
             "ReOpenMenuLimit",
             tr("重开菜单显示数量", "Folders in Reopen"),
             tr("「重开」菜单最多显示的最近关闭目录数，不包含当前已打开的目录，且不超过历史记录上限。", "Maximum recently closed folders shown in Reopen, excluding folders that are currently open. Cannot exceed the history limit."),
-            tr("资源管理器", "File Explorer"),
+            tr("资源管理器", "Explorer"),
             3,
             json!(cfg.re_open_menu_limit),
             1.0,
@@ -731,9 +752,9 @@ pub fn user_fields(cfg: &UserSettings) -> Vec<Value> {
         ),
         f(
             "ReOpenShowMenu",
-            tr("运行重开动作时显示快捷窗", "Show the quick window when running Reopen"),
+            tr("运行重开动作时显示快捷窗", "Quick reopen window"),
             tr("关闭时直接重开最近目录；按住 Ctrl 仍可打开快捷窗。", "When off, reopen the latest folder directly. Holding Ctrl still opens the quick window."),
-            tr("资源管理器", "File Explorer"),
+            tr("资源管理器", "Explorer"),
             "boolean", 4, json!(cfg.re_open_show_menu),
         ),
     ]
@@ -742,10 +763,10 @@ pub fn user_fields(cfg: &UserSettings) -> Vec<Value> {
 pub fn menu_global_fields(cfg: &MenuGlobalSettings) -> Vec<Value> {
     vec![
         num_f("MenuFontSize", tr("字体大小", "Font size"), "", "", 1, json!(cfg.menu_font_size), 12.0, 30.0, 1.0),
-        num_f("MenuMaxWidth", tr("菜单最大宽度", "Maximum menu width"), "", "", 2, json!(cfg.menu_max_width), 300.0, 500.0, 10.0),
+        num_f("MenuMaxWidth", tr("菜单最大宽度", "Max width"), "", "", 2, json!(cfg.menu_max_width), 300.0, 500.0, 10.0),
         num_f(
             "MaxSingleLoadCount",
-            tr("子菜单加载条目", "Submenu batch size"),
+            tr("子菜单加载条目", "Items per load"),
             tr("子菜单首次显示条数；在子菜单内向下滚动滚轮时每次追加相同条数", "Items shown when a submenu opens. Scrolling down loads another batch of the same size."),
             "",
             3,
@@ -762,24 +783,24 @@ pub fn menu_global_fields(cfg: &MenuGlobalSettings) -> Vec<Value> {
             4,
             &cfg.show_menu_location,
             &[
-                ("NA", Text("自动，一般是上次位置", "Auto (usually last position)")),
-                ("CenterScreen", Text("屏幕中心", "Screen center")),
-                ("MouseAround", Text("鼠标周围", "Near pointer")),
-                ("MouseRightBottom", Text("鼠标右下", "Below-right of pointer")),
+                ("NA", Text("自动，一般是上次位置", "Auto")),
+                ("CenterScreen", Text("屏幕中心", "Center")),
+                ("MouseAround", Text("鼠标周围", "Near cursor")),
+                ("MouseRightBottom", Text("鼠标右下", "Below cursor")),
             ],
         ),
-        f("ShowSettingItem", tr("显示设置按钮", "Show Settings button"), "", tr("显示条目", "Visible items"), "boolean", 5, json!(cfg.show_setting_item)),
-        f("ShowAdderMenuItem", tr("显示添加收藏菜单", "Show Add to favorites"), "", tr("显示条目", "Visible items"), "boolean", 6, json!(cfg.show_adder_menu_item)),
-        f("ShowWindowMenuItem", tr("显示窗口菜单", "Show window menu"), "", tr("显示条目", "Visible items"), "boolean", 7, json!(cfg.show_window_menu_item)),
-        f("ExpandWindowMenu", tr("展开窗口菜单", "Expand window menu"), "", tr("显示条目", "Visible items"), "boolean", 8, json!(cfg.expand_window_menu)),
-        f("ShowBookMarksMenu", tr("显示浏览器书签", "Show browser bookmarks"), "", tr("显示条目", "Visible items"), "boolean", 9, json!(cfg.show_book_marks_menu)),
-        enum_f("BookmarkBrowser", tr("书签浏览器", "Bookmark browser"), tr("无需扩展，自动读取本机书签", "Read local bookmarks without an extension"), tr("浏览器书签", "Bookmarks"), 13, &cfg.bookmark_browser,
-            &[("", Text("自动（第一个发现的浏览器）", "Automatic (first found)")), ("msedge", Text("Microsoft Edge", "Microsoft Edge")), ("chrome", Text("Google Chrome", "Google Chrome")), ("chromium", Text("Chromium", "Chromium")), ("vivaldi", Text("Vivaldi", "Vivaldi")), ("brave", Text("Brave", "Brave")), ("360chromex", Text("360 极速浏览器", "360 Chrome"))]),
-        f("BookmarkFilePath", tr("书签文件路径", "Bookmarks file"), tr("可选：指定 Bookmarks 文件；留空发现 Default 和 Profile *", "Optional Bookmarks file; otherwise discover Default and Profile *"), tr("浏览器书签", "Bookmarks"), "text", 14, json!(cfg.bookmark_file_path)),
-        f("Grouping", tr("按进程分组", "Group by process"), "", tr("窗口菜单分组", "Window menu grouping"), "boolean", 10, json!(cfg.grouping)),
+        f("ShowSettingItem", tr("显示设置按钮", "Settings button"), "", tr("显示条目", "Items"), "boolean", 5, json!(cfg.show_setting_item)),
+        f("ShowAdderMenuItem", tr("显示添加收藏菜单", "Add to favorites"), "", tr("显示条目", "Items"), "boolean", 6, json!(cfg.show_adder_menu_item)),
+        f("ShowWindowMenuItem", tr("显示窗口菜单", "Window menu"), "", tr("显示条目", "Items"), "boolean", 7, json!(cfg.show_window_menu_item)),
+        f("ExpandWindowMenu", tr("展开窗口菜单", "Expand windows"), "", tr("显示条目", "Items"), "boolean", 8, json!(cfg.expand_window_menu)),
+        f("ShowBookMarksMenu", tr("显示浏览器书签", "Browser bookmarks"), "", tr("显示条目", "Items"), "boolean", 9, json!(cfg.show_book_marks_menu)),
+        enum_f("BookmarkBrowser", tr("书签浏览器", "Bookmark browser"), tr("通过 Quicker 已连接的浏览器扩展读取书签", "Read bookmarks through a browser extension connected to Quicker"), tr("浏览器书签", "Bookmarks"), 13, &cfg.bookmark_browser,
+            &[("", Text("自动（第一个发现的浏览器）", "Auto")), ("msedge", Text("Microsoft Edge", "Microsoft Edge")), ("chrome", Text("Google Chrome", "Google Chrome")), ("chromium", Text("Chromium", "Chromium")), ("vivaldi", Text("Vivaldi", "Vivaldi")), ("brave", Text("Brave", "Brave")), ("360chromex", Text("360 极速浏览器", "360 Chrome"))]),
+        f("BookmarkFilePath", tr("书签文件路径", "Bookmarks file"), tr("可选：指定文件将覆盖扩展来源；留空使用 Quicker 浏览器连接", "Optional file overrides the extension source; leave empty to use a Quicker browser connection"), tr("浏览器书签", "Bookmarks"), "text", 14, json!(cfg.bookmark_file_path)),
+        f("Grouping", tr("按进程分组", "Group by process"), "", tr("窗口菜单分组", "Window groups"), "boolean", 10, json!(cfg.grouping)),
         f(
             "QuickLoadSubmenu",
-            tr("快速加载子菜单", "Load submenus at once"),
+            tr("快速加载子菜单", "Load all submenu items"),
             tr("开启后展开子菜单时一次性加载全部条目（条目很多时可能卡顿）", "Load every item when a submenu opens (large menus may be slow)."),
             "",
             "boolean",
@@ -788,19 +809,25 @@ pub fn menu_global_fields(cfg: &MenuGlobalSettings) -> Vec<Value> {
         ),
         f(
             "ShowWindowThumbnail",
-            tr("悬停显示窗口缩略图", "Show window thumbnail on hover"),
+            tr("悬停显示窗口缩略图", "Hover thumbnails"),
             tr("在窗口操作菜单顶部显示小尺寸缩略图", "Show a small thumbnail atop the window actions menu."),
-            tr("窗口菜单分组", "Window menu grouping"),
+            tr("窗口菜单分组", "Window groups"),
             "boolean",
             12,
             json!(cfg.show_window_thumbnail),
         ),
+        f("TopEdgeDock", tr("贴顶超级菜单", "Top-edge Super menu"),
+            tr("指针停在屏幕顶边时弹出超级菜单分类按钮，悬停按钮切换菜单；全屏程序时不触发。", "Resting the pointer at the top screen edge shows the Super menu category buttons; hover a button to open its menu. Off while a full-screen program is in front."),
+            "", "boolean", 13, json!(cfg.top_edge_dock)),
+        num_f("TopEdgeDockDelay", tr("贴顶弹出延迟（毫秒）", "Top-edge delay (ms)"),
+            tr("指针在顶边停留多久后弹出；越小越快，但沿顶边移动时更易误触。", "How long to rest at the top edge before the buttons appear. Shorter is faster but triggers more easily while moving along the edge."),
+            "", 14, json!(cfg.top_edge_dock_delay), 0.0, TOP_EDGE_LINE_DELAY_MAX as f64, 50.0),
     ]
 }
 
 pub fn file_menu_fields(cfg: &FileMenuSettings) -> Vec<Value> {
     vec![
-        f("PreferInternalBrowser", tr("文件夹优先在自有浏览器打开", "Prefer the built-in folder browser"),
+        f("PreferInternalBrowser", tr("文件夹优先在自有浏览器打开", "Built-in folder browser"),
             tr("在超级菜单内连续浏览目录；普通文件仍使用系统默认应用打开。", "Browse folders continuously inside Super menu; files still open in their default applications."),
             "", "boolean", 0, json!(cfg.prefer_internal_browser)),
         f("ExpandOpenedFolder", tr("展开 打开的文件夹", "Expand open folders"), "", "", "boolean", 1, json!(cfg.expand_opened_folder)),
@@ -839,18 +866,14 @@ pub fn file_menu_fields(cfg: &FileMenuSettings) -> Vec<Value> {
             "",
             4,
             &cfg.show_type,
-            &[("dir_file", Text("文件&文件夹", "Files and folders")), ("dir", Text("只显示文件夹", "Folders only")), ("file", Text("只显示文件", "Files only"))],
+            &[("dir_file", Text("文件&文件夹", "All")), ("dir", Text("只显示文件夹", "Folders")), ("file", Text("只显示文件", "Files"))],
         ),
-        f("ShowExtension", tr("显示扩展名", "Show extensions"), "", "", "boolean", 5, json!(cfg.show_extension)),
+        f("ShowExtension", tr("显示扩展名", "File extensions"), "", "", "boolean", 5, json!(cfg.show_extension)),
         f("FileSearchParttern", tr("筛选文件", "File filter"), "", "", "text", 6, json!(cfg.file_search_parttern)),
-        f("ShowHiddenFiles", tr("显示隐藏文件", "Show hidden files"), "", "", "boolean", 7, json!(cfg.show_hidden_files)),
-        f("SplitDirAndFile", tr("文件夹和文件分开显示", "Separate folders and files"), "", "", "boolean", 8, json!(cfg.split_dir_and_file)),
-        f("TopEdgeLine", tr("贴顶晾衣绳", "Top-edge file line"),
-            tr("指针停在屏幕顶边时落下文件菜单的绳子；全屏程序时不触发。", "Resting the pointer at the top screen edge drops a line of file menu folders; off while a full-screen program is in front."),
-            "", "boolean", 9, json!(cfg.top_edge_line)),
-        num_f("TopEdgeLineDelay", tr("晾衣绳展开延迟（毫秒）", "File line delay (ms)"),
-            tr("指针在顶边停留多久后落下；越小越快，但沿顶边移动时更易误触。", "How long to rest at the top edge before the line drops. Shorter is faster but triggers more easily while moving along the edge."),
-            "", 10, json!(cfg.top_edge_line_delay), 0.0, TOP_EDGE_LINE_DELAY_MAX as f64, 50.0),
+        f("ShowHiddenFiles", tr("显示隐藏文件", "Hidden files"), "", "", "boolean", 7, json!(cfg.show_hidden_files)),
+        f("SplitDirAndFile", tr("文件夹和文件分开显示", "Group folders & files"), "", "", "boolean", 8, json!(cfg.split_dir_and_file)),
+        // 2026-10-31: the top-edge file line is shelved in favor of the
+        // Super menu dock; its TopEdgeLine fields stay stored but unlisted.
     ]
 }
 
@@ -944,13 +967,14 @@ pub fn apply_user(cfg: &mut UserSettings, values: &Value) {
 
 pub fn apply_menu_global(cfg: &mut MenuGlobalSettings, values: &Value) {
     if let Some(v) = take_str(values, "BookmarkBrowser") {
-        if ["", "msedge", "chrome", "chromium", "vivaldi", "brave", "360chromex"].contains(&v.as_str()) {
+        if v.len() <= 128 && v.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.')) {
             // Another browser's profile name means nothing here.
-            if cfg.bookmark_browser != v { cfg.bookmark_profile.clear(); }
+            if cfg.bookmark_browser != v { cfg.bookmark_profile.clear(); cfg.bookmark_environment = default_bookmark_environment(); }
             cfg.bookmark_browser = v;
         }
     }
     take_str(values, "BookmarkProfile").inspect(|v| cfg.bookmark_profile = v.trim().into());
+    take_str(values, "BookmarkEnvironment").inspect(|v| cfg.bookmark_environment = v.into());
     take_str(values, "BookmarkFilePath").inspect(|v| cfg.bookmark_file_path = v.trim().into());
 
     if let Some(v) = values
@@ -989,6 +1013,12 @@ pub fn apply_menu_global(cfg: &mut MenuGlobalSettings, values: &Value) {
     }
     if let Some(v) = take_bool(values, "ShowWindowThumbnail") {
         cfg.show_window_thumbnail = v;
+    }
+    if let Some(v) = take_bool(values, "TopEdgeDock") {
+        cfg.top_edge_dock = v;
+    }
+    if let Some(v) = values.get("TopEdgeDockDelay").and_then(Value::as_f64) {
+        cfg.top_edge_dock_delay = (v.round() as i32).clamp(0, TOP_EDGE_LINE_DELAY_MAX);
     }
 }
 
@@ -1061,6 +1091,19 @@ mod tests {
     }
 
     #[test]
+    fn top_edge_dock_defaults_off_and_roundtrips() {
+        let mut cfg: MenuGlobalSettings = serde_json::from_value(serde_json::to_value(MenuGlobalSettings::default()).unwrap()
+            .as_object().unwrap().iter().filter(|(key, _)| !key.starts_with("TopEdgeDock")).map(|(k, v)| (k.clone(), v.clone())).collect()).unwrap();
+        assert!(!cfg.top_edge_dock, "older configs must not gain a global edge trigger");
+        assert_eq!(cfg.top_edge_dock_delay, 120);
+        apply_menu_global(&mut cfg, &json!({"TopEdgeDock": true, "TopEdgeDockDelay": 5000}));
+        assert!(cfg.top_edge_dock);
+        assert_eq!(cfg.top_edge_dock_delay, TOP_EDGE_LINE_DELAY_MAX);
+        let field = menu_global_fields(&cfg).into_iter().find(|field| field["key"] == "TopEdgeDock").unwrap();
+        assert_eq!(field["value"], true);
+    }
+
+    #[test]
     fn top_edge_line_defaults_off_and_roundtrips() {
         let mut cfg: FileMenuSettings = serde_json::from_value(json!({"Files": r"D:\owned-folder"})).unwrap();
         assert!(!cfg.top_edge_line, "older configs must not gain a global edge trigger");
@@ -1068,8 +1111,8 @@ mod tests {
         let saved = serde_json::to_value(&cfg).unwrap();
         assert_eq!(saved["TopEdgeLine"], true);
         let restored: FileMenuSettings = serde_json::from_value(saved).unwrap();
-        let field = file_menu_fields(&restored).into_iter().find(|field| field["key"] == "TopEdgeLine").unwrap();
-        assert_eq!(field["value"], true);
+        assert!(restored.top_edge_line);
+        assert!(file_menu_fields(&restored).iter().all(|field| field["key"] != "TopEdgeLine"), "the shelved line is not listed");
         apply_file_menu(&mut cfg, &json!({"ShowExtension": false}));
         assert!(cfg.top_edge_line, "partial writes must preserve the line");
     }
@@ -1081,8 +1124,6 @@ mod tests {
         apply_file_menu(&mut cfg, &json!({"TopEdgeLineDelay": 350}));
         let restored: FileMenuSettings = serde_json::from_value(serde_json::to_value(&cfg).unwrap()).unwrap();
         assert_eq!(restored.top_edge_line_delay, 350);
-        let field = file_menu_fields(&restored).into_iter().find(|field| field["key"] == "TopEdgeLineDelay").unwrap();
-        assert_eq!(field["value"], 350);
         apply_file_menu(&mut cfg, &json!({"TopEdgeLineDelay": -20}));
         assert_eq!(cfg.top_edge_line_delay, 0);
         apply_file_menu(&mut cfg, &json!({"TopEdgeLineDelay": 99_999}));

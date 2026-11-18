@@ -82,6 +82,15 @@ use model::{ContentProjection, MixedPart, StepProjection, TextProjection};
 
 pub use crate::overlay::html_view::{load_html_preview, LoadedHtml};
 
+/// A caption participates in the row layout, including for local-image previews.
+pub(crate) fn information_caption(label: String, theme: &crate::preview::ThemeTokens) -> gpui::Div {
+    rsx! {
+        <div ml_auto min_w_0 max_w_full whitespace_nowrap text_ellipsis overflow_hidden
+            text_size={px(10.)} line_height={px(14.)} font_weight={FontWeight::NORMAL}
+            text_color={color(&theme.text_muted)}>{label}</div>
+    }
+}
+
 /// Use only for an already prepared HTML detail projection. This delegates to
 /// the existing inert model/renderer; list DTOs normally have no HTML source.
 pub fn render_loaded_html(
@@ -1205,8 +1214,8 @@ pub fn render_content_with_bindings(
     }
 }
 
-/// The body badge owner uses this same classification to suppress a file-count
-/// pill for a single image, including while its bitmap is still loading.
+/// The row caption uses this same classification to suppress the file count
+/// for a single image, including while its bitmap is still loading.
 pub fn history_file_image_preview<'a>(
     projection: &'a files::FileListProjection,
     resources: &ContentResources,
@@ -1464,6 +1473,7 @@ fn render_text_content_observed(
         <div w_full min_w_0 text_size={px(metrics.font_size)}
             line_height={relative(metrics.line_height)} />
     }
+        .text_ellipsis()
         .line_clamp(metrics.max_lines.max(1))
         .max_h(px(metrics.font_size
             * metrics.line_height

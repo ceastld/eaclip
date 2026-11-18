@@ -1,0 +1,20 @@
+[package]
+name = "cliphost-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Lightweight command-line client for the existing ClipHost process"
+
+[[bin]]
+name = "eaclip-cli"
+path = "src/main.rs"
+
+[dependencies]
+serde_json = { workspace = true }
+serde = { workspace = true }
+blake3 = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+tokio = { version = "1", features = ["rt", "net", "time", "io-util"] }
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Pipes", "Win32_System_RemoteDesktop", "Win32_System_Threading", "Win32_UI_WindowsAndMessaging"] }

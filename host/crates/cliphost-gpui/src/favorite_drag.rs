@@ -207,7 +207,7 @@ impl ContentDrag {
     pub(crate) fn verb(&self, control: bool, external: bool) -> &'static str {
         match self.source {
             _ if external => tr("复制", "Copy"),
-            DragSource::History { .. } => tr("收藏", "Save favorite"),
+            DragSource::History { .. } => tr("收藏", "Save"),
             _ if control => tr("复制", "Copy"),
             _ => tr("移动", "Move"),
         }
@@ -376,7 +376,42 @@ impl Global for Routing {}
 #[derive(Clone)]
 enum OfferedDestination {
     Favorite(DropTarget),
+    HistoryFolder(HistoryFolderDrop),
     Lan(String),
+}
+
+/// Freeze the displayed folder and its tree revision together, including the synthetic root.
+#[derive(Clone)]
+pub(crate) struct HistoryFolderDrop {
+    pub folder: String,
+    pub revision: String,
+}
+
+impl HistoryFolderDrop {
+    pub fn clear_offer(window: &Window) {
+        #[cfg(windows)]
+        if let Ok(hwnd) = crate::platform::hwnd(window) {
+            let mut targets = TARGETS.lock().unwrap();
+            let key = hwnd.0 as isize;
+            if targets.get(&key).is_some_and(|target| matches!(target.destination, OfferedDestination::HistoryFolder(_))) {
+                targets.remove(&key);
+            }
+        }
+    }
+
+    pub fn save(&self, host: &HostState, drag: &ContentDrag) -> Result<Value, String> {
+        let mut request = json!({"ids":drag.item_ids, "expectedRevision":self.revision, "operationId":drag.operation_id});
+        if self.folder.is_empty() {
+            host.favorite_save_history_to_root(&request)
+        } else {
+            request["parentId"] = json!(self.folder);
+            host.favorite_save_history(&request)
+        }
+    }
+
+    pub fn offer(&self, drag: &ContentDrag, bounds: gpui::Bounds<gpui::Pixels>, window: &Window, host: Arc<HostState>) {
+        offer_destination(drag, OfferedDestination::HistoryFolder(self.clone()), bounds, window, host);
+    }
 }
 
 #[derive(Clone)]
@@ -398,9 +433,14 @@ struct LanSurface {
 
 pub(crate) struct NativeAcceptance {
     pub host: Arc<HostState>,
-    pub request: Value,
     pub drag: ContentDrag,
-    pub lan_conversation: Option<String>,
+    pub action: NativeDropAction,
+}
+
+pub(crate) enum NativeDropAction {
+    Favorites(Value),
+    HistoryFolder(HistoryFolderDrop),
+    Lan(String),
 }
 
 static NATIVE: Mutex<Option<ContentDrag>> = Mutex::new(None);
@@ -584,20 +624,25 @@ pub(crate) fn accept_native(
         )
         .into());
     }
-    let (request, lan_conversation) = match &offered.destination {
-        OfferedDestination::Favorite(target) => (offered.drag.request(target, control), None),
+    let action = match offered.destination {
+        OfferedDestination::Favorite(target) => NativeDropAction::Favorites(offered.drag.request(&target, control)),
+        OfferedDestination::HistoryFolder(folder) => {
+            if !matches!(offered.drag.source, DragSource::History { .. }) {
+                return Err(tr("请拖入剪贴板记录", "Drag a clipboard history item here").into());
+            }
+            NativeDropAction::HistoryFolder(folder)
+        }
         OfferedDestination::Lan(conversation) => {
             if !matches!(offered.drag.source, DragSource::History { .. }) {
                 return Err("LAN accepts history items only.".into());
             }
-            (json!({"ids":offered.drag.item_ids,"conversationId":conversation}), Some(conversation.clone()))
+            NativeDropAction::Lan(conversation)
         }
     };
     Ok(NativeAcceptance {
         host: offered.host,
-        request,
         drag: offered.drag,
-        lan_conversation,
+        action,
     })
 }
 
@@ -1066,7 +1111,8 @@ mod tests {
         assert!(accept_native("different-gesture", 99, (20, 20),false).is_err());
         assert!(accept_native(&drag.operation_id, 99, (120, 20),false).is_err());
         let accepted = accept_native(&drag.operation_id, 99, (20, 20),true).unwrap();
-        assert_eq!(accepted.request["copy"],true);
+        let NativeDropAction::Favorites(request) = &accepted.action else { panic!("expected favorites") };
+        assert_eq!(request["copy"],true);
         TARGETS.lock().unwrap().insert(
             99,
             OfferedTarget {
@@ -1080,8 +1126,8 @@ mod tests {
                 bounds: (0, 0, 100, 100),
             },
         );
-        assert_eq!(accepted.request["targetParentId"], "original-folder");
-        assert_eq!(accepted.request["anchorId"], "anchor");
+        assert_eq!(request["targetParentId"], "original-folder");
+        assert_eq!(request["anchorId"], "anchor");
         assert!(accepted.drag.claim());
         accepted.drag.mark_native_accepted();
         assert!(
@@ -1113,8 +1159,8 @@ mod tests {
         TARGETS.lock().unwrap().insert(98, OfferedTarget {
             drag: drag.clone(), destination: OfferedDestination::Lan("all".into()), host, bounds: (0,0,100,100),
         });
-        assert_eq!(accepted.lan_conversation.as_deref(), Some("dm:peer-a"));
-        assert_eq!(accepted.request["ids"], json!(["history-a"]));
+        assert!(matches!(accepted.action, NativeDropAction::Lan(ref id) if id == "dm:peer-a"));
+        assert_eq!(accepted.drag.item_ids, ["history-a"]);
         assert!(accepted.drag.claim());
         assert!(accept_native(&drag.operation_id,98,(50,50),false).is_err());
         TARGETS.lock().unwrap().remove(&98);
@@ -1145,8 +1191,8 @@ mod tests {
         assert!(accept_native(&drag.operation_id, hwnd, (110, 50), false).is_err());
         let accepted = accept_native(&drag.operation_id, hwnd, (50, 50), false).unwrap();
         LAN_SURFACES.lock().unwrap().get_mut(&hwnd).unwrap().conversation = "dm:peer-b".into();
-        assert_eq!(accepted.lan_conversation.as_deref(), Some("dm:peer-a"));
-        assert_eq!(accepted.request["ids"], json!(["history-a"]));
+        assert!(matches!(accepted.action, NativeDropAction::Lan(ref id) if id == "dm:peer-a"));
+        assert_eq!(accepted.drag.item_ids, ["history-a"]);
         clear_target_hwnd(hwnd);
         assert!(accept_native(&drag.operation_id, hwnd, (50, 50), false).is_err(), "a hidden/modal/retired region cannot receive a late drop");
         assert!(accepted.drag.claim());

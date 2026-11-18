@@ -318,6 +318,21 @@ impl HoverEvent {
     pub(crate) fn reject(self) {
         self.binding.retire();
     }
+
+    /// A menu or a drag can block preview temporarily without retiring the row.
+    pub(crate) fn suppress(self) {
+        let lease = {
+            let mut state = self.binding.0.borrow_mut();
+            if state.retired || state.epoch != self.epoch || state.selected != self.selected {
+                return;
+            }
+            state.selected = None;
+            state.lease.take()
+        };
+        if let Some(lease) = lease {
+            lease.leave();
+        }
+    }
 }
 
 pub(crate) type HoverHandler = Rc<dyn Fn(HoverEvent, &mut Window, &mut App)>;
@@ -681,6 +696,14 @@ mod tests {
         assert!(current
             .change(epoch, Some(gpui::point(gpui::px(25.), gpui::px(10.))))
             .is_some());
+    }
+    #[test]
+    fn suppressed_preview_can_retry_when_the_pointer_moves_within_the_same_row() {
+        let binding = HoverBinding::new(plan());
+        let epoch = painted(&binding);
+        let point = Some(gpui::point(gpui::px(5.), gpui::px(10.)));
+        binding.change(epoch, point).unwrap().suppress();
+        assert!(binding.change(epoch, point).is_some());
     }
     #[test]
     fn repaint_retires_selected_thumbnail_when_its_real_element_disappears() {

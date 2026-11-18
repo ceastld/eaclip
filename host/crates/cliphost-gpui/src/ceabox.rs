@@ -1284,7 +1284,8 @@ impl CeaBoxWindow {
                 <div size={px(p.icon_box_size)} flex_none flex items_center justify_center>
                     {svg().path(self.tokens.icons.get(icon).cloned().unwrap_or_default()).size(px(p.icon_size)).text_color(icon_color)}
                 </div>
-                <div flex_1 min_w_0 flex flex_col justify_center gap={px(4.0)}>
+                <div flex_1 min_w_0 flex flex_col justify_center gap={px(4.0)}
+                    mask_sensitive_text={matches!(item.source, CeaBoxSource::Clipboard | CeaBoxSource::Favorite)}>
                     <div w_full min_w_0 line_clamp={1} h={px(p.title_font_size * 1.35)} line_height={relative(1.35)}
                         text_size={px(p.title_font_size)} font_weight={FontWeight::MEDIUM} text_color={color(&t.text)}>{title_text(&item.title, &self.query)}</div>
                     {meta}
@@ -1442,12 +1443,12 @@ impl Render for CeaBoxWindow {
                     .pb(px(3.0))
                     .text_size(px(11.0))
                     .text_color(color(&t.text_muted))
-                    .child(tr("常用与最近", "Common and recent")),
+                    .child(tr("常用与最近", "Frequent & recent")),
             );
         }
         if self.items.is_empty() {
             results = results.child(rsx! { <div flex_1 min_h_0 px={px(24.0)} flex flex_col items_center justify_center gap={px(9.0)} text_color={color(&t.text_muted)}>
-                <div text_size={px(13.0)}>{if self.loading { tr("正在搜索…", "Searching…") } else if self.error.is_some() { tr("搜索暂不可用", "Search unavailable") } else if self.query.trim().is_empty() { tr("还没有常用内容", "No common items yet") } else { tr("没有找到匹配内容", "No matching items") }}</div>
+                <div text_size={px(13.0)}>{if self.loading { tr("正在搜索…", "Searching…") } else if self.error.is_some() { tr("搜索暂不可用", "Search unavailable") } else if self.query.trim().is_empty() { tr("还没有常用内容", "No common items yet") } else { tr("没有找到匹配内容", "No matches") }}</div>
                 <div text_size={px(12.0)}>{if self.loading { String::new() } else { self.error.clone().unwrap_or_else(|| if self.query.trim().is_empty() { tr("输入关键词搜索收藏、剪贴板和动作", "Search favorites, clipboard and actions by keyword").into() } else { tr("换个关键词，或试试其他来源", "Try another keyword or source").into() }) }}</div>
             </div> });
         } else {
@@ -1501,7 +1502,7 @@ impl Render for CeaBoxWindow {
         let footer_label = if let Some(error) = &self.error {
             error.clone()
         } else if self.busy {
-            tr("正在执行…", "Executing…").into()
+            tr("正在执行…", "Running…").into()
         } else if self.loading {
             if self.results_current() && !self.items.is_empty() {
                 cliphost_core::trf!("已找到 {} 个 · 继续搜索…", "{} found · searching…", self.total)

@@ -1331,7 +1331,7 @@ impl QuickPasteOverlay {
                 && self.state["armedKind"].as_str() == Some(action.kind.name());
             let label = match action.kind.name() {
                 "pin" => tr("贴图", "Pin image"),
-                "simulate" => tr("模拟输入", "Simulate typing"),
+                "simulate" => tr("模拟输入", "Type text"),
                 _ => tr("打开", "Open"),
             };
             let shortcut = action.shortcut;
@@ -1470,7 +1470,7 @@ impl QuickPasteOverlay {
                         .shadow(style::preview_shadows(t))
                         .with_fallback(|| {
                             div()
-                                .child(tr("图片加载失败", "Image failed to load"))
+                                .child(tr("图片加载失败", "Image load failed"))
                                 .into_any_element()
                         })
                         .into_any_element(),
@@ -1513,7 +1513,7 @@ impl QuickPasteOverlay {
                     .rounded(px(4.0))
                     .with_fallback(|| {
                         div()
-                            .child(tr("图片加载失败", "Image failed to load"))
+                            .child(tr("图片加载失败", "Image load failed"))
                             .into_any_element()
                     })
                     .into_any_element(),
@@ -1529,7 +1529,7 @@ impl QuickPasteOverlay {
                 content = content.child(
                     rsx! {
                         <div text_size={px(11.0)} text_color={color(&t.text_muted)}>
-                            {tr("图片加载失败", "Image failed to load")}
+                            {tr("图片加载失败", "Image load failed")}
                         </div>
                     },
                 );
@@ -1601,7 +1601,7 @@ impl QuickPasteOverlay {
                 content = content.child(
                     rsx! {
                         <div text_size={px(11.0)} text_color={color(&t.text_muted)}>
-                            {tr("加载完整内容…", "Loading full content…")}
+                            {tr("加载完整内容…", "Loading content…")}
                         </div>
                     },
                 );
@@ -2278,7 +2278,7 @@ impl Render for QuickPasteOverlay {
                                 gpui::FontWeight::MEDIUM
                             })
                             .child(rsx! {
-                                <div w={px(main_width)} truncate>
+                                <div w={px(main_width)} truncate mask_sensitive_text={true}>
                                     {text}
                                 </div>
                             }
@@ -2385,7 +2385,7 @@ impl Render for QuickPasteOverlay {
                             rsx! {
                                 <div px={px(6.0)} py={px(10.0)} text_center text_size={px(12.0)}
                                     text_color={color(&theme.text_muted)}>
-                                    {tr("暂无记录", "No clipboard records")}
+                                    {tr("暂无记录", "No history")}
                                 </div>
                             },
                         )
@@ -2465,6 +2465,7 @@ impl Render for QuickPasteOverlay {
                             placement::Part::Body,
                             rsx! {
                                 <div id={"qp-detail-preview-body"}
+                                    mask_sensitive_text={true}
                                     w={px(preview_card_width.max(1.0))} max_w_full
                                     max_h={px(preview_body_height)} min_h_0 />
                             }

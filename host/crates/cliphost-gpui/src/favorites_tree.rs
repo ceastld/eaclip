@@ -103,7 +103,7 @@ fn unique_ids(ids: impl IntoIterator<Item = String>) -> Vec<String> {
         .collect()
 }
 
-fn adjacency(graph: TreeGraph<'_>) -> BTreeMap<String, Vec<String>> {
+pub(crate) fn adjacency(graph: TreeGraph<'_>) -> BTreeMap<String, Vec<String>> {
     let mut children: BTreeMap<_, _> = graph
         .children_by_id
         .iter()

@@ -394,6 +394,9 @@ pub struct TextStyle {
     /// How the text should be aligned within the element
     pub text_align: TextAlign,
 
+    /// Apply the application's sensitive-text policy inside this content region.
+    pub mask_sensitive_text: bool,
+
     /// The number of lines to display before truncating the text
     pub line_clamp: Option<usize>,
 }
@@ -416,6 +419,7 @@ impl Default for TextStyle {
             white_space: WhiteSpace::Normal,
             text_overflow: None,
             text_align: TextAlign::default(),
+            mask_sensitive_text: false,
             line_clamp: None,
         }
     }

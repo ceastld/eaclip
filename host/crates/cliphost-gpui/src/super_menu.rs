@@ -369,6 +369,54 @@ fn category_strip_rect(anchor: (f32, f32), size: (f32, f32)) -> Rect {
     }
 }
 
+// 2026-10-31 top-edge dock: resting at the top screen edge shows the
+// categories as separate cards below the pointer; hovering a card opens its
+// menu. Until then only the cards show and the keyboard stays with the app.
+const DOCK_TOP: f32 = 8.0;
+const DOCK_CARD_WIDTH: f32 = 64.0;
+const DOCK_CARD_HEIGHT: f32 = 60.0;
+const DOCK_CARD_GAP: f32 = 10.0;
+const DOCK_GEAR: f32 = 34.0;
+const DOCK_GEAR_GAP: f32 = 12.0;
+const DOCK_ICON: f32 = 20.0;
+const DOCK_LABEL_SIZE: f32 = 12.5;
+/// Cards drop in from above the screen edge one after another, and rise
+/// back out when an unused dock folds away.
+const DOCK_ENTER: Duration = Duration::from_millis(260);
+const DOCK_ENTER_STAGGER: f32 = 28.0;
+const DOCK_EXIT: Duration = Duration::from_millis(160);
+const DOCK_TRAVEL: f32 = 22.0;
+/// Hovering a card switches after this pause, so a pass across cards does not.
+const DOCK_HOVER_SWITCH: Duration = Duration::from_millis(80);
+/// Before any card is used, leaving the cards this long folds the dock away.
+const DOCK_LEAVE: Duration = Duration::from_millis(450);
+/// Pointer slack around the cards that still counts as on them.
+const DOCK_SLACK: f32 = 24.0;
+
+fn dock_strip_width() -> f32 {
+    let cards = Category::ALL.len() as f32;
+    cards * DOCK_CARD_WIDTH + (cards - 1.0) * DOCK_CARD_GAP + DOCK_GEAR_GAP + DOCK_GEAR
+}
+
+/// The card of the category the dock opened on (`origin`) sits under the
+/// pointer that rested at the edge, so moving straight down keeps it and the
+/// other cards are a sideways move away. Clamped on screen.
+fn dock_strip_rect(anchor_x: f32, size: (f32, f32), origin: usize) -> Rect {
+    let width = dock_strip_width().min((size.0 - EDGE * 2.0).max(1.0));
+    let card_center = origin as f32 * (DOCK_CARD_WIDTH + DOCK_CARD_GAP) + DOCK_CARD_WIDTH / 2.0;
+    Rect {
+        x: (anchor_x - card_center).clamp(EDGE, (size.0 - width - EDGE).max(EDGE)),
+        y: DOCK_TOP,
+        width,
+        height: DOCK_CARD_HEIGHT,
+    }
+}
+
+/// On the cards, or between them and the screen top.
+fn on_dock(strip: Rect, (x, y): (f32, f32)) -> bool {
+    x >= strip.x - DOCK_SLACK && x <= strip.x + strip.width + DOCK_SLACK && y <= strip.y + strip.height + DOCK_SLACK
+}
+
 /// The gear is the strip's last cell.
 fn strip_gear_rect(strip: Rect) -> Rect {
     Rect {
@@ -434,13 +482,20 @@ const fn hinted(mut spec: SettingSpec, hint: (&'static str, &'static str)) -> Se
 const GENERAL_SETTINGS: &[SettingSpec] = &[
     setting("menu_global", "MenuFontSize", ("字体大小", "Font size"), SettingControl::Stepper { min: 12.0, max: 30.0, step: 1.0 }),
     setting("menu_global", "MenuMaxWidth", ("菜单宽度", "Menu width"), SettingControl::Stepper { min: 300.0, max: 500.0, step: 10.0 }),
-    hinted(setting("menu_global", "MaxSingleLoadCount", ("子菜单每批条目", "Submenu batch size"), SettingControl::Stepper { min: 5.0, max: 50.0, step: 5.0 }),
+    hinted(setting("menu_global", "MaxSingleLoadCount", ("子菜单每批条目", "Items per load"), SettingControl::Stepper { min: 5.0, max: 50.0, step: 5.0 }),
         ("向下滚动时追加同样条数", "Scrolling down loads the same number again")),
-    hinted(setting("menu_global", "QuickLoadSubmenu", ("快速加载子菜单", "Load submenus at once"), SettingControl::Switch),
+    hinted(setting("menu_global", "QuickLoadSubmenu", ("快速加载子菜单", "Load all submenu items"), SettingControl::Switch),
         ("一次加载全部条目，条目多时可能卡顿", "Loads every item; large menus may be slow")),
     setting("menu_global", "ShowMenuLocation", ("菜单位置", "Menu position"), SettingControl::Choice(&[
         ("NA", "默认", "Default"), ("CenterScreen", "屏幕中央", "Center"), ("MouseAround", "鼠标周围", "Near pointer"), ("MouseRightBottom", "鼠标右下", "Below-right"),
     ])),
+    hinted(setting("menu_global", "TopEdgeDock", ("贴顶弹出", "Top-edge dock"), SettingControl::Switch),
+        ("指针停在屏幕顶边时弹出分类按钮，悬停切换；全屏程序时不触发", "Rest at the top screen edge for the category buttons; hover to switch. Off in full screen")),
+    SettingSpec {
+        hint: Some(("顶边停留多久后弹出；越小越快，越易误触", "Rest before it appears; shorter triggers more easily")),
+        requires: Some("TopEdgeDock"),
+        ..setting("menu_global", "TopEdgeDockDelay", ("弹出延迟（毫秒）", "Delay (ms)"), SettingControl::Stepper { min: 0.0, max: 1000.0, step: 50.0 })
+    },
 ];
 
 const WINDOW_SETTINGS: &[SettingSpec] = &[
@@ -459,30 +514,25 @@ const FILE_SETTINGS: &[SettingSpec] = &[
     setting("menu_file", "FileSortType", ("排序", "Sort"), SettingControl::Choice(&[
         ("NA", "默认", "Default"), ("name", "名称", "Name"), ("createTime", "创建", "Created"), ("accessTime", "访问", "Accessed"), ("editTime", "修改", "Modified"),
     ])),
-    setting("menu_file", "SplitDirAndFile", ("文件夹和文件分开显示", "Separate folders and files"), SettingControl::Switch),
-    setting("menu_file", "ShowExtension", ("显示扩展名", "Show extensions"), SettingControl::Switch),
-    setting("menu_file", "ShowHiddenFiles", ("显示隐藏文件", "Show hidden files"), SettingControl::Switch),
+    setting("menu_file", "SplitDirAndFile", ("文件夹和文件分开显示", "Group folders & files"), SettingControl::Switch),
+    setting("menu_file", "ShowExtension", ("显示扩展名", "File extensions"), SettingControl::Switch),
+    setting("menu_file", "ShowHiddenFiles", ("显示隐藏文件", "Hidden files"), SettingControl::Switch),
     hinted(setting("menu_file", "ExpandOpenedFolder", ("直接展开打开的文件夹", "Expand open folders"), SettingControl::Switch),
         ("关闭时收进「打开的文件夹」子菜单", "Otherwise grouped under Open folders")),
-    hinted(setting("menu_file", "TopEdgeLine", ("贴顶晾衣绳", "Top-edge file line"), SettingControl::Switch),
-        ("指针停在屏幕顶边时落下文件夹；全屏程序时不触发", "Rest at the top screen edge to drop folders; off in full screen")),
-    SettingSpec {
-        hint: Some(("顶边停留多久后落下；越小越快，越易误触", "Rest before it drops; shorter triggers more easily")),
-        requires: Some("TopEdgeLine"),
-        ..setting("menu_file", "TopEdgeLineDelay", ("展开延迟（毫秒）", "Drop delay (ms)"), SettingControl::Stepper { min: 0.0, max: 1000.0, step: 50.0 })
-    },
+    // 2026-10-31: the top-edge file line is shelved (`file_line::SHELVED`);
+    // its TopEdgeLine settings are no longer offered here.
     setting("menu_file", "Files", ("自定义目录", "Custom folders"), SettingControl::Link(SettingLink::CustomDirs)),
 ];
 
 const FAVOR_SETTINGS: &[SettingSpec] = &[
     setting("menu_global", "ShowAdderMenuItem", ("显示「添加选中」", "Show Add selection"), SettingControl::Switch),
-    setting("menu_global", "ShowWindowMenuItem", ("显示窗口菜单", "Show window menu"), SettingControl::Switch),
+    setting("menu_global", "ShowWindowMenuItem", ("显示窗口菜单", "Window menu"), SettingControl::Switch),
     SettingSpec {
         hint: Some(("关闭时收进「窗口管理」子菜单", "Otherwise grouped under Window management")),
         requires: Some("ShowWindowMenuItem"),
         ..setting("menu_global", "ExpandWindowMenu", ("直接展开窗口列表", "Expand window list"), SettingControl::Switch)
     },
-    setting("menu_global", "ShowBookMarksMenu", ("显示浏览器书签", "Show browser bookmarks"), SettingControl::Switch),
+    setting("menu_global", "ShowBookMarksMenu", ("显示浏览器书签", "Browser bookmarks"), SettingControl::Switch),
 ];
 
 /// Below the 书签来源 picker (`bookmark_source_rows`), 2026-10-30.
@@ -508,7 +558,7 @@ fn browser_mark(browser: &str) -> (&'static str, &'static str) {
 }
 
 const TEXT_SETTINGS: &[SettingSpec] = &[hinted(
-    setting("textAction", "", ("管理文本操作", "Manage text actions"), SettingControl::Link(SettingLink::TextActions)),
+    setting("textAction", "", ("管理文本操作", "Edit text actions"), SettingControl::Link(SettingLink::TextActions)),
     ("规则、分组与常用", "Rules, groups and favorites"),
 )];
 
@@ -1086,7 +1136,7 @@ fn clip_kind_view(kind: &str) -> (&'static str, &'static str) {
         "ImageClipItem" => ("image", tr("图片", "Image")),
         "FileClipItem" => ("file", tr("文件", "Files")),
         "LinkClipItem" => ("link", tr("链接", "Link")),
-        "HtmlClipItem" | "QQRichTextItem" => ("code", tr("富文本", "Rich text")),
+        "HtmlClipItem" | "QQRichTextItem" => ("code", tr("富文本", "Rich")),
         "CmdClipItem" | "StepClipItem" | "ActionClipItem" => ("play", tr("动作", "Action")),
         _ => ("text", tr("文本", "Text")),
     }
@@ -1459,8 +1509,21 @@ pub struct SuperMenuWindow {
     settings_reload_pending: bool,
     /// 书签来源 for the settings panel; read on first paint, cleared on reload.
     bookmark_sources: RefCell<Option<cliphost_core::bookmarks::BookmarkSources>>,
+    bookmark_sources_task: Option<Task<()>>,
     #[cfg(all(windows, debug_assertions))]
     settings_switch_bounds: Rc<RefCell<HashMap<usize, Bounds<Pixels>>>>,
+    /// A docked opening shows its menu once a card was hovered or clicked.
+    dock_engaged: bool,
+    dock_hover: Option<Category>,
+    dock_hover_task: Option<Task<()>>,
+    dock_watch: Option<Task<()>>,
+    /// Restarts the entrance animation for each docked opening.
+    dock_epoch: u64,
+    /// Index of the category the dock opened on; its card stays under the
+    /// opening pointer while the categories switch.
+    dock_origin: usize,
+    /// The unused dock is rising out; it dismisses when that finishes.
+    dock_leaving: bool,
 }
 
 impl SuperMenuWindow {
@@ -1491,8 +1554,16 @@ impl SuperMenuWindow {
             settings_values: HashMap::new(),
             settings_reload_pending: false,
             bookmark_sources: RefCell::default(),
+            bookmark_sources_task: None,
             #[cfg(all(windows, debug_assertions))]
             settings_switch_bounds: Rc::default(),
+            dock_engaged: false,
+            dock_hover: None,
+            dock_hover_task: None,
+            dock_watch: None,
+            dock_epoch: 0,
+            dock_origin: 0,
+            dock_leaving: false,
             clips: Vec::new(),
             preview: None,
             preview_item: None,
@@ -1699,6 +1770,11 @@ impl SuperMenuWindow {
 
     fn hide_inactive(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self.session.is_none() && self.text_focus_task.is_some() { return; }
+        self.dock_engaged = false;
+        self.dock_hover = None;
+        self.dock_hover_task = None;
+        self.dock_watch = None;
+        self.dock_leaving = false;
         self.browser_pending_path = None;
         self.browser_pending_split = false;
         let restore = self.text_had_focus.then(|| self.keyboard_request.clone()).flatten();
@@ -1765,6 +1841,8 @@ impl SuperMenuWindow {
     }
 
     fn bind_native_keyboard(&self) {
+        // Cards that only appeared under a resting pointer leave typing alone.
+        if self.dock_waiting() { return; }
         if let Some(request) = &self.keyboard_request {
             if self.category == Category::Text || (self.category == Category::File && self.browsing()) || self.text_had_focus {
                 let _ = self.host.use_focused_native_super_menu_input(request);
@@ -1983,6 +2061,14 @@ impl SuperMenuWindow {
                 )
                 .ok()
         });
+        if !self.docked() {
+            self.dock_engaged = false;
+        } else if !self.dock_engaged {
+            self.dock_epoch = self.dock_epoch.wrapping_add(1);
+            self.dock_origin = Category::ALL.iter().position(|category| *category == self.category).unwrap_or(0);
+            self.dock_leaving = false;
+            self.watch_dock(cx);
+        }
         self.bind_native_keyboard();
         self.selected = 0;
         if self.category == Category::Clipboard {
@@ -3650,7 +3736,7 @@ impl SuperMenuWindow {
                             .group_hover(group, |style| style.opacity(1.0))
                             .hover(move |style| style.bg(hover))
                             .children(self.icon("open-panel", 13.0))
-                            .tooltip(crate::settings::settings_help(tr("在浏览栏打开", "Open in the docked browser").to_string(), t.clone()))
+                            .tooltip(crate::settings::settings_help(tr("在浏览栏打开", "Open here").to_string(), t.clone()))
                             .on_mouse_down(MouseButton::Left, cx.listener(|menu, _, _, cx| {
                                 menu.content_pointer();
                                 cx.stop_propagation();
@@ -3804,7 +3890,7 @@ impl SuperMenuWindow {
                     "⋮"
                 </div>
             }.hover(move |style| style.bg(hover))
-                .tooltip(crate::settings::settings_help(tr("更多操作", "More actions").to_string(), t.clone()))
+                .tooltip(crate::settings::settings_help(tr("更多操作", "More").to_string(), t.clone()))
                 .on_click(cx.listener(move |menu, _, _, cx| {
                     if !menu.render_current(&row_key, row_presentation) {
                         return;
@@ -3979,7 +4065,7 @@ impl SuperMenuWindow {
                         .child(if col.loading {
                             tr("加载中…", "Loading…")
                         } else {
-                            tr("向下滚动加载更多", "Scroll down to load more")
+                            tr("向下滚动加载更多", "Scroll for more")
                         }),
                 );
             }
@@ -4182,6 +4268,7 @@ impl SuperMenuWindow {
 
     fn load_setting_values(&mut self) {
         self.settings_values.clear();
+        self.bookmark_sources_task = None;
         self.bookmark_sources.take();
         for config in ["menu_global", "menu_file"] {
             let Ok(form) = self.host.settings_form_get(&json!({ "configId": config })) else {
@@ -4221,8 +4308,9 @@ impl SuperMenuWindow {
     }
 
     /// One click switches which browser profile the 书签 category shows.
-    fn set_bookmark_source(&mut self, browser: String, profile: String, cx: &mut Context<Self>) {
-        let values = json!({ "BookmarkBrowser": browser, "BookmarkProfile": profile });
+    fn set_bookmark_source(&mut self, browser: String, profile: String, extension: bool, cx: &mut Context<Self>) {
+        let values = if extension { json!({ "BookmarkBrowser": browser, "BookmarkEnvironment": profile }) }
+            else { json!({ "BookmarkBrowser": browser, "BookmarkProfile": profile }) };
         match self.host.settings_form_update(&json!({ "configId": "menu_global", "values": values })) {
             Ok(_) => {
                 self.load_setting_values();
@@ -4239,20 +4327,38 @@ impl SuperMenuWindow {
     }
 
     /// 书签来源: one radio row per browser, and its profiles under the active one.
+    fn request_bookmark_sources(&mut self, cx: &mut Context<Self>) {
+        if !self.settings_open || self.category != Category::Bookmarks
+            || self.bookmark_sources.borrow().is_some() || self.bookmark_sources_task.is_some() { return; }
+        let host = self.host.clone();
+        self.bookmark_sources_task = Some(cx.spawn(async move |this, cx| {
+            let sources = cx.background_executor().spawn(async move { host.bookmark_sources() }).await;
+            let _ = this.update(cx, |menu, cx| {
+                menu.bookmark_sources_task = None;
+                menu.bookmark_sources.replace(Some(sources));
+                cx.notify();
+            });
+        }));
+    }
+
     fn bookmark_source_rows(&self, cx: &mut Context<Self>) -> Vec<AnyElement> {
         let t = self.tokens.theme(self.dark);
         let hover = color(&t.hover);
-        let sources = self.bookmark_sources.borrow_mut()
-            .get_or_insert_with(|| self.host.bookmark_sources()).clone();
+        let snapshot = self.bookmark_sources.borrow().clone();
         let mut rows = vec![rsx! {
             <div px={px(8.0)} pt={px(6.0)} pb={px(2.0)} text_size={px(10.5)} font_weight={gpui::FontWeight::MEDIUM}
                 text_color={color(&t.text_muted)}>{tr("书签来源", "Bookmark source")}</div>
         }.into_any_element()];
+        let Some(sources) = snapshot else {
+            rows.push(div().px(px(8.0)).py(px(6.0)).text_size(px(11.0))
+                .child(tr("正在查找已连接的浏览器…", "Finding connected browsers…")).into_any_element());
+            return rows;
+        };
         if sources.custom_file || sources.sources.is_empty() {
             let note = if sources.custom_file {
-                tr("正在使用指定的 Bookmarks 文件；清空路径后可选择浏览器", "Using the configured Bookmarks file; clear it to pick a browser")
+                tr("正在使用指定的 Bookmarks 文件；清空路径后可选择浏览器", "Using the configured Bookmarks file; clear it to pick a browser").to_string()
             } else {
-                tr("未发现本机浏览器书签，将尝试通过扩展读取", "No local browser bookmarks found; the extension is tried instead")
+                sources.error.clone().unwrap_or_else(|| tr("未发现已连接的浏览器，请打开浏览器并连接 Quicker 扩展", "No connected browsers; open a browser and connect its Quicker extension").to_string())
             };
             rows.push(rsx! {
                 <div px={px(8.0)} py={px(6.0)} text_size={px(11.0)} line_height={px(16.0)} text_color={color(&t.text_secondary)}>{note}</div>
@@ -4271,13 +4377,16 @@ impl SuperMenuWindow {
                 let active = shown.is_some();
                 let shown = shown.unwrap_or(profiles[0]);
                 let count = if active { shown.count } else { profiles.iter().map(|s| s.count).sum() };
-                let detail = if profiles.len() > 1 {
+                let detail = if sources.extension {
+                    let environment = if shown.profile.is_empty() { tr("默认环境", "Default profile").to_string() } else { shown.profile.clone() };
+                    format!("Quicker · {} · {environment}", tr("已连接", "Connected"))
+                } else if profiles.len() > 1 {
                     format!("{} {} · {count} {}", profiles.len(), tr("个配置", "profiles"), tr("个书签", "bookmarks"))
                 } else {
                     format!("{} · {count} {}", shown.profile, tr("个书签", "bookmarks"))
                 };
                 let (mark, tint) = browser_mark(browser);
-                let target = (browser.to_string(), shown.profile.clone());
+                let target = (browser.to_string(), shown.profile.clone(), sources.extension);
                 let radio = if active {
                     div().flex_none().size(px(14.0)).rounded_full().border(px(4.0)).border_color(color(&t.accent)).bg(color(&t.background))
                 } else {
@@ -4300,7 +4409,7 @@ impl SuperMenuWindow {
                     .child(radio)
                     .on_click(cx.listener(move |menu, _, _, cx| {
                         if !active {
-                            menu.set_bookmark_source(target.0.clone(), target.1.clone(), cx);
+                            menu.set_bookmark_source(target.0.clone(), target.1.clone(), target.2, cx);
                         }
                     }));
                 let mut group = div().flex().flex_col().rounded(px(7.0)).when(active, |g| g.bg(color(&t.tab_active))).child(main);
@@ -4308,18 +4417,19 @@ impl SuperMenuWindow {
                     let mut segmented = rsx! { <div flex p={px(2.0)} rounded={px(7.0)} bg={color(&t.secondary)} /> };
                     for (profile_index, profile) in profiles.iter().enumerate() {
                         let selected = profile.profile == shown.profile;
-                        let target = (browser.to_string(), profile.profile.clone());
+                        let target = (browser.to_string(), profile.profile.clone(), sources.extension);
+                        let label = if profile.profile.is_empty() { tr("默认环境", "Default profile").to_string() } else { profile.profile.clone() };
                         segmented = segmented.child(
                             rsx! {
                                 <div id={("super-bookmark-profile", index * 64 + profile_index)} flex flex_1 min_w_0 items_center justify_center
                                     h={px(24.0)} px={px(4.0)} rounded={px(5.0)} text_size={px(11.0)} overflow_hidden whitespace_nowrap
-                                    cursor_pointer>{profile.profile.clone()}</div>
+                                    cursor_pointer>{label}</div>
                             }
                                 .text_color(color(if selected { &t.text } else { &t.text_secondary }))
                                 .when(selected, |chip| chip.bg(color(&t.background)).font_weight(gpui::FontWeight::MEDIUM).shadow_sm())
                                 .on_click(cx.listener(move |menu, _, _, cx| {
                                     if !selected {
-                                        menu.set_bookmark_source(target.0.clone(), target.1.clone(), cx);
+                                        menu.set_bookmark_source(target.0.clone(), target.1.clone(), target.2, cx);
                                     }
                                 })),
                         );
@@ -4368,7 +4478,219 @@ impl SuperMenuWindow {
     }
 
     fn strip_rect(&self, size: (f32, f32)) -> Rect {
+        if self.docked() {
+            return dock_strip_rect(self.overlay_anchor().0, size, self.dock_origin);
+        }
         category_strip_rect(self.overlay_anchor(), size)
+    }
+
+    fn docked(&self) -> bool {
+        self.state["docked"].as_bool() == Some(true)
+    }
+
+    /// Docked and no card used yet: only the cards show.
+    fn dock_waiting(&self) -> bool {
+        self.docked() && !self.dock_engaged
+    }
+
+    fn overlay_scale(&self) -> (f64, f64) {
+        (
+            self.state["hostDpiScaleX"].as_f64().unwrap_or(1.0).max(0.1),
+            self.state["hostDpiScaleY"].as_f64().unwrap_or(1.0).max(0.1),
+        )
+    }
+
+    fn overlay_size(&self) -> (f32, f32) {
+        let (scale_x, scale_y) = self.overlay_scale();
+        (
+            (self.state["overlayWidthPx"].as_f64().unwrap_or(0.0) / scale_x) as f32,
+            (self.state["overlayHeightPx"].as_f64().unwrap_or(0.0) / scale_y) as f32,
+        )
+    }
+
+    fn pointer_in_overlay(&self) -> Option<(f32, f32)> {
+        let (x, y) = platform::cursor_position()?;
+        let (scale_x, scale_y) = self.overlay_scale();
+        Some((
+            ((f64::from(x) - self.state["overlayLeftPx"].as_f64().unwrap_or(0.0)) / scale_x) as f32,
+            ((f64::from(y) - self.state["overlayTopPx"].as_f64().unwrap_or(0.0)) / scale_y) as f32,
+        ))
+    }
+
+    /// Fold an unused dock once the pointer has left the cards for a moment.
+    fn watch_dock(&mut self, cx: &mut Context<Self>) {
+        self.dock_watch = Some(cx.spawn(async move |this, cx| {
+            let mut left_at: Option<Instant> = None;
+            loop {
+                gpui::Timer::after(Duration::from_millis(50)).await;
+                let keep = this.update(cx, |menu, cx| {
+                    if !menu.dock_waiting() || menu.session.is_none() { return false; }
+                    let strip = menu.strip_rect(menu.overlay_size());
+                    if menu.pointer_in_overlay().is_some_and(|point| on_dock(strip, point)) {
+                        left_at = None;
+                        return true;
+                    }
+                    if left_at.get_or_insert_with(Instant::now).elapsed() < DOCK_LEAVE { return true; }
+                    if motion::reduced_motion() {
+                        menu.dismiss(cx);
+                    } else {
+                        menu.dock_leaving = true;
+                        cx.notify();
+                    }
+                    false
+                });
+                if !keep.unwrap_or(false) { break; }
+            }
+            gpui::Timer::after(DOCK_EXIT).await;
+            let _ = this.update(cx, |menu, cx| {
+                if menu.dock_leaving && menu.dock_waiting() { menu.dismiss(cx); }
+            });
+        }));
+    }
+
+    fn engage_dock(&mut self, cx: &mut Context<Self>) {
+        if self.dock_engaged { return; }
+        self.dock_engaged = true;
+        self.dock_leaving = false;
+        self.dock_watch = None;
+        self.bind_native_keyboard();
+        cx.notify();
+    }
+
+    /// Hovering a card opens it; a switch still loading retries until idle.
+    fn hover_dock_card(&mut self, category: Category, hovered: bool, cx: &mut Context<Self>) {
+        if !hovered {
+            if self.dock_hover == Some(category) {
+                self.dock_hover = None;
+                self.dock_hover_task = None;
+            }
+            return;
+        }
+        self.engage_dock(cx);
+        self.dock_hover = Some(category);
+        if category == self.category && !self.busy {
+            self.dock_hover_task = None;
+            return;
+        }
+        self.dock_hover_task = Some(cx.spawn(async move |this, cx| {
+            gpui::Timer::after(DOCK_HOVER_SWITCH).await;
+            loop {
+                let waiting = this.update(cx, |menu, cx| {
+                    if menu.dock_hover != Some(category) || menu.session.is_none() { return false; }
+                    if menu.busy { return true; }
+                    if menu.category != category {
+                        menu.category_wheel.clear_pending();
+                        menu.content_pointer();
+                        menu.change_category(category, cx);
+                    }
+                    false
+                });
+                if !waiting.unwrap_or(false) { break; }
+                gpui::Timer::after(Duration::from_millis(60)).await;
+            }
+        }));
+    }
+
+    /// The docked categories: separate cards with the label under the icon,
+    /// and the gear as a small round button at the end.
+    fn dock_strip(&self, strip: Rect, cx: &mut Context<Self>) -> AnyElement {
+        let t = self.tokens.theme(self.dark);
+        let hover = color(&t.hover);
+        let accent = color(&t.accent);
+        let mut row = rsx! { <div id={"super-dock"} absolute flex items_center /> }
+            .occlude()
+            .left(px(strip.x))
+            .top(px(strip.y))
+            .w(px(strip.width))
+            .h(px(strip.height))
+            .gap(px(DOCK_CARD_GAP));
+        let reduced = motion::reduced_motion();
+        let (epoch, leaving) = (self.dock_epoch, self.dock_leaving);
+        // Each cell drops in staggered; leaving, all rise out together.
+        let animate = move |index: usize, cell: gpui::Stateful<gpui::Div>| -> AnyElement {
+            let cell = cell.relative();
+            if reduced {
+                return cell.into_any_element();
+            }
+            if leaving {
+                let exit = motion::STANDARD_EXIT.easing();
+                return cell.with_animation(("super-dock-exit", epoch * 16 + index as u64), gpui::Animation::new(DOCK_EXIT),
+                    move |cell, progress| {
+                        let t = exit(progress);
+                        cell.top(px(-DOCK_TRAVEL * t)).opacity(1.0 - t)
+                    }).into_any_element();
+            }
+            let delay = index as f32 * DOCK_ENTER_STAGGER;
+            let total = DOCK_ENTER.as_millis() as f32 + delay;
+            let enter = motion::EMPHASIZED_ENTER.easing();
+            cell.with_animation(("super-dock-enter", epoch * 16 + index as u64),
+                gpui::Animation::new(Duration::from_millis(total as u64)),
+                move |cell, progress| {
+                    let local = ((progress * total - delay) / DOCK_ENTER.as_millis() as f32).clamp(0.0, 1.0);
+                    let t = enter(local);
+                    cell.top(px(-DOCK_TRAVEL * (1.0 - t))).opacity((local * 2.5).min(1.0))
+                }).into_any_element()
+        };
+        for (index, category) in Category::ALL.into_iter().enumerate() {
+            let active = category == self.category && self.dock_engaged;
+            let card = rsx! {
+                <div flex flex_col flex_none items_center justify_center gap={px(4.0)}
+                    rounded={px(10.0)} border_1 shadow_md cursor_pointer />
+            }
+                .id(SharedString::from(format!("super-dock-{}", category.action())))
+                .w(px(DOCK_CARD_WIDTH))
+                .h(px(DOCK_CARD_HEIGHT))
+                .bg(color(if active { &t.tab_active } else { &t.surface }))
+                .border_color(if active { accent.opacity(0.45) } else { color(&t.border) })
+                .text_color(color(if active { &t.text } else { &t.text_secondary }))
+                .when(!active, |card| card.hover(move |style| style.bg(hover)))
+                .on_hover(cx.listener(move |menu, hovered: &bool, _, cx| {
+                    if !*hovered { menu.hover_dock_card(category, false, cx); }
+                }))
+                // Only a pointer that moved onto the resting card counts: the
+                // edge pointer sits above the cards, and a card dropping in
+                // under it must not switch or open anything by itself.
+                .on_mouse_move(cx.listener(move |menu, event: &gpui::MouseMoveEvent, _, cx| {
+                    if menu.dock_hover != Some(category) && f32::from(event.position.y) >= DOCK_TOP {
+                        menu.hover_dock_card(category, true, cx);
+                    }
+                }))
+                .on_mouse_down(MouseButton::Left, cx.listener(|menu, _, _, cx| {
+                    menu.content_pointer();
+                    cx.stop_propagation();
+                }))
+                .on_click(cx.listener(move |menu, _, _, cx| {
+                    menu.engage_dock(cx);
+                    menu.category_wheel.clear_pending();
+                    if menu.category != category { menu.change_category(category, cx); }
+                }))
+                .on_mouse_down(MouseButton::Right, cx.listener(move |menu, _, _, cx| {
+                    menu.content_pointer();
+                    cx.stop_propagation();
+                    menu.engage_dock(cx);
+                    menu.open_settings();
+                    if menu.category != category {
+                        menu.change_category(category, cx);
+                    }
+                    cx.notify();
+                }))
+                .children(self.icon(category.icon(), DOCK_ICON)
+                    .map(|icon| if active { icon.text_color(accent) } else { icon }))
+                .child(rsx! { <div text_size={px(DOCK_LABEL_SIZE)} whitespace_nowrap>{category.label()}</div> });
+            row = row.child(animate(index, card));
+        }
+        let gear = self.settings_gear(cx);
+        let gear = rsx! {
+            <div flex flex_none items_center justify_center rounded_full border_1 shadow_sm />
+        }
+            .id("super-dock-gear")
+            .ml(px(DOCK_GEAR_GAP - DOCK_CARD_GAP))
+            .size(px(DOCK_GEAR))
+            .border_color(color(&t.border))
+            .bg(color(&t.surface))
+            .on_mouse_down(MouseButton::Left, cx.listener(|menu, _, _, cx| menu.engage_dock(cx)))
+            .child(gear);
+        row.child(animate(Category::ALL.len(), gear)).into_any_element()
     }
 
     /// Every category opens at the same point below the strip's left edge, so
@@ -4381,6 +4703,9 @@ impl SuperMenuWindow {
 
     /// Category tabs, a divider and the settings gear in one pill above the menu.
     fn category_strip(&self, strip: Rect, size: (f32, f32), cx: &mut Context<Self>) -> AnyElement {
+        if self.docked() {
+            return self.dock_strip(strip, cx);
+        }
         let t = self.tokens.theme(self.dark);
         let presentation = self.value_presentation;
         let wheel_key = self.session.clone();
@@ -4559,7 +4884,7 @@ impl SuperMenuWindow {
             <div flex flex_none items_center gap={px(8.0)} h={px(34.0)} pl={px(12.0)} pr={px(8.0)}
                 border_t_1 border_color={color(&t.border)} bg={color(&t.surface)}
                 text_size={px(10.5)} text_color={color(&t.text_muted)}>
-                {tr("修改立即生效", "Changes apply immediately")}
+                {tr("修改立即生效", "Auto-saved")}
             </div>
         }
             .child(div().flex_1())
@@ -4853,6 +5178,7 @@ impl SuperMenuWindow {
             .child(leading)
             .child(
                 div()
+                    .mask_sensitive_text(true)
                     .flex()
                     .flex_col()
                     .flex_1()
@@ -5017,7 +5343,7 @@ impl SuperMenuWindow {
                 div()
                     .p(px(16.0))
                     .text_color(muted)
-                    .child(tr("正在读取剪贴板历史…", "Loading clipboard history…")),
+                    .child(tr("正在读取剪贴板历史…", "Loading history…")),
             );
         } else if self.clips.is_empty() {
             rows = rows.child(
@@ -5056,7 +5382,7 @@ impl SuperMenuWindow {
                     .child(if self.clips_more_task.is_some() {
                         tr("加载中…", "Loading…")
                     } else {
-                        tr("向下滚动加载更多", "Scroll down to load more")
+                        tr("向下滚动加载更多", "Scroll for more")
                     }),
             );
         }
@@ -5203,7 +5529,7 @@ impl SuperMenuWindow {
                     Some(col) if !col.loading => {
                         preview = preview.child(div().px(px(9.0)).text_color(muted).child(
                             if col.message.is_empty() {
-                                tr("没有可用的文件", "No files available").to_string()
+                                tr("没有可用的文件", "No files").to_string()
                             } else {
                                 col.message.clone()
                             },
@@ -5316,7 +5642,7 @@ impl SuperMenuWindow {
                 && !row_text(item).trim().is_empty()
                 && row_text(item).trim() != "…"
             {
-                entries.push(("simulate", "keyboard", tr("模拟输入", "Simulate typing")));
+                entries.push(("simulate", "keyboard", tr("模拟输入", "Type text")));
             }
             if self.pin_provider.is_some() && can_pin(item) {
                 entries.push(("pin", "pin", tr("贴图", "Pin image")));
@@ -5412,7 +5738,7 @@ impl SuperMenuWindow {
             .child(
                 rsx! {
                     <div flex justify_between>
-                        {tr("自定义目录", "Custom directories")}
+                        {tr("自定义目录", "Custom folders")}
                     </div>
                 }
                     .child(self.button("super-dirs-close", "×").on_click(cx.listener(
@@ -5440,13 +5766,13 @@ impl SuperMenuWindow {
                     .flex_wrap()
                     .gap(px(5.0))
                     .child(
-                        self.button("super-dirs-pick", tr("选择文件夹…", "Choose folder…"))
+                        self.button("super-dirs-pick", tr("选择文件夹…", "Pick folder…"))
                             .on_click(cx.listener(|menu, _, _, cx| {
                                 menu.mutate_dirs("pick", 0, String::new(), cx)
                             })),
                     )
                     .child(
-                        self.button("super-dirs-separator", tr("插入分割线", "Insert separator"))
+                        self.button("super-dirs-separator", tr("插入分割线", "Add separator"))
                             .on_click(cx.listener(|menu, _, _, cx| {
                                 menu.mutate_dirs("separator", 0, String::new(), cx)
                             })),
@@ -5533,6 +5859,7 @@ impl SuperMenuWindow {
 
 impl Render for SuperMenuWindow {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.request_bookmark_sources(cx);
         self.column_rects.borrow_mut().clear();
         self.bind_native_keyboard();
         self.request_node_icons(cx);
@@ -5684,6 +6011,9 @@ impl Render for SuperMenuWindow {
             return root;
         }
         root = root.child(self.category_strip(strip, size, cx));
+        if self.dock_waiting() {
+            return root;
+        }
         match self.category {
             Category::Text => {
                 if let Some(launcher) = &self.text_launcher {
@@ -5757,6 +6087,25 @@ impl Render for SuperMenuWindow {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_dock_puts_the_opening_category_under_the_pointer_and_stays_on_screen() {
+        let size = (1600.0, 900.0);
+        let file = Category::ALL.iter().position(|category| *category == Category::File).unwrap();
+        let middle = dock_strip_rect(800.0, size, file);
+        assert_eq!(middle.y, DOCK_TOP);
+        let file_left = middle.x + file as f32 * (DOCK_CARD_WIDTH + DOCK_CARD_GAP);
+        assert!(file_left < 800.0 && 800.0 < file_left + DOCK_CARD_WIDTH, "the file card is under the pointer");
+        let last = dock_strip_rect(800.0, size, Category::ALL.len() - 1);
+        assert!(last.x < middle.x, "a later card shifts the row left");
+        assert_eq!(dock_strip_rect(0.0, size, file).x, EDGE);
+        let right = dock_strip_rect(1600.0, size, 0);
+        assert_eq!(right.x + right.width, 1600.0 - EDGE);
+        assert!(on_dock(middle, (800.0, 0.0)), "the resting pointer is on the dock");
+        assert!(on_dock(middle, (middle.x - 10.0, middle.y + middle.height + 10.0)));
+        assert!(!on_dock(middle, (800.0, middle.y + middle.height + DOCK_SLACK + 1.0)));
+        assert!(!on_dock(middle, (100.0, 0.0)));
+    }
 
     #[test]
     fn retired_or_reopened_sessions_have_distinct_keys() {

@@ -378,7 +378,7 @@ impl ReopenWindow {
         for input in [&self.search, &self.limit_input, &self.menu_input] {
             input.update(cx, |input, cx| { input.set_colors(colors, cx); input.set_metrics(30.0, 12.0, 0.0, cx); });
         }
-        self.search.update(cx, |input, cx| input.set_placeholder(tr("搜索目录名称或路径", "Search folder names or paths"), cx));
+        self.search.update(cx, |input, cx| input.set_placeholder(tr("搜索目录名称或路径", "Search folders…"), cx));
     }
 
     fn current(&self) -> bool {
@@ -433,8 +433,8 @@ impl ReopenWindow {
             let recent = self.entries().into_iter().filter(|row| row["opened"].as_bool() != Some(true) && matches_query(row, &self.query))
                 .take(self.snapshot["menuLimit"].as_u64().unwrap_or(10).clamp(1, 100) as usize).collect::<Vec<_>>();
             let mut projection = Vec::new();
-            if !opened.is_empty() { projection.push(Row::Label(tr("当前已打开", "Currently open"))); projection.extend(opened.into_iter().map(Row::Opened)); }
-            projection.push(Row::Label(tr("最近记录", "Recently recorded")));
+            if !opened.is_empty() { projection.push(Row::Label(tr("当前已打开", "Open now"))); projection.extend(opened.into_iter().map(Row::Opened)); }
+            projection.push(Row::Label(tr("最近记录", "Recent")));
             projection.extend(recent.into_iter().map(Row::History));
             projection
         } else if self.tab == Tab::History {
@@ -754,7 +754,7 @@ impl ReopenWindow {
             .child(div().w_full().min_w_0().h(px(18.0)).flex_none().flex().items_center().gap(px(7.0)).child(div().flex_1().min_w_0().line_clamp(1).text_size(px(12.0)).child(name))
                 .when(!rule && !opened && value["opened"].as_bool() == Some(true), |element| element.child(div().flex_none().text_size(px(10.0)).text_color(color(&t.text_muted)).child(tr("当前已打开", "Open now")))))
             .child(div().w_full().min_w_0().h(px(16.0)).flex_none().line_clamp(1).text_size(px(11.0)).text_color(color(&t.text_muted)).child(if rule {
-                if value["includeChildren"].as_bool() == Some(true) { tr("此目录及其子目录", "This folder and its subfolders").into() } else { tr("仅此目录", "This folder only").into() }
+                if value["includeChildren"].as_bool() == Some(true) { tr("此目录及其子目录", "Include subfolders").into() } else { tr("仅此目录", "This folder only").into() }
             } else { path.clone() }));
         text = text.tooltip(crate::settings::settings_help(path, t.clone())).on_click(cx.listener(move |this, _, window, cx| {
             if !rule { this.open_entry(open_value.clone(), window, cx); }
@@ -819,7 +819,7 @@ impl ReopenWindow {
                 body = body.child(div().text_size(px(16.0)).child(tr("不再记录此目录", "Stop recording this folder")))
                     .child(div().p(px(9.0)).rounded(px(5.0)).bg(color(&t.background)).text_size(px(12.0)).child(path.clone()));
                 if !is_shell(path) {
-                    body = body.child(div().id("reopen-exclude-children").flex().items_center().gap(px(8.0)).cursor_pointer().child(self.checkbox(*children, &t)).child(tr("同时包含所有子目录", "Also include all subfolders"))
+                    body = body.child(div().id("reopen-exclude-children").flex().items_center().gap(px(8.0)).cursor_pointer().child(self.checkbox(*children, &t)).child(tr("同时包含所有子目录", "Include subfolders"))
                         .on_click(cx.listener(|this, _, _, cx| { if let Some(Confirm::Exclude { children, .. }) = &mut this.confirm { *children = !*children; } cx.notify(); })));
                 }
                 body = body.child(div().id("reopen-exclude-existing").flex().items_center().gap(px(8.0)).cursor_pointer().child(self.checkbox(*remove, &t)).child(tr("同时移除现有的匹配历史记录", "Also remove existing matching history"))
@@ -942,7 +942,7 @@ impl Render for ReopenWindow {
                 .on_click(cx.listener(|this, _, window, cx| { this.dismiss(window, cx); this.host.open_settings_page("explorer"); })))
         } else {
             div().flex_none().min_h(px(40.0)).px(px(12.0)).py(px(5.0)).border_t_1().border_color(color(&t.border)).flex().items_center().gap(px(5.0))
-                .child(self.button("reopen-settings", tr("记录设置", "Recording settings")).border_0().bg(gpui::transparent_black()).on_click(cx.listener(|this, _, window, cx| {
+                .child(self.button("reopen-settings", tr("记录设置", "History settings")).border_0().bg(gpui::transparent_black()).on_click(cx.listener(|this, _, window, cx| {
                     if this.settings_open { this.commit_limit(true, window, cx); }
                     else {
                         this.limit_input.update(cx, |input, cx| input.set_text(this.snapshot["historyLimit"].as_u64().unwrap_or(200).to_string(), window, cx));
@@ -960,10 +960,10 @@ impl Render for ReopenWindow {
                 .child(div().flex().flex_wrap().items_center().gap(px(10.0)).text_size(px(11.0))
                     .child(tr("历史上限", "History limit"))
                     .child(div().w(px(65.0)).h(px(30.0)).px(px(6.0)).rounded(px(4.0)).border_1().border_color(color(&t.border)).child(self.limit_input.clone()))
-                    .child(tr("菜单显示数量", "Folders in menu"))
+                    .child(tr("菜单显示数量", "Menu items"))
                     .child(div().w(px(65.0)).h(px(30.0)).px(px(6.0)).rounded(px(4.0)).border_1().border_color(color(&t.border)).child(self.menu_input.clone())))
                 .child(div().flex().flex_wrap().items_center().gap(px(6.0)).text_size(px(11.0)).child(tr("运行独立重开动作时", "When running Reopen"))
-                    .child(self.button("reopen-launch-direct", tr("直接重开最近目录", "Reopen latest directly")).text_color(color(if !show_menu { &t.accent } else { &t.text_muted })).on_click(cx.listener(|this, _, _, cx| this.mutate(json!({"action":"settings","showMenu":false}), cx))))
+                    .child(self.button("reopen-launch-direct", tr("直接重开最近目录", "Open latest")).text_color(color(if !show_menu { &t.accent } else { &t.text_muted })).on_click(cx.listener(|this, _, _, cx| this.mutate(json!({"action":"settings","showMenu":false}), cx))))
                     .child(self.button("reopen-launch-window", tr("显示快捷重开窗", "Show quick window")).text_color(color(if show_menu { &t.accent } else { &t.text_muted })).on_click(cx.listener(|this, _, _, cx| this.mutate(json!({"action":"settings","showMenu":true}), cx)))))
                 .child(div().text_size(px(10.0)).text_color(color(&t.text_muted)).child(tr("按 Enter 或离开输入框保存；调小上限会在下次新增时整理。", "Press Enter or leave a field to save. Lower limits apply on the next record.")));
             body = body.child(controls);

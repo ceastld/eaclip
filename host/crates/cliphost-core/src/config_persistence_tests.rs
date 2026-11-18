@@ -13,6 +13,66 @@ fn fixture() -> (tempfile::TempDir, HostState) {
     (dir, host)
 }
 
+#[test]
+fn sensitive_text_setting_survives_reopen_and_preserves_history_text() {
+    let (_dir, host) = fixture();
+    let text = "fixture Q9vL2kX7aB3m";
+    let added = host.add_text(&json!({"text": text})).unwrap();
+    let id = &added["createdIds"][0];
+    assert_eq!(host.config_get()["maskSensitiveText"], false);
+    host.settings_form_update(&json!({"configId":"clip","values":{"MaskSensitiveText":true}})).unwrap();
+    assert!(host.drain_push_events().iter().any(|(name, event)|
+        name == "clipConfigChanged" && event["maskSensitiveText"] == true));
+    let paths = host.inner.lock().paths.clone();
+    drop(host);
+    let host = HostState::open(paths, 28965).unwrap();
+    assert_eq!(host.config_get()["maskSensitiveText"], true);
+    assert_eq!(host.detail(&json!({"id": id})).unwrap()["bodyText"], text);
+    host.config_update(&json!({"maskSensitiveText":false})).unwrap();
+    assert_eq!(host.config_get()["maskSensitiveText"], false);
+}
+
+#[test]
+fn phrase_column_search_uses_full_titles_and_bodies() {
+    let (_dir, host) = fixture();
+    let body = format!("{}needle at the end", "a".repeat(600));
+    let record = host.save_text_favorite("", "周会", &body).unwrap();
+    let id = record["createdIds"][0].as_str().unwrap().to_owned();
+    host.save_text_favorite("", "日常", "收到").unwrap();
+    host.favor_folder_create(&json!({"title":"needle folder"})).unwrap();
+    for query in ["  ＮＥＥＤＬＥ  ", "周会", "zhouhui"] {
+        assert_eq!(host.matching_favorite_ids(query).unwrap(), HashSet::from([id.clone()]));
+    }
+    assert!(host.matching_favorite_ids("absentword").unwrap().is_empty());
+}
+
+#[test]
+fn phrase_column_reopens_with_the_same_folder_and_text_favorites() {
+    let (dir, host) = fixture();
+    assert_eq!(host.config_get()["clipListPhraseColumn"], false);
+    let folder = host.favor_folder_create(&json!({"title":"常用语"})).unwrap();
+    let parent = folder["id"].as_str().unwrap();
+    let body = "  第一行\r\n第二行  ";
+    let result = host.save_text_favorite(parent, "  回复  ", body).unwrap();
+    let id = result["createdIds"][0].as_str().unwrap();
+    let auto = host.save_text_favorite(parent, "", body).unwrap();
+    let unnamed = auto["createdIds"][0].as_str().unwrap();
+    assert!(host.save_text_favorite("missing-folder", "失败", body).is_err());
+    assert!(host.save_text_favorite(parent, "空白", " \n ").is_err());
+    host.config_update(&json!({"clipListPhraseColumn":true,"clipListPhraseFolderId":parent})).unwrap();
+    host.favor_update(&json!({"id":parent,"title":"团队常用语"})).unwrap();
+    drop(host);
+    let host = HostState::open(AppPaths::from_data_root(dir.path().join("BetterClipTauri")), 28965).unwrap();
+    assert_eq!(host.config_get()["clipListPhraseColumn"], true);
+    assert_eq!(host.config_get()["clipListPhraseFolderId"], parent);
+    let tree = host.favor_tree().unwrap();
+    assert_eq!(tree["items"][parent]["title"], "团队常用语");
+    assert_eq!(tree["childrenById"][parent], json!([unnamed, id]));
+    assert_eq!(tree["items"][id]["title"], "回复");
+    assert_eq!(tree["items"][id]["summary"], body);
+    assert_eq!(tree["items"][unnamed]["title"], "第一行");
+}
+
 fn memory(host: &HostState) -> Value {
     let inner = host.inner.lock();
     json!({"clip":inner.config,"filters":inner.filters,"global":inner.extras.global,

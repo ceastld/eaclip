@@ -40,8 +40,8 @@ impl ClearScope {
     }
     fn heading(self) -> &'static str {
         match self {
-            Self::All => tr("清空全部剪贴板历史", "Clear all clipboard history"),
-            Self::NonTop => tr("清空非置顶记录", "Clear unpinned history"),
+            Self::All => tr("清空全部剪贴板历史", "Clear all history"),
+            Self::NonTop => tr("清空非置顶记录", "Clear unpinned"),
         }
     }
     fn description(self) -> &'static str {
@@ -1069,7 +1069,7 @@ impl HistoryActions {
                 "将内容加入剪贴历史。勾选「每行一条」时按换行拆成多条；否则整段作为一条。",
                 "Add text to clipboard history. With one record per line enabled, split at line breaks; otherwise keep the complete text as one record.")),
             Dialog::Clear(Some(scope)) => (scope.heading(), scope.description()),
-            Dialog::Clear(None) => (tr("清空剪贴历史", "Clear clipboard history"), tr(
+            Dialog::Clear(None) => (tr("清空剪贴历史", "Clear history"), tr(
                 "确认后将立即从列表隐藏所选范围；约 5 秒内可撤销，超时后才会永久删除。",
                 "The chosen records will be hidden immediately. Undo is available for about 5 seconds before permanent deletion.")),
         };
@@ -1103,7 +1103,7 @@ impl HistoryActions {
                             1.
                         })
                         .child(if checked { "☑" } else { "☐" })
-                        .child(tr("每行一条记录", "One record per line"))
+                        .child(tr("每行一条记录", "One per line"))
                         .on_click(cx.listener(|this, _, _, cx| {
                             if !this.busy
                                 && !this.exit_pending

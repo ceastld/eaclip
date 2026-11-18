@@ -1241,7 +1241,7 @@ impl HostState {
     ) {
         let pinned = {
             if !inner.window_visible
-                || !inner.no_focus_session_active
+                || (!inner.no_focus_session_active && !inner.clipboard_focus_refused)
                 || inner.move_interaction_active
             {
                 return;
@@ -1252,6 +1252,12 @@ impl HostState {
         let Some(inside) = self.input_dismiss_relation(inner, inner.host_hwnd, hit) else {
             return;
         };
+        if inner.clipboard_focus_refused && (inside || dismiss_outside) {
+            inner.clipboard_focus_refused = false;
+            if inside && !inner.no_focus_session_active {
+                return;
+            }
+        }
         if inside {
             set_clipboard_keyboard_mode_locked(inner, ClipboardKeyboardMode::Full);
         } else if inner.clipboard_keyboard_mode == ClipboardKeyboardMode::Full {

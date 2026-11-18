@@ -1011,14 +1011,14 @@ impl FileBrowserWindow {
                     .collect::<Vec<_>>();
                 if !places.is_empty() {
                     self.rows
-                        .push(Row::Label(tr("常用位置", "Common locations"), places.len()));
+                        .push(Row::Label(tr("常用位置", "Places"), places.len()));
                     let per_row = if self.embedded.is_some() { 1 } else { 2 };
                     self.rows
                         .extend(places.chunks(per_row).map(|items| Row::Places(items.to_vec())));
                 }
                 if !drives.is_empty() {
                     self.rows.push(Row::Label(
-                        tr("设备和驱动器", "Devices and drives"),
+                        tr("设备和驱动器", "Drives"),
                         drives.len(),
                     ));
                     let per_row = if self.embedded.is_some() { 1 } else { self.columns };
@@ -1396,7 +1396,7 @@ impl FileBrowserWindow {
                 .px(px(10.0))
                 .text_size(px(10.0))
                 .text_color(color(&t.text_muted))
-                .child(tr("常用位置", "Common locations")),
+                .child(tr("常用位置", "Places")),
         );
         for (index, place) in self.home.places.iter().enumerate() {
             let path = place.path.clone();
@@ -1457,7 +1457,7 @@ impl FileBrowserWindow {
         match row {
             Row::Label(label, count) => div()
                 .w_full()
-                .h(px(if label == tr("设备和驱动器", "Devices and drives") {
+                .h(px(if label == tr("设备和驱动器", "Drives") {
                     55.0
                 } else {
                     43.0
@@ -2334,13 +2334,13 @@ impl FileBrowserWindow {
             .pt(px(4.0));
         if self.loading || self.error.is_some() || self.rows.is_empty() {
             let text = if self.loading {
-                tr("正在读取目录…", "Reading folder…")
+                tr("正在读取目录…", "Loading…")
             } else if self.error.is_some() {
                 tr("无法访问此位置", "Unable to access this location")
             } else if self.query.is_empty() {
-                tr("此文件夹为空", "This folder is empty")
+                tr("此文件夹为空", "Empty folder")
             } else {
-                tr("没有匹配的项目", "No matching items")
+                tr("没有匹配的项目", "No matches")
             };
             let mut state = div()
                 .flex_1()
@@ -2665,13 +2665,13 @@ impl Render for FileBrowserWindow {
         }
         if self.loading || self.error.is_some() || self.rows.is_empty() {
             let empty_text = if self.loading {
-                tr("正在读取目录…", "Reading folder…")
+                tr("正在读取目录…", "Loading…")
             } else if self.error.is_some() {
                 tr("无法访问此位置", "Unable to access this location")
             } else if self.query.is_empty() {
-                tr("此文件夹为空", "This folder is empty")
+                tr("此文件夹为空", "Empty folder")
             } else {
-                tr("没有匹配的文件", "No matching files")
+                tr("没有匹配的文件", "No files found")
             };
             let mut state = div()
                 .flex_1()

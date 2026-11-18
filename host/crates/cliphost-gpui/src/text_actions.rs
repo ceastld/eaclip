@@ -973,7 +973,7 @@ impl TextActionsPage {
                             "Unescape replacement (\\t \\r \\n)",
                         ),
                     ),
-                    ("UseRegex", tr("使用正则替换", "Use regular expressions")),
+                    ("UseRegex", tr("使用正则替换", "Use regex")),
                 ] {
                     if key != "UseRegex" && !self.advanced {
                         continue;
@@ -1032,7 +1032,7 @@ impl TextActionsPage {
                     .child(self.field(tr("后缀", "Suffix"), "data:Suffix"))
                     .child(self.check(
                         "pair-lines",
-                        tr("多行模式", "Multiline mode"),
+                        tr("多行模式", "Multiline"),
                         "data:MultiLines",
                         draft["data"]["MultiLines"] == true,
                         t,
@@ -1040,7 +1040,7 @@ impl TextActionsPage {
                     ))
                     .child(self.check(
                         "pair-trim",
-                        tr("去除前后空白符", "Trim whitespace"),
+                        tr("去除前后空白符", "Trim spaces"),
                         "data:Trim",
                         draft["data"]["Trim"] == true,
                         t,
@@ -1081,7 +1081,7 @@ impl TextActionsPage {
                     div()
                         .text_size(px(11.))
                         .text_color(color(&t.text_muted))
-                        .child(tr("操作类型（高级）", "Action type (advanced)")),
+                        .child(tr("操作类型（高级）", "Action type")),
                 )
                 .child(
                     div()
@@ -1118,7 +1118,7 @@ impl TextActionsPage {
             ));
             if draft["simulate"] == true {
                 body = body.child(self.field(
-                    tr("输入延迟（毫秒）", "Input delay (milliseconds)"),
+                    tr("输入延迟（毫秒）", "Key delay (ms)"),
                     "simulateDelay",
                 ));
             }

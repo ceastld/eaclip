@@ -50,6 +50,7 @@ mod fixture {
         return_top: bool,
         return_top_reset: bool,
         appearance: Option<String>,
+        phrase_view: Option<String>,
         favorite_feedback: Option<String>,
         hold_favorite_feedback: bool,
         report: Option<PathBuf>,
@@ -70,6 +71,7 @@ mod fixture {
                 return_top: false,
                 return_top_reset: false,
                 appearance: None,
+                phrase_view: None,
                 favorite_feedback: None,
                 hold_favorite_feedback: false,
                 report: None,
@@ -127,6 +129,11 @@ mod fixture {
                         }
                         options.appearance = Some(appearance);
                     }
+                    "--phrase-view" => {
+                        let mode = args.next().context("--phrase-view requires column, scroll, all or editor")?;
+                        if !matches!(mode.as_str(), "column" | "scroll" | "editor" | "all") { bail!("expected column, scroll, all or editor"); }
+                        options.phrase_view = Some(mode);
+                    }
                     "--favorite-feedback" => {
                         let scenario = args.next().context("--favorite-feedback requires root, nested or undone")?;
                         if !matches!(scenario.as_str(), "root" | "nested" | "undone") {
@@ -152,6 +159,7 @@ mod fixture {
                         println!("list_settings_visual --theme dark|light --width 420 --height 560 [--behavior] [--custom] [--favorite-feedback root|nested|undone [--hold-favorite-feedback]] [--context-menu-layout --appearance standard|simple|custom-all|custom-empty] [--report <repository .tmp/report.json>] [--exit-after-ms 10000]");
                         println!("--favorite-feedback seeds the production feedback bubble over fixed rows instead of opening list settings.");
                         println!("--hold-favorite-feedback explicitly freezes that fixture bubble for static capture; without it production expiry remains active.");
+                        println!("--phrase-view column|scroll|all|editor renders the favorites column, two overflowing lists, or the add dialog over disposable favorites.");
                         println!("--context-menu-layout checks real row bounds across closed/open/closed menu visibility states, with at least two rendered frames per state and fresh row builds after each toggle; no native context menu is opened.");
                         println!("--return-top seeds the production back-to-top button over fixed rows. --return-top-reset also calls the production reset after 1500 ms and records before/after state and screenshots.");
                         println!("Fixed clipboard rows and disposable headless settings only. Own-HWND PrintWindow screenshot is written beside the report. No API, NativeHost, capture, hooks, RPC, OLE or input injection.");
@@ -424,6 +432,41 @@ mod fixture {
         cliphost_core::force_headless(true);
         set_language(if options.english { LanguageMode::English } else { LanguageMode::Chinese });
         let host = Arc::new(HostState::open(paths.clone(), 29065).map_err(|error| anyhow!(error))?);
+        let phrase_fixture = if let Some(mode) = &options.phrase_view {
+            let create = |parent: &str, name: &str| -> Result<String> {
+                let value = host.favor_folder_create(&json!({"parentId":parent,"title":name})).map_err(anyhow::Error::msg)?;
+                Ok(value["id"].as_str().context("missing fixture folder")?.to_owned())
+            };
+            let source = create("", "常用语")?;
+            let work = create(&source, "工作")?;
+            let day = create(&source, "日常")?;
+            host.save_text_favorite(&work, "会前提醒", "请把想讨论的问题发给我，我一起整理到议程里。").map_err(anyhow::Error::msg)?;
+            host.save_text_favorite(&day, "收到确认", "收到，谢谢！我确认后再回复你。").map_err(anyhow::Error::msg)?;
+            if mode == "scroll" {
+                for n in 1..=36 {
+                    host.save_text_favorite(&work, &format!("常用语 {n}"), "滚动验收样例").map_err(anyhow::Error::msg)?;
+                }
+            }
+            if mode == "all" {
+                let other = create("", "参考")?;
+                host.favor_add_link(&json!({"parentId":other,"title":"项目主页","url":"https://example.com/project"}))
+                    .map_err(anyhow::Error::msg)?;
+                let file = root.join("验收记录.txt");
+                fs::write(&file, "fixture")?;
+                host.favor_add_paths(&json!({"parentId":work,"paths":[file]})).map_err(anyhow::Error::msg)?;
+                let image = paths.image_library.join("配色参考.png");
+                fs::copy(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../ui-design/assets/clip-main-thumbnail.png"), &image)?;
+                let mut clip = cliphost_core::model::ClipRecord::new_text("配色参考", "fixture");
+                clip.kind = cliphost_core::ClipKind::ImageClipItem;
+                clip.title = Some("配色参考".into());
+                clip.image_path = Some(image.to_string_lossy().into_owned());
+                cliphost_core::AppStore::open(&paths.db)?.insert_clip(&clip, true)?;
+                host.favorite_save_history_to_root(&json!({"ids":[clip.id],
+                    "expectedRevision":host.favorite_drag_revision().map_err(anyhow::Error::msg)?,
+                    "operationId":uuid::Uuid::new_v4().simple().to_string()})).map_err(anyhow::Error::msg)?;
+            }
+            Some((host.clone(), source, mode == "editor"))
+        } else { None };
         let mut tokens = DesignTokens::from_json(TOKENS_JSON).map_err(|error| anyhow!(error))?;
         tokens.window.width = options.width;
         tokens.window.height = options.height;
@@ -467,7 +510,9 @@ mod fixture {
                 let mut view = ClipboardPreview::new(tokens,UiModel::Fixture(model),options.dark,
                     "all".into(),String::new(),true,false,started,window,cx);
                 view.enable_diagnostics();
-                if options.context_menu_layout {
+                if let Some((fixture_host, folder, editor)) = phrase_fixture {
+                    view.seed_phrase_visual(fixture_host, folder, editor, window, cx);
+                } else if options.context_menu_layout {
                     assert!(view.seed_context_menu_layout_visual(layout_configuration,cx), "isolated menu-layout fixture seed refused");
                 } else if let Some(scenario) = feedback_for_view.as_deref() {
                     let target = match scenario {
@@ -516,6 +561,9 @@ mod fixture {
                             shown = true;
                         }
                         let mut main = view.report(window,cx);
+                        if matches!(options.phrase_view.as_deref(), Some("scroll" | "all")) {
+                            main["phraseScroll"] = view.phrase_scroll_visual();
+                        }
                         if shown && !pending && choice_opened_at.is_none() {
                             if let Some(key) = options.choice.as_deref() {
                                 if view.open_list_settings_choice_visual(key, window, cx) {
@@ -556,7 +604,7 @@ mod fixture {
                             "dataRoot":paths.data_root,"output":root,"report":report,"theme":if options.dark{"dark"}else{"light"},
                             "width":options.width,"height":options.height,"behavior":options.behavior,"custom":options.custom,
                             "language":if options.english {"en"} else {"zh"},"choice":options.choice,"choiceOpened":choice_opened_at.is_some(),
-                            "favoriteFeedbackScenario":options.favorite_feedback,
+                            "phraseView":options.phrase_view, "favoriteFeedbackScenario":options.favorite_feedback,
                             "favoriteFeedbackHeld":options.hold_favorite_feedback,
                             "contextMenuLayout":if options.context_menu_layout { layout_probe.report(&appearance) } else { Value::Null },
                             "returnTopProbe":if options.return_top { json!({

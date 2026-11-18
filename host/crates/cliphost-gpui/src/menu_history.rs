@@ -848,7 +848,7 @@ impl ContextMenuPopup {
         let theme = self.tokens.theme(self.dark).clone();
         let count = self.history.as_ref().unwrap().context.count;
         let label = if action.key == "lan-share" {
-            tr("发送到局域网", "Send over LAN").to_owned()
+            tr("发送到局域网", "Send to device").to_owned()
         } else {
             action.label.clone()
         };
@@ -994,7 +994,7 @@ impl ContextMenuPopup {
         let arrow = self
             .history_button(
                 Target::LanArrow,
-                tr("选择接收设备", "Choose a receiving device").into(),
+                tr("选择接收设备", "Pick device").into(),
                 window,
                 cx,
             )

@@ -64,6 +64,8 @@ mod lan_compose;
 mod lan_received_history;
 #[path = "host_lock.rs"]
 pub(crate) mod host_lock;
+#[path = "script_invocation.rs"]
+mod script_invocation;
 #[path = "file_history_host.rs"]
 mod file_history_host;
 #[path = "reopen_host.rs"]
@@ -399,6 +401,7 @@ struct HostInner {
     chrome_input_epochs: [ChromeInputEpoch; 3],
     clipboard_escape_session: Uuid,
     clipboard_activation_generation: u64,
+    clipboard_focus_refused: bool,
     host_hwnd: isize,
     host_no_activate_dirty: bool,
     qp_hwnd: isize,
@@ -950,6 +953,9 @@ struct SuperMenuRuntime {
     content_suppress_until: Option<Instant>,
     /// Hub category of the last published session; the hotkey reopens it.
     last_category: Option<&'static str>,
+    /// Opened from the top-edge dock: the strip sits at the screen top and
+    /// category switches inside the same opening keep it there.
+    docked: bool,
 }
 
 struct HostChromeRuntime {
@@ -1576,6 +1582,7 @@ impl HostState {
                     shown_at: None,
                     content_suppress_until: None,
                     last_category: None,
+                    docked: false,
                 },
                 ui: HostChromeRuntime {
                     clipboard_editing: false,
@@ -1658,6 +1665,7 @@ impl HostState {
                 chrome_input_epochs: [ChromeInputEpoch::default(); 3],
                 clipboard_escape_session: Uuid::new_v4(),
                 clipboard_activation_generation: 0,
+                clipboard_focus_refused: false,
                 host_hwnd: 0,
                 host_no_activate_dirty: false,
                 qp_hwnd: 0,
@@ -3608,6 +3616,10 @@ impl HostState {
         crate::i18n::LanguageMode::from_wire(&self.inner.lock().extras.global.ui_language)
     }
 
+    pub fn mask_sensitive_text(&self) -> bool {
+        self.inner.lock().config.mask_sensitive_text
+    }
+
     pub fn config_get(&self) -> Value {
         let (mut cfg, extras) = {
             let inner = self.inner.lock();
@@ -3665,6 +3677,9 @@ impl HostState {
                 merge_config(&mut cfg, params);
                 cfg.max_item_size = cfg.max_item_size.max(1);
             }
+        }
+        if let Some(value) = take_bool(params, "maskSensitiveText", "MaskSensitiveText") {
+            cfg.mask_sensitive_text = value;
         }
         if self.keyboard_input_qa {
             cfg.clip_monitor_on = false;
@@ -4210,6 +4225,18 @@ impl HostState {
         }))
     }
 
+    /// Match full text before the UI truncates previews. Directory order and
+    /// shared-folder membership come from the caller's favorites tree.
+    pub fn matching_favorite_ids(&self, query: &str) -> Result<HashSet<String>, String> {
+        let query = crate::clip_fuzzy::normalize_for_search(query);
+        let items = self.store().lock().list_favors().map_err(|e| e.to_string())?;
+        Ok(items.into_iter()
+            .filter(|item| !item.is_folder)
+            .filter(|item| matches_favor_query(item, &query))
+            .map(|item| item.id)
+            .collect())
+    }
+
     pub fn favor_search(&self, params: &Value) -> Result<Value, String> {
         // C# `ClipHostFavoritesFromFavorDataService.Search`: skip<0→0, take<=0→100, take>500→500.
         let query = params
@@ -4604,6 +4631,31 @@ impl HostState {
         let parent_id = self.resolve_optional_favor_parent(parent)?;
         let texts = favor_add_text_payload(params);
         let insert_index = favor_insert_index_from_params(params);
+        self.insert_text_favorites(parent_id, texts, None, insert_index)
+    }
+
+    /// The clipboard column and the favorites page create the same record in one store write.
+    pub fn save_text_favorite(&self, parent: &str, title: &str, body: &str) -> Result<Value, String> {
+        let first_line = body.lines()
+            .map(str::trim)
+            .find(|line| !line.is_empty())
+            .ok_or_else(|| tr("请输入要收藏的文本", "Enter text to save").to_string())?;
+        let title = if title.trim().is_empty() {
+            first_line.chars().take(80).collect()
+        } else {
+            title.trim().to_owned()
+        };
+        let parent = self.resolve_optional_favor_parent(Some(parent))?;
+        self.insert_text_favorites(parent, vec![body.to_owned()], Some(&title), 0)
+    }
+
+    fn insert_text_favorites(
+        &self,
+        parent_id: Option<String>,
+        texts: Vec<String>,
+        title: Option<&str>,
+        insert_index: i32,
+    ) -> Result<Value, String> {
         let mut created = Vec::new();
         for text in texts {
             let favor = FavorRecord {
@@ -4611,7 +4663,7 @@ impl HostState {
                 id: Uuid::new_v4().simple().to_string(),
                 parent_id: parent_id.clone(),
                 is_folder: false,
-                name: text.chars().take(40).collect(),
+                name: title.map(str::to_owned).unwrap_or_else(|| text.chars().take(40).collect()),
                 kind: ClipKind::TextClipItem,
                 body_text: Some(text),
                 file_paths: Vec::new(),
@@ -8379,6 +8431,17 @@ impl HostState {
         let mut inner = self.inner.lock();
         let snap = Self::hide_snapshot_locked(&inner, can_tuck);
         let mut decision = evaluate(HostHideTrigger::Poll, &snap);
+        // A refused foreground request is not evidence of the user leaving.
+        // Keep the presented window usable, without owning external input.
+        // Actual activation/clicks end this state; Fold keeps its normal policy.
+        if inner.clipboard_focus_refused && matches!(decision.window_action,
+            crate::hide_policy::HostDismissAction::Hide | crate::hide_policy::HostDismissAction::EdgeHide)
+        {
+            decision.window_action = crate::hide_policy::HostDismissAction::None;
+            decision.fake_focus_action = HostFakeFocusAction::Unchanged;
+            decision.reason = "native-focus-refused".into();
+            decision.path.push("native-focus-refused".into());
+        }
         // The popup owns cursor-leave timing. Do not let the parent's 50ms
         // poll cut its 180ms gap grace short, or turn that grace into fake focus.
         if matches!(decision.window_action,
@@ -8597,6 +8660,7 @@ impl HostState {
     pub fn set_host_hwnd(&self, hwnd: isize) {
         let mut inner = self.inner.lock();
         if inner.host_hwnd != hwnd {
+            inner.clipboard_focus_refused = false;
             inner.native_fifo_keyboard.retire_binding();
             inner.native_context_menu_keyboard.retire();
         }
@@ -8654,6 +8718,27 @@ impl HostState {
             return false;
         }
         hide_clipboard_window_locked(&mut inner);
+        true
+    }
+
+    /// Presentation succeeded, but Windows retained another app's foreground.
+    /// Do not hide the HWND or pretend that search can receive keyboard input.
+    pub fn native_clipboard_focus_refused(&self, stamp: (isize, u64)) -> bool {
+        let mut inner = self.inner.lock();
+        if !inner.window_visible || stamp != (inner.host_hwnd, inner.clipboard_activation_generation) {
+            return false;
+        }
+        drop_queued_window_input(&mut inner, "clipboard");
+        inner.clipboard_focus_refused = true;
+        inner.clipboard_deactivation_pending = false;
+        inner.is_active = false;
+        inner.has_host_fake_focus = false;
+        inner.no_focus_session_active = inner.config.enable_no_focus_mode;
+        set_clipboard_keyboard_mode_locked(&mut inner, ClipboardKeyboardMode::Released);
+        if inner.ui.keyboard_focus_host == Some("clipboard") {
+            inner.ui.keyboard_focus_host = None;
+        }
+        mark_host_no_activate_dirty(&mut inner);
         true
     }
 
@@ -9218,7 +9303,7 @@ impl HostState {
         let pinned = {
             let inner = self.inner.lock();
             if !inner.window_visible
-                || !inner.no_focus_session_active
+                || (!inner.no_focus_session_active && !inner.clipboard_focus_refused)
                 || inner.move_interaction_active
             {
                 return;
@@ -9228,6 +9313,14 @@ impl HostState {
         let inside = self.outside_click_hits_host(x, y);
         {
             let mut inner = self.inner.lock();
+            // With ordinary focus enabled there is no no-focus input session,
+            // but the first real click must still finish a refused handoff.
+            if inner.clipboard_focus_refused && (inside || dismiss_outside) {
+                inner.clipboard_focus_refused = false;
+                if inside && !inner.no_focus_session_active {
+                    return;
+                }
+            }
             if inside {
                 set_clipboard_keyboard_mode_locked(&mut inner, ClipboardKeyboardMode::Full);
             } else if inner.clipboard_keyboard_mode == ClipboardKeyboardMode::Full {
@@ -9636,7 +9729,11 @@ impl HostState {
     /// Local bookmark sources for the super menu's 书签 settings (2026-10-30).
     pub fn bookmark_sources(&self) -> crate::bookmarks::BookmarkSources {
         let cfg = self.inner.lock().extras.menu_global.clone();
-        crate::bookmarks::local_sources(&cfg.bookmark_browser, &cfg.bookmark_profile, &cfg.bookmark_file_path)
+        if !cfg.bookmark_file_path.trim().is_empty() {
+            return crate::bookmarks::BookmarkSources { custom_file: true, ..Default::default() };
+        }
+        crate::bookmarks::extension_sources(&crate::quicker_bookmarks::QuickerBookmarks(self.quicker_rpc.select()),
+            &cfg.bookmark_browser, &cfg.bookmark_environment)
     }
 
     /// The file menu's hint line names where a plain folder click goes.
@@ -9687,9 +9784,37 @@ impl HostState {
         let foreground = (!crate::clipboard::is_headless())
             .then(crate::clipboard::resolved_foreground_root_hwnd).flatten();
         let action = self.super_menu_reopen_action();
-        self.request_super_menu_loading_action(action, foreground,
+        self.request_super_menu_loading_action(action, foreground, false,
             move |host, files| host.menu_build_context(action, files))
             .map(|_| ())
+    }
+
+    /// 2026-10-31 top-edge dock: the same opening as the hotkey, presented
+    /// as category buttons at the top of the pointer's monitor.
+    pub fn request_super_menu_docked(&self) -> Result<(), String> {
+        let foreground = (!crate::clipboard::is_headless())
+            .then(crate::clipboard::resolved_foreground_root_hwnd).flatten();
+        let action = self.super_menu_reopen_action();
+        self.request_super_menu_loading_action(action, foreground, true,
+            move |host, files| host.menu_build_context(action, files))
+            .map(|_| ())
+    }
+
+    /// Off unless the user turns it on (Super menu → General settings).
+    pub fn super_menu_dock_enabled(&self) -> bool {
+        self.inner.lock().extras.menu_global.top_edge_dock
+    }
+
+    /// How long the pointer rests at the top edge before the dock appears.
+    pub fn super_menu_dock_delay(&self) -> std::time::Duration {
+        let ms = self.inner.lock().extras.menu_global.top_edge_dock_delay.max(0);
+        std::time::Duration::from_millis(ms as u64)
+    }
+
+    /// Shown or still building; the dock trigger leaves an open menu alone.
+    pub fn super_menu_active(&self) -> bool {
+        let inner = self.inner.lock();
+        inner.super_menu.visible || inner.super_menu.loading
     }
 
     /// Unqualified triggers return to the category the user last left.
@@ -9703,13 +9828,14 @@ impl HostState {
         foreground: Option<isize>,
         load_context: impl FnOnce(&Self, &str) -> crate::menu_api::MenuBuildContext + Send + 'static,
     ) -> Result<thread::JoinHandle<Value>, String> {
-        self.request_super_menu_loading_action("super", foreground, load_context)
+        self.request_super_menu_loading_action("super", foreground, false, load_context)
     }
 
     fn request_super_menu_loading_action(
         &self,
         action: &'static str,
         foreground: Option<isize>,
+        docked: bool,
         load_context: impl FnOnce(&Self, &str) -> crate::menu_api::MenuBuildContext + Send + 'static,
     ) -> Result<thread::JoinHandle<Value>, String> {
         let host_hwnd = self.inner.lock().host_hwnd;
@@ -9721,6 +9847,7 @@ impl HostState {
             inner.super_menu.native_keyboard.retire_presentation();
             inner.super_menu.generation = inner.super_menu.generation.wrapping_add(1);
             inner.super_menu.loading = true;
+            inner.super_menu.docked = docked;
             (inner.super_menu.generation, foreground.unwrap_or(inner.last_non_host_fg) as i64)
         };
         let host = self.clone();
@@ -9752,6 +9879,7 @@ impl HostState {
             inner.super_menu.native_keyboard.retire_presentation();
             inner.super_menu.generation = inner.super_menu.generation.wrapping_add(1);
             inner.super_menu.loading = false;
+            inner.super_menu.docked = false;
             inner.super_menu.generation
         };
         self.menu_create_session_at_generation(&action, files, source_hwnd, target_hwnd, generation, None, load_context)
@@ -9892,13 +10020,14 @@ impl HostState {
                         && crate::quicker_action::menu_action_template(item.body_text.as_deref().unwrap_or(""), &item.execute_param)
                             == Some(crate::quicker_action::MenuActionTemplate::Bookmarks))));
             if needs_bookmarks {
-                ctx.bookmarks = crate::bookmarks::load_local_tree(&ctx.menu_cfg.bookmark_browser, &ctx.menu_cfg.bookmark_profile, &ctx.menu_cfg.bookmark_file_path);
-                // 指定来源时不借助默认扩展读取其他浏览器。
-                if ctx.bookmarks.is_none() && ctx.menu_cfg.bookmark_browser.is_empty() && ctx.menu_cfg.bookmark_file_path.is_empty() {
-                    ctx.bookmarks = self.quicker_browser_call("quicker.getBrowserBookmarksTree")
-                        .ok().and_then(|value| value.as_str().and_then(crate::bookmarks::parse_rpc_tree))
-                        .map(|mut tree| { crate::bookmarks::flatten_single_folders(&mut tree); tree });
-                }
+                let result = if !ctx.menu_cfg.bookmark_file_path.trim().is_empty() {
+                    crate::bookmarks::load_local_tree("", "", &ctx.menu_cfg.bookmark_file_path)
+                        .ok_or_else(|| "无法读取指定的 Bookmarks 文件，请检查路径和文件格式。".to_string())
+                } else {
+                    crate::bookmarks::load_extension_tree(&crate::quicker_bookmarks::QuickerBookmarks(self.quicker_rpc.select()),
+                        &ctx.menu_cfg.bookmark_browser, &ctx.menu_cfg.bookmark_environment)
+                };
+                match result { Ok(tree) => ctx.bookmarks = Some(tree), Err(error) => ctx.bookmark_error = Some(error) }
             }
         })
     }
@@ -11499,7 +11628,7 @@ impl HostState {
         self.show_overlay_toast(
             &message,
             "info",
-            Some(tr("连续粘贴", "Sequential paste")),
+            Some(tr("连续粘贴", "Paste queue")),
             Some(duration),
             "bottom-center",
             None,
@@ -11510,7 +11639,7 @@ impl HostState {
         self.show_overlay_toast(
             tr("连续粘贴完成", "Sequential paste completed"),
             "success",
-            Some(tr("连续粘贴", "Sequential paste")),
+            Some(tr("连续粘贴", "Paste queue")),
             Some(1800),
             "bottom-center",
             None,
@@ -11801,9 +11930,13 @@ impl HostState {
         match decision.window_action {
             crate::hide_policy::HostDismissAction::Hide => {
                 if inner.window_visible {
+                    tracing::info!(target: "cliphost_core::window_lifecycle", ?trigger,
+                        reason = %decision.reason, generation = inner.clipboard_activation_generation,
+                        "Clipboard dismissed by policy");
                     drop_queued_window_input(inner, "clipboard");
                     cancel_window_presentation(inner, "clipboard");
                     inner.window_visible = false;
+                    inner.clipboard_focus_refused = false;
                     inner.is_active = false;
                     inner.edge_tucked = false;
                     end_no_focus_session_locked(inner);
@@ -12315,6 +12448,7 @@ impl HostState {
             let mut inner = self.inner.lock();
             inner.clipboard_escape_session = Uuid::new_v4();
             inner.clipboard_activation_generation = inner.clipboard_activation_generation.wrapping_add(1);
+            inner.clipboard_focus_refused = false;
             inner.window_visible = true;
             inner.edge_tucked = false;
             inner.is_collapsed = false;
@@ -12383,7 +12517,7 @@ impl HostState {
     /// A delayed focus handoff must not reactivate a hidden or reopened no-focus window.
     pub fn clipboard_keyboard_focus_allowed(&self) -> bool {
         let inner = self.inner.lock();
-        inner.window_visible && !inner.no_focus_session_active
+        inner.window_visible && !inner.no_focus_session_active && !inner.clipboard_focus_refused
             && inner.ui.keyboard_focus_host.is_none_or(|host| host == "clipboard")
     }
 
@@ -12403,6 +12537,7 @@ impl HostState {
 
     fn notify_activated_locked(inner: &mut HostInner) {
         inner.is_active = inner.window_visible;
+        inner.clipboard_focus_refused = false;
         if clipboard_is_active(inner) {
             inner.clipboard_deactivation_pending = false;
         }
@@ -12483,6 +12618,9 @@ impl HostState {
             inner.chrome.retain(|command| command.input_window().is_none());
         }
         inner.ui.keyboard_focus_host = Some(source);
+        if source == "clipboard" {
+            inner.clipboard_focus_refused = false;
+        }
         if activate || source != "clipboard" {
             end_no_focus_session_locked(inner);
             // Initialize the guard only for a new handoff. Like C#'s early
@@ -14568,6 +14706,11 @@ fn cancel_clipboard_escape_for_new_layer(inner: &mut HostInner) {
 }
 
 fn hide_clipboard_window_locked(inner: &mut HostInner) {
+    if inner.window_visible {
+        tracing::info!(target: "cliphost_core::window_lifecycle",
+            generation = inner.clipboard_activation_generation, "Clipboard Hide requested");
+    }
+    inner.clipboard_focus_refused = false;
     drop_queued_window_input(inner, "clipboard");
     cancel_window_presentation(inner, "clipboard");
     inner.window_visible = false;
@@ -15157,6 +15300,7 @@ fn super_menu_clear_session(inner: &mut HostInner) {
     inner.super_menu.dpi_scale_y = 1.0;
     inner.super_menu.shown_at = None;
     inner.super_menu.content_suppress_until = None;
+    inner.super_menu.docked = false;
     push_chrome(inner, ChromeCommand::HideSuperMenu);
 }
 
@@ -15203,6 +15347,7 @@ fn super_menu_detail_unlocked(inner: &HostInner) -> Value {
         "message": snapshot.get("message").cloned().unwrap_or(json!("")),
         "anchorScreenX": anchor_x,
         "anchorScreenY": anchor_y,
+        "docked": visible && inner.super_menu.docked,
         "workAreaLeftPx": work.left,
         "workAreaTopPx": work.top,
         "workAreaWidthPx": work.width,
@@ -16561,6 +16706,13 @@ fn apply_auto_scroll_to_top_config(cfg: &mut ClipConfigDto, params: &Value) {
 
 fn apply_list_config(cfg: &mut ClipConfigDto, params: &Value) {
     apply_auto_scroll_to_top_config(cfg, params);
+    if let Some(value) = take_bool(params, "clipListPhraseColumn", "ClipListPhraseColumn") {
+        cfg.clip_list_phrase_column = value;
+    }
+    if let Some(id) = take_str(params, "clipListPhraseFolderId", "ClipListPhraseFolderId") {
+        cfg.clip_list_phrase_folder_id = Some(id);
+    }
+
     if let Some(v) = take_bool(params, "clipMonitorOn", "ClipMonitorOn") {
         cfg.clip_monitor_on = v;
     }

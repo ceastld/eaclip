@@ -1370,7 +1370,7 @@ impl CopyToastOverlay {
         self.update_pause(cx);
         let mut entries = vec![
             MenuAction::tile("paste", tr("粘贴", "Paste")),
-            MenuAction::tile("paste-enter", tr("回车粘贴", "Paste and Enter")),
+            MenuAction::tile("paste-enter", tr("回车粘贴", "Paste + Enter")),
             MenuAction::tile("copy-only", tr("复制", "Copy")),
             MenuEntry::Separator,
             MenuAction::row("edit", tr("编辑", "Edit")),
@@ -1388,7 +1388,7 @@ impl CopyToastOverlay {
         if matches!(kind.as_str(), "FileClipItem" | "ImageClipItem") {
             entries.push(MenuAction::row(
                 "reveal-folder",
-                tr("打开所在文件夹", "Open containing folder"),
+                tr("打开所在文件夹", "Open folder"),
             ));
         }
         let view = cx.weak_entity();
@@ -1479,7 +1479,7 @@ impl CopyToastOverlay {
                 },
                 tr("贴图", "Pin image")
             ),
-            RowActionKind::Simulate => tr("模拟输入", "Simulate typing").into(),
+            RowActionKind::Simulate => tr("模拟输入", "Type text").into(),
             RowActionKind::Open { .. } => tr("打开", "Open").into(),
         }
     }
@@ -1573,7 +1573,7 @@ impl CopyToastOverlay {
                             this.host.show_host_toast(
                                 warning,
                                 "warning",
-                                Some(tr("复制提示", "Copy notification")),
+                                Some(tr("复制提示", "Copy alert")),
                                 Some(4_200),
                                 None,
                             );
@@ -1642,7 +1642,7 @@ impl CopyToastOverlay {
                     .rounded(px(4.0))
                     .with_fallback(|| {
                         div()
-                            .child(tr("图片加载失败", "Image failed to load"))
+                            .child(tr("图片加载失败", "Image load failed"))
                             .into_any_element()
                     })
                     .into_any_element(),
@@ -1815,7 +1815,7 @@ impl CopyToastOverlay {
         let group: gpui::SharedString = format!("toast-card-{key}").into();
         let mut content = rsx! {
             <div flex_1 min_w_0 min_h={px(24.0)} pr={px(16.0)} flex flex_col justify_center
-                gap={px(2.0)} />
+                gap={px(2.0)} mask_sensitive_text={has_clip} />
         };
         if !title.is_empty() {
             content = content.child(
@@ -1832,8 +1832,8 @@ impl CopyToastOverlay {
             let kind = match item["kind"].as_str().unwrap_or("") {
                 "ImageClipItem" => tr("图片", "Image"),
                 "FileClipItem" => tr("文件", "Files"),
-                "HtmlClipItem" => tr("富文本", "Rich text"),
-                "QQRichTextItem" => tr("聊天富文本", "Chat rich text"),
+                "HtmlClipItem" => tr("富文本", "Rich"),
+                "QQRichTextItem" => tr("聊天富文本", "Chat"),
                 "StepClipItem" => tr("步骤", "Steps"),
                 "LinkClipItem" => tr("链接", "Link"),
                 _ => tr("文本", "Text"),
