@@ -2543,7 +2543,7 @@ impl LanManagementPage {
                         .text_color(color(&t.text)).child(digit),
                 );
             }
-            let code_block = div().p(px(12.)).flex().flex_col()
+            let mut code_block = div().p(px(12.)).flex().flex_col()
                 .border_t_1().border_color(color(&t.border))
                 .bg(motion::mix_hsla(color(&t.surface), color(&t.background), 0.45))
                 .child(div().mb(px(8.)).flex().justify_between().gap(px(8.)).text_size(px(11.))
