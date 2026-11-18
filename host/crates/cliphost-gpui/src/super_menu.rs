@@ -5178,7 +5178,6 @@ impl SuperMenuWindow {
             .child(leading)
             .child(
                 div()
-                    .mask_sensitive_text(true)
                     .flex()
                     .flex_col()
                     .flex_1()

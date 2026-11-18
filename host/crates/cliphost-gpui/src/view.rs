@@ -3980,9 +3980,8 @@ impl ClipboardPreview {
 
     fn merge_authoritative_config(&mut self, value: &Value, cx: &mut Context<Self>) {
         let configuration = self.appearance_writes.lock().unwrap().merge(value);
-        if self.configuration["maskSensitiveText"] != configuration["maskSensitiveText"]
-            || self.configuration["clipListImageHoverPreviewEnabled"]
-                != configuration["clipListImageHoverPreviewEnabled"]
+        if self.configuration["clipListImageHoverPreviewEnabled"]
+            != configuration["clipListImageHoverPreviewEnabled"]
         {
             self.cancel_native_hover();
         }
@@ -5593,7 +5592,6 @@ impl ClipboardPreview {
         };
         let mut content = rsx! {
             <div relative flex_1 min_w_0 flex flex_col gap={px(metrics.content_gap)}
-                mask_sensitive_text={true}
                 text_color={color(&t.text)}
                 font_weight={FontWeight(tokens.typography.text_weight as f32)} />
         };

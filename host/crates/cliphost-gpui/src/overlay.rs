@@ -2278,7 +2278,7 @@ impl Render for QuickPasteOverlay {
                                 gpui::FontWeight::MEDIUM
                             })
                             .child(rsx! {
-                                <div w={px(main_width)} truncate mask_sensitive_text={true}>
+                                <div w={px(main_width)} truncate>
                                     {text}
                                 </div>
                             }
@@ -2465,7 +2465,6 @@ impl Render for QuickPasteOverlay {
                             placement::Part::Body,
                             rsx! {
                                 <div id={"qp-detail-preview-body"}
-                                    mask_sensitive_text={true}
                                     w={px(preview_card_width.max(1.0))} max_w_full
                                     max_h={px(preview_body_height)} min_h_0 />
                             }

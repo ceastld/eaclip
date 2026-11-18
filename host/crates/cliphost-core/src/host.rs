@@ -3616,10 +3616,6 @@ impl HostState {
         crate::i18n::LanguageMode::from_wire(&self.inner.lock().extras.global.ui_language)
     }
 
-    pub fn mask_sensitive_text(&self) -> bool {
-        self.inner.lock().config.mask_sensitive_text
-    }
-
     pub fn config_get(&self) -> Value {
         let (mut cfg, extras) = {
             let inner = self.inner.lock();

@@ -591,7 +591,7 @@ fn clip_fields(cfg: &ClipConfigDto, filters: &[crate::dto::ClipFilterItemDto]) -
         field(
             "MaskSensitiveText",
             tr("遮挡疑似密码和密钥", "Mask passwords & keys"),
-            tr("在剪贴板、收藏及其内容预览中模糊遮挡疑似密码和密钥。应用其他界面和编辑框正常显示文字。", "Blur suspected passwords and keys in clipboard, favorites and their content previews. Other app views and editors display text normally."),
+            tr("在收藏列表和收藏侧栏中模糊遮挡疑似密码和密钥。剪贴板历史、悬浮预览和编辑框显示原文。", "Blur suspected passwords and keys in favorites lists and the favorites sidebar. Clipboard history, hover previews and editors show the original text."),
             tr("常规", "General"),
             "boolean",
             27,

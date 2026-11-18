@@ -3367,7 +3367,7 @@ impl PanelWindow {
             });
         let mut tile = rsx! {
             <div id={row_key.clone()} relative w={px(width)} flex_none flex items_center
-                justify_center mask_sensitive_text={true} />
+                justify_center />
         }
             .min_h(px(number(appearance, "smallMinHeight", 28.0).max(
                 if style == Style::List { l.icon_button_size + 2.0 * l.file_chip_padding_y } else { 30.0 },

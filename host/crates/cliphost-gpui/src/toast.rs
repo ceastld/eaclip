@@ -1815,7 +1815,7 @@ impl CopyToastOverlay {
         let group: gpui::SharedString = format!("toast-card-{key}").into();
         let mut content = rsx! {
             <div flex_1 min_w_0 min_h={px(24.0)} pr={px(16.0)} flex flex_col justify_center
-                gap={px(2.0)} mask_sensitive_text={has_clip} />
+                gap={px(2.0)} />
         };
         if !title.is_empty() {
             content = content.child(

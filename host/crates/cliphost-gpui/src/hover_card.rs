@@ -760,7 +760,6 @@ impl HoverCard {
     fn surface(&self, width: f32) -> gpui::Div {
         let t = self.tokens.theme(self.dark);
         div()
-            .mask_sensitive_text(true)
             .relative()
             .w(px(width))
             .max_h(px(self.layout.map_or(MAX_HEIGHT, |layout| layout.height)))

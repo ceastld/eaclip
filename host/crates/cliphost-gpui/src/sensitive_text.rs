@@ -16,28 +16,6 @@ pub(crate) fn configure(config: &Value, cx: &mut App) {
     }
 }
 
-/// The Win32 tooltip does not pass through GPUI's text painter. Remove the
-/// original glyphs before handing the display string to that renderer.
-#[cfg(windows)]
-pub(crate) fn mask_native_tooltip(mut text: String) -> String {
-    let mut offset = 0;
-    let ranges = text
-        .split_inclusive('\n')
-        .flat_map(|line| {
-            let start = offset;
-            offset += line.len();
-            sensitive_ranges(line)
-                .into_iter()
-                .map(move |range| (start + range.start)..(start + range.end))
-        })
-        .collect::<Vec<_>>();
-    for range in ranges.into_iter().rev() {
-        let mask = "█".repeat(text[range.clone()].chars().count().min(12));
-        text.replace_range(range, &mask);
-    }
-    text
-}
-
 // Keep labels and surrounding prose legible, including when a credential is
 // too short or too repetitive to meet an entropy threshold.
 static LABELED: LazyLock<Regex> = LazyLock::new(|| {
@@ -221,16 +199,6 @@ fn uuid_shape(token: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[cfg(windows)]
-    #[test]
-    fn native_tooltip_masks_credential_values_and_preserves_surrounding_text() {
-        let text = "登录说明\r\n密码是 abc\nMore details at https://example.com/help";
-        assert_eq!(
-            mask_native_tooltip(text.into()),
-            "登录说明\r\n密码是 ███\nMore details at https://example.com/help",
-        );
-    }
 
     fn matches(line: &str) -> Vec<&str> {
         sensitive_ranges(line)

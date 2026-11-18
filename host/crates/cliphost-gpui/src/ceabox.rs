@@ -1284,8 +1284,7 @@ impl CeaBoxWindow {
                 <div size={px(p.icon_box_size)} flex_none flex items_center justify_center>
                     {svg().path(self.tokens.icons.get(icon).cloned().unwrap_or_default()).size(px(p.icon_size)).text_color(icon_color)}
                 </div>
-                <div flex_1 min_w_0 flex flex_col justify_center gap={px(4.0)}
-                    mask_sensitive_text={matches!(item.source, CeaBoxSource::Clipboard | CeaBoxSource::Favorite)}>
+                <div flex_1 min_w_0 flex flex_col justify_center gap={px(4.0)}>
                     <div w_full min_w_0 line_clamp={1} h={px(p.title_font_size * 1.35)} line_height={relative(1.35)}
                         text_size={px(p.title_font_size)} font_weight={FontWeight::MEDIUM} text_color={color(&t.text)}>{title_text(&item.title, &self.query)}</div>
                     {meta}
